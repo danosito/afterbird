@@ -42,9 +42,9 @@ These are maintained as a selected subset of Chromium/Kiwi files relevant to the
 
 Current branch roles:
 
-- `chromium`: upstream-tracking baseline for Chromium file updates; expected to receive `[Chromium] ...` commits from import/update workflows.
+- `chromium`: upstream-tracking baseline for Chromium file updates; expected to receive `[Chromium] ...` commits from import/update workflows. In some clones this may only exist as `origin/chromium`; create a local branch with `git switch -c chromium --track origin/chromium`.
 - `kiwi`: integration branch for Kiwi-specific deltas on top of Chromium-tracked files; historically rebased onto Chromium baselines.
-- `afterbird`: fork working branch and current default for governance/revival work; currently aligned with `kiwi` at this baseline.
+- `afterbird`: fork working branch and current default for governance/revival work; seeded from Kiwi lineage and intended to track upstream changes via periodic integration.
 
 Conceptual flow:
 

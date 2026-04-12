@@ -31,9 +31,9 @@ Plus project metadata and automation:
 
 Current branch model in this repository:
 
-- `afterbird`: main branch for this fork's ongoing work; currently points to the same commit as `kiwi` at this documentation baseline.
+- `afterbird`: main branch for this fork's ongoing work; it was bootstrapped from Kiwi history and is expected to evolve independently through periodic upstream sync/rebase work.
 - `kiwi`: legacy Kiwi integration branch in this fork; contains Kiwi-era files, workflows, and metadata.
-- `chromium`: Chromium tracking branch (upstream file sync baseline) used before Kiwi-specific integration/rebase steps.
+- `chromium`: Chromium tracking branch (upstream file sync baseline) used before Kiwi-specific integration/rebase steps. In some clones this may only exist as `origin/chromium`; create a local tracking branch with `git switch -c chromium --track origin/chromium`.
 
 Operationally, the historical workflow has been: update `chromium` -> rebase/integrate into `kiwi` -> carry fork-specific changes on top.
 
@@ -45,7 +45,7 @@ From files on `afterbird`/`kiwi`:
 - `CHROMIUM_VERSION`: `105.0.5195.24`
 - `KIWI_VERSION`: `105.0.5195.33`
 
-From `origin/chromium` branch:
+From remote-tracking `origin/chromium` branch:
 
 - `CHROMIUM_VERSION`: `132.0.6834.83`
 

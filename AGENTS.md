@@ -7,6 +7,7 @@ This file defines how contributors and coding agents should work in this reposit
 ## Branching Rules
 
 - Start all work from `afterbird` unless the task is explicitly Chromium-sync (`chromium`) or Kiwi-integration (`kiwi`).
+- If `chromium` is missing locally but `origin/chromium` exists, create it with `git switch -c chromium --track origin/chromium`.
 - Use short-lived topic branches, for example `feature/<topic>` or `fix/<topic>`.
 - Do not push direct commits to `afterbird`, `kiwi`, or `chromium` except approved branch-maintainer workflows.
 

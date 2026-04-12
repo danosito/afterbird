@@ -13,3 +13,5 @@ All notable changes to this repository are documented in this file.
 ### Changed
 
 - Rewrote `README.md` to reflect the current Afterbird state, including project rename/purpose, branch roles (`afterbird`, `kiwi`, `chromium`), in-tree version markers with caveats, and realistic build requirements.
+- Clarified branch wording to avoid time-sensitive claims about `afterbird`/`kiwi` alignment after future merges.
+- Documented how to create a local `chromium` branch when only `origin/chromium` exists: `git switch -c chromium --track origin/chromium`.
