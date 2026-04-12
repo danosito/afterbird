@@ -1,46 +1,80 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/kiwibrowser/src.next/kiwi/kiwi_logo_circle.svg" alt="KiwiBrowser"
-	title="KiwiBrowser" width="200" height="200"/>
- </p>
-<p align="center">
-  <a href="https://github.com/kiwibrowser/src.next/releases">
-  <img src="https://img.shields.io/github/v/release/kiwibrowser/src.next?include_prereleases&label=latest%20release"/>
-</a>
-  <a href="https://github.com/kiwibrowser/src.next/release">
-<img src="https://img.shields.io/github/downloads/kiwibrowser/src.next/total?label=GitHub%20Downloads&color=%6BDDD5"></a>
-<a href="https://github.com/kiwibrowser/src.next/blob/kiwi/LICENSE">
-  <img src="https://img.shields.io/github/license/kiwibrowser/src.next?color=%236BDDD5"/></a>
+# Afterbird
 
-  </p>
+Afterbird is a continuation-focused fork of the Kiwi `src.next` codebase.
+The project identity in this repository is now Afterbird.
 
-# Kiwi Browser
+This repository is currently a tracked source subset, not a complete standalone Chromium checkout. It contains selected Chromium/Kiwi directories and project automation files, but it does not include the full Chromium root tree or full build toolchain definitions needed for turnkey local builds.
 
-Important note: Kiwi Browser is now archived. It will no longer be maintained after January 2025.
+## What This Repository Contains Today
 
-<img src="https://edgemobilegrowth.microsoft.com/extension/kiwi_to_edge.jpeg" height="100" />
+Top-level source coverage currently includes:
 
-To support users who rely on extensions, we've partnered with the Microsoft Edge team to offer a smooth migration path.
+- `base/`
+- `chrome/`
+- `components/`
+- `content/`
+- `extensions/`
+- `net/`
+- `remoting/`
+- `services/`
+- `third_party/`
+- `ui/`
 
-Clicking <a href="https://edgemobileapp.microsoft.com/?adjustId=1mfkz3u3_1m6jnsdw">the link</a> will prompt you to install Microsoft Edge, reveal a hidden message in the Edge Extensions Hub, and uNBlock a powerful Manifest V2 extension there.
+Plus project metadata and automation:
 
-The extensions code for Kiwi Browser also has been integrated into the development version of Microsoft Edge: [Microsoft Edge Canary](https://play.google.com/store/apps/details?id=com.microsoft.emmx.canary).
+- `.github/workflows/` (branch rebasing/import automation and legacy build pipelines)
+- `.build/production_build_reference/args.gn` (reference GN args file)
+- `CHROMIUM_VERSION`, `KIWI_VERSION`, `VERSION`
+- `toolbox/` scripts
 
-To install extensions on Microsoft Edge Canary:
+## Branches And Their Roles
 
-1. Open **Microsoft Edge Canary** and go to **Settings > About Microsoft Edge**.  
-2. Tap the **Edge build number** (e.g., `xx.0.2487.0`) 5 times to enable **Developer Options**.  
-3. In Developer Options, select **Extension install by id**.  
+Current branch model in this repository:
 
-To find the extension ID:  
-- Open the [Microsoft Edge Web Store](https://microsoftedge.microsoft.com/addons/Microsoft-Edge-Extensions-Home).  
-- Locate and select the desired extension.  
-- Copy the ID from the URL (e.g., for Bitwarden, the ID is `jbkfoedolllekgbhcbcoahefnbanhhlh` from the URL ending).  
+- `afterbird`: main branch for this fork's ongoing work; it was bootstrapped from Kiwi history and is expected to evolve independently through periodic upstream sync/rebase work.
+- `kiwi`: legacy Kiwi integration branch in this fork; contains Kiwi-era files, workflows, and metadata.
+- `chromium`: Chromium tracking branch (upstream file sync baseline) used before Kiwi-specific integration/rebase steps. In some clones this may only exist as `origin/chromium`; create a local tracking branch with `git switch -c chromium --track origin/chromium`.
 
-4. Paste the extension ID into the **Extension install by id** field.  
-5. The extension will install.  
+Operationally, the historical workflow has been: update `chromium` -> rebase/integrate into `kiwi` -> carry fork-specific changes on top.
 
-If you really need Kiwi Browser, you can download the [latest published version of Kiwi Browser here](https://github.com/kiwibrowser/src.next/releases/tag/14310011181). Do not download Kiwi Browser from any other sources.
+## Known Versions In-Tree
 
-While your Kiwi Browser installation will still work for some time, it’s essential to explore alternatives like [Microsoft Edge Canary](https://play.google.com/store/apps/details?id=com.microsoft.emmx.canary), [Vivaldi Browser](https://play.google.com/store/apps/details?id=com.vivaldi.browser) or [Mozilla Firefox](https://play.google.com/store/apps/details?id=org.mozilla.firefox) to stay secure and up-to-date.
+From files on `afterbird`/`kiwi`:
 
--- Arnaud.
+- `VERSION`: `93.0.4577.21`
+- `CHROMIUM_VERSION`: `105.0.5195.24`
+- `KIWI_VERSION`: `105.0.5195.33`
+
+From remote-tracking `origin/chromium` branch:
+
+- `CHROMIUM_VERSION`: `132.0.6834.83`
+
+Important caveat:
+
+- Numeric Git tags in this repo (for example `14310011181`, `15616141394`) are release/build identifiers, not guaranteed to match Chromium major versions.
+- The presence of newer release tags or a newer `chromium` branch does not mean `afterbird` currently contains the same engine baseline.
+
+## Build Status (Realistic)
+
+Current status: no verified, self-contained local build path from this branch alone.
+
+Why:
+
+- `afterbird`/`kiwi` are missing full Chromium root files/directories expected in a standalone checkout (for example `BUILD.gn`, `DEPS`, `build/`, `tools/`).
+- Existing CI workflows reference private/legacy Kiwi infrastructure and secrets (`longbuild.find.kiwi`, `build.find.kiwi`, storage/release credentials).
+- `build_and_sign_release_apk.yml` expects `.build/android_arm/args.gn`, which is not present in the current tree.
+
+What is required to build reliably:
+
+- A full Chromium checkout at a chosen baseline tag.
+- Local Android/Chromium build prerequisites (depot_tools, GN/Ninja, Android SDK/NDK, supported JDK, system deps).
+- A reproducible overlay/patch application step from this repository onto that full checkout.
+- Reconstructed/validated GN args profiles and documented target commands.
+
+Until those are formalized, treat this repository as a source-tracking and patch-integration base, not a one-command build environment.
+
+## Next Documentation
+
+- Architecture and revival roadmap: see `ARCHITECTURE.md`
+- Contributor/agent workflow rules: see `AGENTS.md`
+- Change history baseline: see `CHANGELOG.md`
