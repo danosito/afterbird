@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,13 +8,13 @@
 #include <vector>
 
 #include "base/memory/ref_counted.h"
-#include "components/keyed_service/content/refcounted_browser_context_keyed_service_factory.h"
+#include "chrome/browser/profiles/refcounted_profile_keyed_service_factory.h"
 
 class Profile;
 
 namespace base {
 template <typename T>
-struct DefaultSingletonTraits;
+class NoDestructor;
 }
 
 namespace history {
@@ -25,7 +25,7 @@ class TopSites;
 class Profile;
 
 // Used for creating and fetching a per-profile instance of the TopSites.
-class TopSitesFactory : public RefcountedBrowserContextKeyedServiceFactory {
+class TopSitesFactory : public RefcountedProfileKeyedServiceFactory {
  public:
   // Get the TopSites service for |profile|, creating one if needed.
   static scoped_refptr<history::TopSites> GetForProfile(Profile* profile);
@@ -43,7 +43,7 @@ class TopSitesFactory : public RefcountedBrowserContextKeyedServiceFactory {
   TopSitesFactory& operator=(const TopSitesFactory&) = delete;
 
  private:
-  friend struct base::DefaultSingletonTraits<TopSitesFactory>;
+  friend base::NoDestructor<TopSitesFactory>;
 
   TopSitesFactory();
   ~TopSitesFactory() override;

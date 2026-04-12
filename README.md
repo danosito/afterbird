@@ -3,7 +3,7 @@
 Afterbird is a continuation-focused fork of the Kiwi `src.next` codebase.
 The project identity in this repository is now Afterbird.
 
-This repository is currently a tracked source subset, not a complete standalone Chromium checkout. It contains selected Chromium/Kiwi directories and project automation files, but it does not include the full Chromium root tree or full build toolchain definitions needed for turnkey local builds.
+This repository is currently a tracked source subset, not a complete standalone Chromium checkout. It contains selected Chromium/Kiwi directories and project automation files, and is now aligned to a Chromium 132 baseline (`132.0.6834.83`), but it does not include the full Chromium root tree or full build toolchain definitions needed for turnkey local builds.
 
 ## What This Repository Contains Today
 
@@ -39,20 +39,16 @@ Operationally, the historical workflow has been: update `chromium` -> rebase/int
 
 ## Known Versions In-Tree
 
-From files on `afterbird`/`kiwi`:
+From files on the current `afterbird` branch:
 
 - `VERSION`: `93.0.4577.21`
-- `CHROMIUM_VERSION`: `105.0.5195.24`
-- `KIWI_VERSION`: `105.0.5195.33`
-
-From remote-tracking `origin/chromium` branch:
-
 - `CHROMIUM_VERSION`: `132.0.6834.83`
+- `KIWI_VERSION`: `105.0.5195.33`
 
 Important caveat:
 
 - Numeric Git tags in this repo (for example `14310011181`, `15616141394`) are release/build identifiers, not guaranteed to match Chromium major versions.
-- The presence of newer release tags or a newer `chromium` branch does not mean `afterbird` currently contains the same engine baseline.
+- Future updates on `chromium` may diverge from `afterbird` until the next integration merge.
 
 ## Build Status (Realistic)
 
@@ -60,7 +56,7 @@ Current status: no verified, self-contained local build path from this branch al
 
 Why:
 
-- `afterbird`/`kiwi` are missing full Chromium root files/directories expected in a standalone checkout (for example `BUILD.gn`, `DEPS`, `build/`, `tools/`).
+- `afterbird`/`kiwi` still do not represent a full Chromium checkout and are missing required directories/tooling for standalone builds (for example `build/`, `tools/`, full dependency payloads), even though root manifests like `BUILD.gn` and `DEPS` are now present.
 - Existing CI workflows reference private/legacy Kiwi infrastructure and secrets (`longbuild.find.kiwi`, `build.find.kiwi`, storage/release credentials).
 - `build_and_sign_release_apk.yml` expects `.build/android_arm/args.gn`, which is not present in the current tree.
 

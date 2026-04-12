@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,10 +9,9 @@
 #include <memory>
 #include <string>
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/ref_counted.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/net/nss_service.h"
 #include "net/cert/nss_cert_database.h"
@@ -24,9 +23,16 @@ class BrowserContext;
 }  // namespace content
 
 #if BUILDFLAG(IS_CHROMEOS)
+namespace ash {
+class PolicyCertificateProvider;
+}
+
 namespace chromeos {
 class CertificateProvider;
-class PolicyCertificateProvider;
+}
+
+namespace kcer {
+class Kcer;
 }
 #endif
 
@@ -126,11 +132,16 @@ class CertificateManagerModel {
   struct Params {
 #if BUILDFLAG(IS_CHROMEOS)
     // May be nullptr.
-    raw_ptr<chromeos::PolicyCertificateProvider> policy_certs_provider =
-        nullptr;
+    raw_ptr<ash::PolicyCertificateProvider> policy_certs_provider = nullptr;
     // May be nullptr.
     std::unique_ptr<chromeos::CertificateProvider>
         extension_certificate_provider;
+    // Valid as long as the underlying Profile is valid. The implementation
+    // doesn't check for validity of the WeakPtr because the
+    // CertificateManagerModel has the same validity time frame.
+#endif
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+    base::WeakPtr<kcer::Kcer> kcer;
 #endif
 
     Params();
@@ -197,11 +208,13 @@ class CertificateManagerModel {
   // Import private keys and certificates from PKCS #12 encoded
   // |data|, using the given |password|. If |is_extractable| is false,
   // mark the private key as unextractable from the slot.
-  // Returns a net error code on failure.
-  int ImportFromPKCS12(PK11SlotInfo* slot_info,
-                       const std::string& data,
-                       const std::u16string& password,
-                       bool is_extractable);
+  // Returns a net error code on failure or net::OK on success using the
+  // `callback`.
+  void ImportFromPKCS12(PK11SlotInfo* slot_info,
+                        const std::string& data,
+                        const std::u16string& password,
+                        bool is_extractable,
+                        base::OnceCallback<void(int net_result)> callback);
 
   // Import user certificate from DER encoded |data|.
   // Returns a net error code on failure.
@@ -241,9 +254,9 @@ class CertificateManagerModel {
                     net::CertType type,
                     net::NSSCertDatabase::TrustBits trust_bits);
 
-  // Delete the cert.  Returns true on success.  |cert| is still valid when this
-  // function returns.
-  bool Delete(CERTCertificate* cert);
+  // Remove the cert from the cert database.
+  void RemoveFromDatabase(net::ScopedCERTCertificate cert,
+                          base::OnceCallback<void(bool /*success*/)> callback);
 
  private:
   // Called when one of the |certs_sources_| has been updated. Will notify the
@@ -272,6 +285,9 @@ class CertificateManagerModel {
                                   CreationCallback callback);
 
   raw_ptr<net::NSSCertDatabase> cert_db_;
+#if BUILDFLAG(IS_CHROMEOS_ASH)
+  base::WeakPtr<kcer::Kcer> kcer_;
+#endif
 
   // CertsSource instances providing certificates. The order matters - if a
   // certificate is provided by more than one CertsSource, only the first one is

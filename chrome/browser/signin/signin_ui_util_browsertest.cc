@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,10 +7,11 @@
 
 #include "chrome/browser/signin/signin_ui_util.h"
 
-#include "base/callback_helpers.h"
+#include "base/functional/callback_helpers.h"
 #include "base/test/bind.h"
 #include "build/buildflag.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/profiles/delete_profile_helper.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
@@ -36,15 +37,11 @@ class DiceSigninUiUtilBrowserTest : public InProcessBrowserTest {
     base::RunLoop run_loop;
     ProfileManager::CreateMultiProfileAsync(
         u"test_profile", /*icon_index=*/0, /*is_hidden=*/false,
-        base::BindLambdaForTesting(
-            [&new_profile, &run_loop](Profile* profile,
-                                      Profile::CreateStatus status) {
-              ASSERT_NE(status, Profile::CREATE_STATUS_LOCAL_FAIL);
-              if (status == Profile::CREATE_STATUS_INITIALIZED) {
-                new_profile = profile;
-                run_loop.Quit();
-              }
-            }));
+        base::BindLambdaForTesting([&new_profile, &run_loop](Profile* profile) {
+          ASSERT_TRUE(profile);
+          new_profile = profile;
+          run_loop.Quit();
+        }));
     run_loop.Run();
     return new_profile;
   }
@@ -61,7 +58,7 @@ IN_PROC_BROWSER_TEST_F(DiceSigninUiUtilBrowserTest,
   // New profile should not have any browser windows.
   EXPECT_FALSE(chrome::FindBrowserWithProfile(new_profile));
 
-  ShowExtensionSigninPrompt(new_profile, /*enable_sync=*/true,
+  ShowExtensionSigninPrompt(new_profile, /*enable_sync=*/false,
                             /*email_hint=*/std::string());
   // `ShowExtensionSigninPrompt()` creates a new browser.
   Browser* browser = chrome::FindBrowserWithProfile(new_profile);
@@ -69,13 +66,16 @@ IN_PROC_BROWSER_TEST_F(DiceSigninUiUtilBrowserTest,
   EXPECT_EQ(1, browser->tab_strip_model()->count());
 
   // Profile deletion closes the browser.
-  g_browser_process->profile_manager()->ScheduleProfileForDeletion(
-      new_profile->GetPath(), base::DoNothing());
+  g_browser_process->profile_manager()
+      ->GetDeleteProfileHelper()
+      .MaybeScheduleProfileForDeletion(
+          new_profile->GetPath(), base::DoNothing(),
+          ProfileMetrics::DELETE_PROFILE_USER_MANAGER);
   ui_test_utils::WaitForBrowserToClose(browser);
   EXPECT_FALSE(chrome::FindBrowserWithProfile(new_profile));
 
   // `ShowExtensionSigninPrompt()` does nothing for deleted profile.
-  ShowExtensionSigninPrompt(new_profile, /*enable_sync=*/true,
+  ShowExtensionSigninPrompt(new_profile, /*enable_sync=*/false,
                             /*email_hint=*/std::string());
   EXPECT_FALSE(chrome::FindBrowserWithProfile(new_profile));
 }

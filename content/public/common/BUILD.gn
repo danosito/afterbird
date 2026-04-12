@@ -1,23 +1,30 @@
-# Copyright 2014 The Chromium Authors. All rights reserved.
+# Copyright 2014 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import("//build/buildflag_header.gni")
-import("//build/config/chromecast_build.gni")
 import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/features.gni")
 import("//build/config/ui.gni")
+import("//content/public/common/features.gni")
 import("//content/public/common/zygote/features.gni")
 import("//media/media_options.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 import("//ppapi/buildflags/buildflags.gni")
 import("//third_party/webrtc/webrtc.gni")
+import("//tools/ipc_fuzzer/ipc_fuzzer.gni")
 
 if (is_android) {
   import("//build/config/android/rules.gni")
 }
 
-# See //content/BUILD.gn for how this works.
+buildflag_header("buildflags") {
+  header = "buildflags.h"
+  flags = [ "ENABLE_SCREEN_CAPTURE=$enable_screen_capture" ]
+}
+
+# See //content/BUILD.gn for how this works. Note that targets in `//content`
+# will want to include `:common_sources` directly.
 group("common") {
   if (is_component_build) {
     public_deps = [ "//content" ]
@@ -46,6 +53,24 @@ source_set("content_descriptor_keys") {
   ]
 }
 
+# This target allows other targets to depend on sandbox_support_linux.h which is
+# a header-only dependency, without bringing in all of content.
+if (is_linux || is_chromeos) {
+  source_set("sandbox_support_linux") {
+    public = [
+      "//content/common/content_export.h",
+      "zygote/sandbox_support_linux.h",
+      "zygote/send_zygote_child_ping_linux.h",
+      "zygote/zygote_fork_delegate_linux.h",
+    ]
+
+    deps = [
+      "//base:base",
+      "//content/public/common/zygote:buildflags",
+    ]
+  }
+}
+
 # Forces static linking for targets using the static_switches constants, even
 # in the component build. This config makes it impossible to use the static
 # switches target and use the rest of content at the same time, because the
@@ -70,7 +95,33 @@ source_set("static_switches") {
   deps = [
     "//build:chromeos_buildflags",
     "//media:media_buildflags",
+    "//tools/v8_context_snapshot:buildflags",
   ]
+}
+
+# This target allowing depending on content_switches without depending on the
+# rest of common_sources and its dependencies. Note that unlike the targets
+# above, this is for use inside of content/ only and does not link statically.
+source_set("switches") {
+  visibility = [ "//content/*" ]
+  public = [ "content_switches.h" ]
+  sources = [
+    "//content/common/content_export.h",
+    "content_switches.cc",
+  ]
+
+  # Deps required by the above header.
+  deps = [
+    "//build:chromeos_buildflags",
+    "//media:media_buildflags",
+    "//tools/v8_context_snapshot:buildflags",
+  ]
+
+  configs += [ "//content:content_implementation" ]
+
+  if (enable_ipc_fuzzer) {
+    configs += [ "//tools/ipc_fuzzer:ipc_fuzzer_config" ]
+  }
 }
 
 # This target allows you to use the content MainFunctionParams struct and
@@ -85,10 +136,23 @@ source_set("static_main_function_params") {
   ]
   public_deps = [ "//base" ]
 
-  public_configs = [
-    ":static_switches_defines",
-    "//tools/v8_context_snapshot:use_v8_context_snapshot",
+  public_configs = [ ":static_switches_defines" ]
+}
+
+# Target for depending on main_function_params.h. This can be included without
+# depending on all the rest of content, but unlike static_main_function_params,
+# this can be combined with the rest of content.
+component("main_function_params") {
+  public = [ "main_function_params.h" ]
+  sources = [
+    "//content/common/content_export.h",
+    "main_function_params.cc",
+    "startup_data.h",
   ]
+
+  deps = [ "//base" ]
+
+  configs += [ "//content:content_implementation" ]
 }
 
 source_set("common_sources") {
@@ -97,9 +161,8 @@ source_set("common_sources") {
 
   sources = [
     "bindings_policy.h",
+    "cdm_info.cc",
     "cdm_info.h",
-    "child_process_host.h",
-    "child_process_host_delegate.h",
     "color_parser.h",
     "common_param_traits.cc",
     "common_param_traits.h",
@@ -116,25 +179,17 @@ source_set("common_sources") {
     "content_paths.h",
     "content_switch_dependent_feature_overrides.cc",
     "content_switch_dependent_feature_overrides.h",
-    "content_switches.cc",
-    "content_switches.h",
+    "dips_utils.h",
     "drop_data.cc",
     "drop_data.h",
-    "input_event_ack_state.h",
     "isolated_world_ids.h",
     "javascript_dialog_type.h",
-    "main_function_params.cc",
-    "main_function_params.h",
     "mhtml_generation_params.cc",
     "mhtml_generation_params.h",
-    "network_service_util.cc",
-    "network_service_util.h",
     "origin_util.h",
     "page_type.h",
     "page_visibility_state.h",
     "page_zoom.h",
-    "pepper_plugin_info.cc",
-    "pepper_plugin_info.h",
     "persistent_notification_status.h",
     "process_type.h",
     "profiling.cc",
@@ -156,11 +211,11 @@ source_set("common_sources") {
     "stop_find_action.h",
     "storage_quota_params.h",
     "three_d_api_types.h",
-    "url_constants.cc",
     "url_constants.h",
     "url_utils.cc",
     "url_utils.h",
     "user_agent.h",
+    "web_identity.h",
     "webplugininfo.cc",
     "webplugininfo.h",
     "webplugininfo_param_traits.h",
@@ -186,19 +241,13 @@ source_set("common_sources") {
     "//content:content_implementation",
   ]
 
-  public_configs = [
-    "//v8:external_startup_data",
-    "//tools/v8_context_snapshot:use_v8_context_snapshot",
-  ]
+  public_configs = [ "//v8:external_startup_data" ]
 
   public_deps = [
     ":interfaces",
+    ":main_function_params",
     ":renderer_type",
-    ":trust_tokens_mojo_bindings",
-
-    # TODO(crbug.com/977637): Remove when
-    # content::LaunchUtilityProcessServiceDeprecated() gets removed.
-    "//build:chromecast_buildflags",
+    ":switches",
     "//content/common",
     "//content/public/common/zygote:buildflags",
     "//ipc",
@@ -211,6 +260,7 @@ source_set("common_sources") {
     "//services/service_manager/public/mojom",
     "//third_party/blink/public:blink_headers",
     "//third_party/blink/public/mojom:mojom_platform_headers",
+    "//tools/v8_context_snapshot:buildflags",
     "//ui/accessibility",
     "//ui/base/cursor/mojom:cursor_type",
     "//ui/gfx/geometry",
@@ -219,16 +269,18 @@ source_set("common_sources") {
   ]
   deps = [
     ":content_descriptor_keys",
+    "//build:android_buildflags",
     "//build:branding_buildflags",
     "//build:chromeos_buildflags",
+    "//build/config/chromebox_for_meetings:buildflags",
 
     # This looks needless as we have //content/common in public_deps, but it's
     # needed because of allow_circular_includes_from.
     "//content/common:mojo_bindings",
+    "//device/vr/buildflags",
     "//media",
     "//media/mojo/mojom",
     "//ppapi/buildflags",
-    "//ppapi/c",
     "//services/network/public/cpp",
     "//services/service_manager/public/cpp",
     "//skia",
@@ -249,7 +301,7 @@ source_set("common_sources") {
   }
 
   if (is_android) {
-    deps += [ "//content/public/android:jni" ]
+    deps += [ "//content/public/android:public_common_jni" ]
   }
 
   if (is_win) {
@@ -268,7 +320,7 @@ source_set("common_sources") {
     ]
   }
 
-  if (use_zygote_handle) {
+  if (use_zygote) {
     sources += [ "zygote/zygote_handle.h" ]
   }
 
@@ -284,12 +336,15 @@ source_set("common_sources") {
     "//content/common:mojo_bindings",
   ]
 
-  if (!enable_plugins) {
-    sources -= [
-      "pepper_plugin_info.cc",
-      "pepper_plugin_info.h",
+  if (enable_plugins) {
+    sources += [
+      "content_plugin_info.cc",
+      "content_plugin_info.h",
     ]
-    deps -= [ "//ppapi/c" ]
+
+    if (enable_ppapi) {
+      deps += [ "//ppapi/c" ]
+    }
   }
 
   if (use_clang_profiling_inside_sandbox) {
@@ -315,6 +370,8 @@ mojom("interfaces") {
   # Must depend on //content/public/common/ instead, for component build.
   visibility = [
     ":common_sources",
+    "//chrome/browser/ash/magic_boost",
+    "//chrome/browser/ash/policy/dlp/dialogs",
     "//chrome/common:mojo_bindings",
     "//chrome/common:mojo_bindings_blink",
     "//content/common/*",
@@ -381,19 +438,6 @@ mojom("interfaces") {
       ]
       traits_deps = [ "//ipc" ]
     },
-  ]
-}
-
-mojom("trust_tokens_mojo_bindings") {
-  generate_java = true
-  sources = [ "trust_tokens.mojom" ]
-  public_deps = [
-    "//services/network/public/mojom",
-
-    # Generating Java code requires that we depend directly, not transitively,
-    # on this target, because it contains symbols needed by the generated Java
-    # classes.
-    "//services/network/public/mojom:url_loader_base",
   ]
 }
 

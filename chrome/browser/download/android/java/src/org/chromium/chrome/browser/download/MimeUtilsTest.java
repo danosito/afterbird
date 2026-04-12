@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,9 +14,7 @@ import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 
-/**
- * Tests for MimeUtils class.
- */
+/** Tests for MimeUtils class. */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @Batch(Batch.UNIT_TESTS)
 public class MimeUtilsTest {
@@ -31,8 +29,8 @@ public class MimeUtilsTest {
     }
 
     /**
-     * Test to make sure {@link DownloadUtils#shouldAutoOpenDownload}
-     * returns the right result for varying MIME types and Content-Dispositions.
+     * Test to make sure {@link DownloadUtils#shouldAutoOpenDownload} returns the right result for
+     * varying MIME types and Content-Dispositions.
      */
     @Test
     @SmallTest

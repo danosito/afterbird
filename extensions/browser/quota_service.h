@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -59,7 +59,7 @@ class QuotaService {
   // Returns an error message representing the failure if quota was exceeded,
   // or empty-string if the request is fine and can proceed.
   // |args| must be a list.
-  std::string Assess(const std::string& extension_id,
+  std::string Assess(const ExtensionId& extension_id,
                      ExtensionFunction* function,
                      const base::Value::List& args,
                      const base::TimeTicks& event_time);

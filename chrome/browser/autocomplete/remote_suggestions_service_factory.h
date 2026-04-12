@@ -1,18 +1,17 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_AUTOCOMPLETE_REMOTE_SUGGESTIONS_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_AUTOCOMPLETE_REMOTE_SUGGESTIONS_SERVICE_FACTORY_H_
 
-#include "base/memory/singleton.h"
-#include "components/keyed_service/content/browser_context_keyed_service_factory.h"
+#include "base/no_destructor.h"
+#include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class RemoteSuggestionsService;
 class Profile;
 
-class RemoteSuggestionsServiceFactory
-    : public BrowserContextKeyedServiceFactory {
+class RemoteSuggestionsServiceFactory : public ProfileKeyedServiceFactory {
  public:
   static RemoteSuggestionsService* GetForProfile(Profile* profile,
                                                  bool create_if_necessary);
@@ -24,13 +23,13 @@ class RemoteSuggestionsServiceFactory
       const RemoteSuggestionsServiceFactory&) = delete;
 
  private:
-  friend struct base::DefaultSingletonTraits<RemoteSuggestionsServiceFactory>;
+  friend base::NoDestructor<RemoteSuggestionsServiceFactory>;
 
   RemoteSuggestionsServiceFactory();
   ~RemoteSuggestionsServiceFactory() override;
 
   // Overrides from BrowserContextKeyedServiceFactory:
-  KeyedService* BuildServiceInstanceFor(
+  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
       content::BrowserContext* context) const override;
 };
 

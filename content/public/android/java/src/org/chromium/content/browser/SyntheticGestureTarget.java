@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,12 +6,10 @@ package org.chromium.content.browser;
 
 import android.view.View;
 
-import org.chromium.base.annotations.CalledByNative;
-import org.chromium.base.annotations.JNINamespace;
+import org.jni_zero.CalledByNative;
+import org.jni_zero.JNINamespace;
 
-/**
- * Fowards synthetic events to MotionEventSynthesizer. Owned by its native.
- */
+/** Forwards synthetic events to MotionEventSynthesizer. Owned by its native. */
 @JNINamespace("content")
 public class SyntheticGestureTarget {
     private final MotionEventSynthesizerImpl mMotionEventSynthesizer;
@@ -26,8 +24,8 @@ public class SyntheticGestureTarget {
     }
 
     @CalledByNative
-    private void inject(int action, int pointerCount, long timeInMs) {
-        mMotionEventSynthesizer.inject(action, pointerCount, timeInMs);
+    private void inject(int action, int pointerCount, int pointerIndex, long timeInMs) {
+        mMotionEventSynthesizer.inject(action, pointerCount, pointerIndex, timeInMs);
     }
 
     @CalledByNative

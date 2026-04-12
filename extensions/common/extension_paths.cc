@@ -1,4 +1,4 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,8 +13,9 @@ bool PathProvider(int key, base::FilePath* result) {
   if (key != DIR_TEST_DATA)
     return false;
   base::FilePath cur;
-  if (!base::PathService::Get(base::DIR_SOURCE_ROOT, &cur))
+  if (!base::PathService::Get(base::DIR_SRC_TEST_DATA_ROOT, &cur)) {
     return false;
+  }
   cur = cur.Append(FILE_PATH_LITERAL("extensions"));
   cur = cur.Append(FILE_PATH_LITERAL("test"));
   cur = cur.Append(FILE_PATH_LITERAL("data"));

@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -47,8 +47,9 @@ int PendingExtensionInfo::CompareTo(const PendingExtensionInfo& other) const {
     int comparison = version_.CompareTo(other.version_);
 
     // If the versions differ then return the version comparison result.
-    if (comparison != 0)
+    if (comparison != 0) {
       return comparison;
+    }
   }
 
   // The versions aren't specified, or they are the same version. Check

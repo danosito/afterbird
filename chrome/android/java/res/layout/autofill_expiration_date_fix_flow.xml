@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright 2019 The Chromium Authors. All rights reserved.
-     Use of this source code is governed by a BSD-style license that can be
-     found in the LICENSE file. -->
+<!--
+Copyright 2019 The Chromium Authors
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
@@ -11,7 +13,7 @@
     android:gravity="center_vertical"
     android:orientation="horizontal">
 
-    <!-- TODO(crbug.com/900912): Fix and remove lint ignore -->
+    <!-- TODO(crbug.com/40600572): Fix and remove lint ignore -->
     <EditText
         tools:ignore="Autofill,LabelFor"
         android:id="@+id/cc_month_edit"
@@ -29,7 +31,7 @@
         android:layout_width="wrap_content"
         android:text="@string/autofill_expiration_date_separator"/>
 
-    <!-- TODO(crbug.com/900912): Fix and remove lint ignore -->
+    <!-- TODO(crbug.com/40600572): Fix and remove lint ignore -->
     <EditText
         tools:ignore="Autofill,LabelFor"
         android:id="@+id/cc_year_edit"

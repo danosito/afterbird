@@ -1,4 +1,4 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,9 @@ struct IncognitoInfo : public Extension::ManifestData {
   ~IncognitoInfo() override;
 
   api::incognito::IncognitoMode mode;
+
+  // Return whether the |extension| should run in spanning incognito mode.
+  static bool IsSpanningMode(const Extension* extension);
 
   // Return whether the |extension| should run in split incognito mode.
   static bool IsSplitMode(const Extension* extension);

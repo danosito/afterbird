@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,22 +6,16 @@
 
 #include <string>
 
-#include "base/bind.h"
+#include "base/functional/bind.h"
 #include "base/no_destructor.h"
 #include "base/time/default_clock.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/history/history_service_factory.h"
-#include "chrome/browser/profiles/incognito_helpers.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/history/metrics/domain_diversity_reporter.h"
-#include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/profiles/profile_helper.h"
-#endif
 
 // static
 DomainDiversityReporter* DomainDiversityReporterFactory::GetForProfile(
@@ -40,22 +34,6 @@ DomainDiversityReporterFactory* DomainDiversityReporterFactory::GetInstance() {
 std::unique_ptr<KeyedService> DomainDiversityReporterFactory::BuildInstanceFor(
     content::BrowserContext* context) {
   Profile* profile = static_cast<Profile*>(context);
-
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  // ChromeOS creates various profiles (login, lock screen...) that are not
-  // representative and should not have the reporter created for. Note that
-  // IsRegularProfile() returns true for these, so that ChromeOS specific APIs
-  // must be used to test for the type.
-  if (!chromeos::ProfileHelper::IsRegularProfile(profile))
-    return nullptr;
-#endif
-
-  // Incognito profiles share the HistoryService of the original profile, so no
-  // need for an instance for them. Guest and system profiles are not
-  // representative (guest in particular is transient) and not reported.
-  if (!profile->IsRegularProfile())
-    return nullptr;
-
   history::HistoryService* history_service =
       HistoryServiceFactory::GetForProfile(profile,
                                            ServiceAccessType::EXPLICIT_ACCESS);
@@ -69,27 +47,35 @@ std::unique_ptr<KeyedService> DomainDiversityReporterFactory::BuildInstanceFor(
 }
 
 DomainDiversityReporterFactory::DomainDiversityReporterFactory()
-    : BrowserContextKeyedServiceFactory(
+    : ProfileKeyedServiceFactory(
           "DomainDiversityReporter",
-          BrowserContextDependencyManager::GetInstance()) {
+          // Incognito profiles share the HistoryService of the original
+          // profile, so no need for an instance for them. Guest and system
+          // profiles are not representative (guest in particular is transient)
+          // and not reported.
+          ProfileSelections::Builder()
+              .WithRegular(ProfileSelection::kRedirectedToOriginal)
+              .WithGuest(ProfileSelection::kNone)
+              .WithSystem(ProfileSelection::kNone)
+              // ChromeOS creates various profiles (login, lock screen...) that
+              // are not representative and should not have the reporter created
+              // for.
+              .WithAshInternals(ProfileSelection::kNone)
+              .Build()) {
   DependsOn(HistoryServiceFactory::GetInstance());
 }
 
 DomainDiversityReporterFactory::~DomainDiversityReporterFactory() = default;
 
-KeyedService* DomainDiversityReporterFactory::BuildServiceInstanceFor(
+std::unique_ptr<KeyedService>
+DomainDiversityReporterFactory::BuildServiceInstanceForBrowserContext(
     content::BrowserContext* profile) const {
-  return BuildInstanceFor(static_cast<Profile*>(profile)).release();
+  return BuildInstanceFor(static_cast<Profile*>(profile));
 }
 
 void DomainDiversityReporterFactory::RegisterProfilePrefs(
     user_prefs::PrefRegistrySyncable* registry) {
   DomainDiversityReporter::RegisterProfilePrefs(registry);
-}
-
-content::BrowserContext* DomainDiversityReporterFactory::GetBrowserContextToUse(
-    content::BrowserContext* context) const {
-  return chrome::GetBrowserContextRedirectedInIncognito(context);
 }
 
 bool DomainDiversityReporterFactory::ServiceIsNULLWhileTesting() const {

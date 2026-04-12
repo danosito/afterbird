@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,9 +13,13 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/thread_annotations.h"
 #include "extensions/common/extension_set.h"
-#include "services/network/public/cpp/session_cookie_delete_predicate.h"
 #include "storage/browser/quota/special_storage_policy.h"
 #include "url/gurl.h"
+#include "url/origin.h"
+
+namespace content {
+class BrowserContext;
+}
 
 namespace content_settings {
 class CookieSettings;
@@ -41,11 +45,12 @@ class ExtensionSpecialStoragePolicy : public storage::SpecialStoragePolicy {
   bool HasIsolatedStorage(const GURL& origin) override;
   bool HasSessionOnlyOrigins() override;
   bool IsStorageDurable(const GURL& origin) override;
-  network::DeleteCookiePredicate CreateDeleteCookieOnExitPredicate() override;
 
   // Methods used by the ExtensionService to populate this class.
-  void GrantRightsForExtension(const extensions::Extension* extension);
-  void RevokeRightsForExtension(const extensions::Extension* extension);
+  void GrantRightsForExtension(const extensions::Extension* extension,
+                               content::BrowserContext* context);
+  void RevokeRightsForExtension(const extensions::Extension* extension,
+                                content::BrowserContext* context);
   void RevokeRightsForAllExtensions();
 
   // Decides whether the storage for |extension|'s web extent needs protection.
@@ -55,6 +60,10 @@ class ExtensionSpecialStoragePolicy : public storage::SpecialStoragePolicy {
   // take ownership of the return value.
   const extensions::ExtensionSet* ExtensionsProtectingOrigin(
       const GURL& origin);
+
+  // Marks an origin as having unlimited storage. This is currently used by web
+  // kiosk to give unlimited storage to the kiosk origin.
+  void AddOriginWithUnlimitedStorage(const url::Origin& origin);
 
  protected:
   ~ExtensionSpecialStoragePolicy() override;
@@ -91,6 +100,8 @@ class ExtensionSpecialStoragePolicy : public storage::SpecialStoragePolicy {
   SpecialCollection file_handler_extensions_ GUARDED_BY_CONTEXT(lock_);
   SpecialCollection isolated_extensions_ GUARDED_BY_CONTEXT(lock_);
   SpecialCollection content_capabilities_unlimited_extensions_
+      GUARDED_BY_CONTEXT(lock_);
+  std::set<url::Origin> origins_with_unlimited_storage_
       GUARDED_BY_CONTEXT(lock_);
 
   // GUARDED_BY_CONTEXT() not needed because the data member is thread-safe. The

@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@ package org.chromium.components.external_intents;
 import android.app.Activity;
 
 import org.chromium.components.external_intents.ExternalNavigationHandler.OverrideUrlLoadingResult;
+import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.NavigationHandle;
 import org.chromium.content_public.browser.WebContents;
 
@@ -29,15 +30,8 @@ public interface InterceptNavigationDelegateClient {
      * necessary. */
     RedirectHandler getOrCreateRedirectHandler();
 
-    /* Creates an AuthenticatorNavigationInterceptor instance that is configured for this client.
-     */
-    AuthenticatorNavigationInterceptor createAuthenticatorNavigationInterceptor();
-
     /* Returns whether whether the tab associated with this client is incognito. */
     boolean isIncognito();
-
-    /* Returns whether whether the tab associated with this client is currently hidden. */
-    boolean isHidden();
 
     /* Returns whether intent launching from hidden tabs is allowed for the navigation specified
      * by |navigationHandle|. */
@@ -65,4 +59,11 @@ public interface InterceptNavigationDelegateClient {
      * |navigationHandle|. |overrideUrlLoadingResult| specifies the decision. */
     void onDecisionReachedForNavigation(
             NavigationHandle navigationHandle, OverrideUrlLoadingResult overrideUrlLoadingResult);
+
+    /**
+     * Loads a URL as specified by |loadUrlParams| if possible. May fail in exceptional conditions
+     * (e.g., if there is no valid tab).
+     * @param loadUrlParams parameters of the URL to be loaded
+     */
+    void loadUrlIfPossible(LoadUrlParams loadUrlParams);
 }

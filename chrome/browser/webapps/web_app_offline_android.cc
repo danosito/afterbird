@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,7 +10,6 @@
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
-#include "chrome/android/chrome_jni_headers/WebApkDataProvider_jni.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "components/grit/components_resources.h"
 #include "components/strings/grit/components_strings.h"
@@ -19,6 +18,9 @@
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "url/gurl.h"
+
+// Must come after all headers that specialize FromJniType() / ToJniType().
+#include "chrome/android/chrome_jni_headers/WebApkDataProvider_jni.h"
 
 using base::android::ScopedJavaLocalRef;
 
@@ -52,11 +54,7 @@ content::mojom::AlternativeErrorPageOverrideInfoPtr GetOfflinePageInfo(
   using webapps::WebApkDetailsForDefaultOfflinePage;
   const std::vector<int> fields = {
       (int)WebApkDetailsForDefaultOfflinePage::SHORT_NAME,
-      (int)WebApkDetailsForDefaultOfflinePage::ICON,
-      (int)WebApkDetailsForDefaultOfflinePage::BACKGROUND_COLOR,
-      (int)WebApkDetailsForDefaultOfflinePage::BACKGROUND_COLOR_DARK_MODE,
-      (int)WebApkDetailsForDefaultOfflinePage::THEME_COLOR,
-      (int)WebApkDetailsForDefaultOfflinePage::THEME_COLOR_DARK_MODE};
+      (int)WebApkDetailsForDefaultOfflinePage::ICON};
   const std::vector<std::string> resource_strings = GetOfflinePageInfoJava(
       fields, url.spec(), browser_context,
       content::WebContents::FromRenderFrameHost(render_frame_host));
@@ -73,34 +71,21 @@ content::mojom::AlternativeErrorPageOverrideInfoPtr GetOfflinePageInfo(
         (WebApkDetailsForDefaultOfflinePage)fields[i];
     switch (field_id) {
       case WebApkDetailsForDefaultOfflinePage::SHORT_NAME:
-        dict.Set(default_offline::kAppShortName, resource_strings[i]);
+        dict.Set(error_page::kAppShortName, resource_strings[i]);
         break;
       case WebApkDetailsForDefaultOfflinePage::ICON:
         // Converting to GURL is necessary to correctly interpret the data url,
         // in case it contains embedded carriage returns, etc.
-        dict.Set(default_offline::kIconUrl, GURL(resource_strings[i]).spec());
-        break;
-      case WebApkDetailsForDefaultOfflinePage::BACKGROUND_COLOR:
-        dict.Set(default_offline::kBackgroundColor, resource_strings[i]);
-        break;
-      case WebApkDetailsForDefaultOfflinePage::BACKGROUND_COLOR_DARK_MODE:
-        dict.Set(default_offline::kDarkModeBackgroundColor,
-                 resource_strings[i]);
-        break;
-      case WebApkDetailsForDefaultOfflinePage::THEME_COLOR:
-        dict.Set(default_offline::kThemeColor, resource_strings[i]);
-        break;
-      case WebApkDetailsForDefaultOfflinePage::THEME_COLOR_DARK_MODE:
-        dict.Set(default_offline::kDarkModeThemeColor, resource_strings[i]);
+        dict.Set(error_page::kIconUrl, GURL(resource_strings[i]).spec());
         break;
     }
   }
 
-  dict.Set(
-      default_offline::kMessage,
-      l10n_util::GetStringUTF16(IDS_ERRORPAGES_HEADING_INTERNET_DISCONNECTED));
+  dict.Set(error_page::kMessage,
+           l10n_util::GetStringUTF16(IDS_ERRORPAGES_HEADING_YOU_ARE_OFFLINE));
+  dict.Set(error_page::kSupplementaryIcon, error_page::kOfflineIconId);
   alternative_error_page_info->alternative_error_page_params = std::move(dict);
-  alternative_error_page_info->resource_id = IDR_WEBAPP_DEFAULT_OFFLINE_HTML;
+  alternative_error_page_info->resource_id = IDR_WEBAPP_ERROR_PAGE_HTML;
   return alternative_error_page_info;
 }
 

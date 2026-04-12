@@ -1,10 +1,11 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/url_request/url_request_context_builder.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -13,16 +14,16 @@
 #include "base/compiler_specific.h"
 #include "base/notreached.h"
 #include "base/strings/string_util.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/thread_pool.h"
-#include "base/threading/thread_task_runner_handle.h"
+#include "base/types/pass_key.h"
 #include "build/build_config.h"
 #include "net/base/cache_type.h"
 #include "net/base/net_errors.h"
 #include "net/base/network_delegate_impl.h"
 #include "net/cert/cert_verifier.h"
 #include "net/cert/ct_log_verifier.h"
-#include "net/cert/ct_policy_enforcer.h"
 #include "net/cert/ct_verifier.h"
 #include "net/cert/multi_log_ct_verifier.h"
 #include "net/cert/sct_auditing_delegate.h"
@@ -43,14 +44,13 @@
 #include "net/nqe/network_quality_estimator.h"
 #include "net/proxy_resolution/configured_proxy_resolution_service.h"
 #include "net/quic/quic_context.h"
-#include "net/quic/quic_stream_factory.h"
+#include "net/quic/quic_session_pool.h"
+#include "net/shared_dictionary/shared_dictionary_network_transaction_factory.h"
 #include "net/socket/network_binding_client_socket_factory.h"
 #include "net/ssl/ssl_config_service_defaults.h"
 #include "net/url_request/static_http_user_agent_settings.h"
 #include "net/url_request/url_request_context.h"
-#include "net/url_request/url_request_context_storage.h"
 #include "net/url_request/url_request_job_factory.h"
-#include "net/url_request/url_request_throttler_manager.h"
 #include "url/url_constants.h"
 
 #if BUILDFLAG(ENABLE_REPORTING)
@@ -64,66 +64,12 @@
 #include "base/android/build_info.h"
 #endif  // BUILDFLAG(IS_ANDROID)
 
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+#include "net/device_bound_sessions/session_service.h"
+#include "net/device_bound_sessions/session_store.h"
+#endif  // BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+
 namespace net {
-
-namespace {
-
-// A URLRequestContext subclass that owns most of its components
-// via a UrlRequestContextStorage object. When URLRequestContextBuilder::Build()
-// is called, ownership of all URLRequestContext components is passed to the
-// ContainerURLRequestContext. Since this cancels requests in its destructor,
-// it's not safe to subclass this.
-class ContainerURLRequestContext final : public URLRequestContext {
- public:
-  explicit ContainerURLRequestContext(
-      base::PassKey<URLRequestContextBuilder> pass_key)
-      : URLRequestContext(pass_key), storage_(this) {}
-
-  ContainerURLRequestContext(const ContainerURLRequestContext&) = delete;
-  ContainerURLRequestContext& operator=(const ContainerURLRequestContext&) =
-      delete;
-
-  ~ContainerURLRequestContext() override {
-#if BUILDFLAG(ENABLE_REPORTING)
-    // Shut down the NetworkErrorLoggingService so that destroying the
-    // ReportingService (which might abort in-flight URLRequests, generating
-    // network errors) won't recursively try to queue more network error
-    // reports.
-    if (network_error_logging_service())
-      network_error_logging_service()->OnShutdown();
-
-    // Shut down the ReportingService before the rest of the URLRequestContext,
-    // so it cancels any pending requests it may have.
-    if (reporting_service())
-      reporting_service()->OnShutdown();
-#endif  // BUILDFLAG(ENABLE_REPORTING)
-
-    // Shut down the ProxyResolutionService, as it may have pending URLRequests
-    // using this context. Since this cancels requests, it's not safe to
-    // subclass this, as some parts of the URLRequestContext may then be torn
-    // down before this cancels the ProxyResolutionService's URLRequests.
-    proxy_resolution_service()->OnShutdown();
-
-    DCHECK(host_resolver());
-    host_resolver()->OnShutdown();
-
-    AssertNoURLRequests();
-  }
-
-  URLRequestContextStorage* storage() { return &storage_; }
-
-  void set_transport_security_persister(
-      std::unique_ptr<TransportSecurityPersister>
-          transport_security_persister) {
-    transport_security_persister_ = std::move(transport_security_persister);
-  }
-
- private:
-  URLRequestContextStorage storage_;
-  std::unique_ptr<TransportSecurityPersister> transport_security_persister_;
-};
-
-}  // namespace
 
 URLRequestContextBuilder::HttpCacheParams::HttpCacheParams() = default;
 URLRequestContextBuilder::HttpCacheParams::~HttpCacheParams() = default;
@@ -144,7 +90,6 @@ void URLRequestContextBuilder::SetHttpNetworkSessionComponents(
   session_context->cert_verifier = request_context->cert_verifier();
   session_context->transport_security_state =
       request_context->transport_security_state();
-  session_context->ct_policy_enforcer = request_context->ct_policy_enforcer();
   session_context->sct_auditing_delegate =
       request_context->sct_auditing_delegate();
   session_context->proxy_resolution_service =
@@ -205,11 +150,6 @@ void URLRequestContextBuilder::SetSpdyAndQuicEnabled(bool spdy_enabled,
   http_network_session_params_.enable_quic = quic_enabled;
 }
 
-void URLRequestContextBuilder::set_ct_policy_enforcer(
-    std::unique_ptr<CTPolicyEnforcer> ct_policy_enforcer) {
-  ct_policy_enforcer_ = std::move(ct_policy_enforcer);
-}
-
 void URLRequestContextBuilder::set_sct_auditing_delegate(
     std::unique_ptr<SCTAuditingDelegate> sct_auditing_delegate) {
   sct_auditing_delegate_ = std::move(sct_auditing_delegate);
@@ -241,6 +181,11 @@ void URLRequestContextBuilder::set_persistent_reporting_and_nel_store(
         persistent_reporting_and_nel_store) {
   persistent_reporting_and_nel_store_ =
       std::move(persistent_reporting_and_nel_store);
+}
+
+void URLRequestContextBuilder::set_enterprise_reporting_endpoints(
+    const base::flat_map<std::string, GURL>& enterprise_reporting_endpoints) {
+  enterprise_reporting_endpoints_ = enterprise_reporting_endpoints;
 }
 #endif  // BUILDFLAG(ENABLE_REPORTING)
 
@@ -309,9 +254,17 @@ void URLRequestContextBuilder::SetCreateHttpTransactionFactoryCallback(
       std::move(create_http_network_transaction_factory);
 }
 
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+void URLRequestContextBuilder::set_device_bound_session_service(
+    std::unique_ptr<device_bound_sessions::SessionService>
+        device_bound_session_service) {
+  device_bound_session_service_ = std::move(device_bound_session_service);
+}
+#endif  // BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+
 void URLRequestContextBuilder::BindToNetwork(
-    NetworkChangeNotifier::NetworkHandle network,
-    absl::optional<HostResolver::ManagerOptions> options) {
+    handles::NetworkHandle network,
+    std::optional<HostResolver::ManagerOptions> options) {
 #if BUILDFLAG(IS_ANDROID)
   DCHECK(NetworkChangeNotifier::AreNetworkHandlesSupported());
   // DNS lookups for this context will need to target `network`. NDK to do that
@@ -329,26 +282,28 @@ void URLRequestContextBuilder::BindToNetwork(
 }
 
 std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
-  auto context = std::make_unique<ContainerURLRequestContext>(
+  auto context = std::make_unique<URLRequestContext>(
       base::PassKey<URLRequestContextBuilder>());
-  URLRequestContextStorage* storage = context->storage();
 
   context->set_enable_brotli(enable_brotli_);
+  context->set_enable_zstd(enable_zstd_);
   context->set_check_cleartext_permitted(check_cleartext_permitted_);
-  context->set_require_network_isolation_key(require_network_isolation_key_);
+  context->set_require_network_anonymization_key(
+      require_network_anonymization_key_);
   context->set_network_quality_estimator(network_quality_estimator_);
 
   if (http_user_agent_settings_) {
-    storage->set_http_user_agent_settings(std::move(http_user_agent_settings_));
+    context->set_http_user_agent_settings(std::move(http_user_agent_settings_));
   } else {
-    storage->set_http_user_agent_settings(
+    context->set_http_user_agent_settings(
         std::make_unique<StaticHttpUserAgentSettings>(accept_language_,
                                                       user_agent_));
   }
 
-  if (!network_delegate_)
+  if (!network_delegate_) {
     network_delegate_ = std::make_unique<NetworkDelegateImpl>();
-  storage->set_network_delegate(std::move(network_delegate_));
+  }
+  context->set_network_delegate(std::move(network_delegate_));
 
   if (net_log_) {
     // Unlike the other builder parameters, |net_log_| is not owned by the
@@ -358,7 +313,7 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
     context->set_net_log(NetLog::Get());
   }
 
-  if (bound_network_ != NetworkChangeNotifier::kInvalidNetworkHandle) {
+  if (bound_network_ != handles::kInvalidNetworkHandle) {
     DCHECK(!client_socket_factory_raw_);
     DCHECK(!host_resolver_);
     DCHECK(!host_resolver_manager_);
@@ -371,13 +326,14 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
     auto client_socket_factory =
         std::make_unique<NetworkBindingClientSocketFactory>(bound_network_);
     set_client_socket_factory(client_socket_factory.get());
-    storage->set_client_socket_factory(std::move(client_socket_factory));
+    context->set_client_socket_factory(std::move(client_socket_factory));
 
     host_resolver_ = HostResolver::CreateStandaloneNetworkBoundResolver(
         context->net_log(), bound_network_, manager_options_);
 
-    if (!quic_context_)
+    if (!quic_context_) {
       set_quic_context(std::make_unique<QuicContext>());
+    }
     auto* quic_params = quic_context_->params();
     // QUIC sessions for this context should not be closed (or go away) after a
     // network change.
@@ -394,7 +350,7 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
   }
 
   if (client_socket_factory_) {
-    storage->set_client_socket_factory(std::move(client_socket_factory_));
+    context->set_client_socket_factory(std::move(client_socket_factory_));
   }
 
   if (host_resolver_) {
@@ -423,32 +379,32 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
     }
   }
   host_resolver_->SetRequestContext(context.get());
-  storage->set_host_resolver(std::move(host_resolver_));
+  context->set_host_resolver(std::move(host_resolver_));
 
   if (ssl_config_service_) {
-    storage->set_ssl_config_service(std::move(ssl_config_service_));
+    context->set_ssl_config_service(std::move(ssl_config_service_));
   } else {
-    storage->set_ssl_config_service(
+    context->set_ssl_config_service(
         std::make_unique<SSLConfigServiceDefaults>());
   }
 
   if (http_auth_handler_factory_) {
-    storage->set_http_auth_handler_factory(
+    context->set_http_auth_handler_factory(
         std::move(http_auth_handler_factory_));
   } else {
-    storage->set_http_auth_handler_factory(
+    context->set_http_auth_handler_factory(
         HttpAuthHandlerRegistryFactory::CreateDefault());
   }
 
   if (cookie_store_set_by_client_) {
-    storage->set_cookie_store(std::move(cookie_store_));
+    context->set_cookie_store(std::move(cookie_store_));
   } else {
-    auto cookie_store = std::make_unique<CookieMonster>(
-        nullptr /* store */, context->net_log(), first_party_sets_enabled_);
-    storage->set_cookie_store(std::move(cookie_store));
+    auto cookie_store = std::make_unique<CookieMonster>(nullptr /* store */,
+                                                        context->net_log());
+    context->set_cookie_store(std::move(cookie_store));
   }
 
-  storage->set_transport_security_state(
+  context->set_transport_security_state(
       std::make_unique<TransportSecurityState>(hsts_policy_bypass_list_));
   if (!transport_security_persister_file_path_.empty()) {
     // Use a low priority because saving this should not block anything
@@ -466,40 +422,28 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
   }
 
   if (http_server_properties_) {
-    storage->set_http_server_properties(std::move(http_server_properties_));
+    context->set_http_server_properties(std::move(http_server_properties_));
   } else {
-    storage->set_http_server_properties(
+    context->set_http_server_properties(
         std::make_unique<HttpServerProperties>());
   }
 
   if (cert_verifier_) {
-    storage->set_cert_verifier(std::move(cert_verifier_));
+    context->set_cert_verifier(std::move(cert_verifier_));
   } else {
     // TODO(mattm): Should URLRequestContextBuilder create a CertNetFetcher?
-    storage->set_cert_verifier(
+    context->set_cert_verifier(
         CertVerifier::CreateDefault(/*cert_net_fetcher=*/nullptr));
   }
 
-  if (ct_policy_enforcer_) {
-    storage->set_ct_policy_enforcer(std::move(ct_policy_enforcer_));
-  } else {
-    storage->set_ct_policy_enforcer(
-        std::make_unique<DefaultCTPolicyEnforcer>());
-  }
-
   if (sct_auditing_delegate_) {
-    storage->set_sct_auditing_delegate(std::move(sct_auditing_delegate_));
+    context->set_sct_auditing_delegate(std::move(sct_auditing_delegate_));
   }
 
   if (quic_context_) {
-    storage->set_quic_context(std::move(quic_context_));
+    context->set_quic_context(std::move(quic_context_));
   } else {
-    storage->set_quic_context(std::make_unique<QuicContext>());
-  }
-
-  if (throttling_enabled_) {
-    storage->set_throttler_manager(
-        std::make_unique<URLRequestThrottlerManager>());
+    context->set_quic_context(std::make_unique<QuicContext>());
   }
 
   if (!proxy_resolution_service_) {
@@ -510,7 +454,7 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
     if (!proxy_config_service_) {
       proxy_config_service_ =
           ProxyConfigService::CreateSystemProxyConfigService(
-              base::ThreadTaskRunnerHandle::Get().get());
+              base::SingleThreadTaskRunner::GetCurrentDefault().get());
     }
 #endif  // !BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_CHROMEOS) &&
         // !BUILDFLAG(IS_ANDROID)
@@ -521,18 +465,27 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
   }
   ProxyResolutionService* proxy_resolution_service =
       proxy_resolution_service_.get();
-  storage->set_proxy_resolution_service(std::move(proxy_resolution_service_));
+  context->set_proxy_resolution_service(std::move(proxy_resolution_service_));
+
+  if (proxy_delegate_) {
+    ProxyDelegate* proxy_delegate = proxy_delegate_.get();
+    context->set_proxy_delegate(std::move(proxy_delegate_));
+
+    proxy_resolution_service->SetProxyDelegate(proxy_delegate);
+    proxy_delegate->SetProxyResolutionService(proxy_resolution_service);
+  }
 
 #if BUILDFLAG(ENABLE_REPORTING)
   // Note: ReportingService::Create and NetworkErrorLoggingService::Create can
   // both return nullptr if the corresponding base::Feature is disabled.
 
   if (reporting_service_) {
-    storage->set_reporting_service(std::move(reporting_service_));
+    context->set_reporting_service(std::move(reporting_service_));
   } else if (reporting_policy_) {
-    storage->set_reporting_service(
+    context->set_reporting_service(
         ReportingService::Create(*reporting_policy_, context.get(),
-                                 persistent_reporting_and_nel_store_.get()));
+                                 persistent_reporting_and_nel_store_.get(),
+                                 enterprise_reporting_endpoints_));
   }
 
   if (network_error_logging_enabled_) {
@@ -540,12 +493,12 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
       network_error_logging_service_ = NetworkErrorLoggingService::Create(
           persistent_reporting_and_nel_store_.get());
     }
-    storage->set_network_error_logging_service(
+    context->set_network_error_logging_service(
         std::move(network_error_logging_service_));
   }
 
   if (persistent_reporting_and_nel_store_) {
-    storage->set_persistent_reporting_and_nel_store(
+    context->set_persistent_reporting_and_nel_store(
         std::move(persistent_reporting_and_nel_store_));
   }
 
@@ -559,10 +512,22 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
   }
 #endif  // BUILDFLAG(ENABLE_REPORTING)
 
-  if (proxy_delegate_) {
-    proxy_resolution_service->SetProxyDelegate(proxy_delegate_.get());
-    storage->set_proxy_delegate(std::move(proxy_delegate_));
+#if BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
+  if (has_device_bound_session_service_) {
+    if (!device_bound_sessions_file_path_.empty()) {
+      context->set_device_bound_session_store(
+          device_bound_sessions::SessionStore::Create(
+              device_bound_sessions_file_path_));
+    }
+    context->set_device_bound_session_service(
+        device_bound_sessions::SessionService::Create(context.get()));
+  } else {
+    if (device_bound_session_service_) {
+      context->set_device_bound_session_service(
+          std::move(device_bound_session_service_));
+    }
   }
+#endif  // BUILDFLAG(ENABLE_DEVICE_BOUND_SESSIONS)
 
   HttpNetworkSessionContext network_session_context;
   // Unlike the other fields of HttpNetworkSession::Context,
@@ -572,7 +537,7 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
       suppress_setting_socket_performance_watcher_factory_for_testing_,
       client_socket_factory_raw_);
 
-  storage->set_http_network_session(std::make_unique<HttpNetworkSession>(
+  context->set_http_network_session(std::make_unique<HttpNetworkSession>(
       http_network_session_params_, network_session_context));
 
   std::unique_ptr<HttpTransactionFactory> http_transaction_factory;
@@ -581,10 +546,16 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
   } else if (!create_http_network_transaction_factory_.is_null()) {
     http_transaction_factory =
         std::move(create_http_network_transaction_factory_)
-            .Run(storage->http_network_session());
+            .Run(context->http_network_session());
   } else {
     http_transaction_factory =
-        std::make_unique<HttpNetworkLayer>(storage->http_network_session());
+        std::make_unique<HttpNetworkLayer>(context->http_network_session());
+  }
+
+  if (enable_shared_dictionary_) {
+    http_transaction_factory =
+        std::make_unique<SharedDictionaryNetworkTransactionFactory>(
+            std::move(http_transaction_factory), enable_shared_zstd_);
   }
 
   if (http_cache_enabled_) {
@@ -605,7 +576,6 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
           break;
         case HttpCacheParams::IN_MEMORY:
           NOTREACHED();
-          break;
       }
       http_cache_backend = std::make_unique<HttpCache::DefaultBackend>(
           DISK_CACHE, backend_type, http_cache_params_.file_operations_factory,
@@ -616,14 +586,14 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
           HttpCache::DefaultBackend::InMemory(http_cache_params_.max_size);
     }
 #if BUILDFLAG(IS_ANDROID)
-    http_cache_backend->SetAppStatusListener(
-        http_cache_params_.app_status_listener);
+    http_cache_backend->SetAppStatusListenerGetter(
+        http_cache_params_.app_status_listener_getter);
 #endif
 
     http_transaction_factory = std::make_unique<HttpCache>(
         std::move(http_transaction_factory), std::move(http_cache_backend));
   }
-  storage->set_http_transaction_factory(std::move(http_transaction_factory));
+  context->set_http_transaction_factory(std::move(http_transaction_factory));
 
   std::unique_ptr<URLRequestJobFactory> job_factory =
       std::make_unique<URLRequestJobFactory>();
@@ -633,9 +603,13 @@ std::unique_ptr<URLRequestContext> URLRequestContextBuilder::Build() {
   }
   protocol_handlers_.clear();
 
-  storage->set_job_factory(std::move(job_factory));
+  context->set_job_factory(std::move(job_factory));
 
-  return std::move(context);
+  if (cookie_deprecation_label_.has_value()) {
+    context->set_cookie_deprecation_label(*cookie_deprecation_label_);
+  }
+
+  return context;
 }
 
 std::unique_ptr<ProxyResolutionService>

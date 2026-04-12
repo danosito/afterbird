@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,21 +7,19 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 
+#include "base/values.h"
 #include "ui/base/accelerators/accelerator.h"
-
-namespace base {
-class DictionaryValue;
-}
 
 namespace extensions {
 
 class Command {
  public:
   Command();
-  Command(const std::string& command_name,
-          const std::u16string& description,
-          const std::string& accelerator,
+  Command(std::string_view command_name,
+          std::u16string_view description,
+          std::string_view accelerator,
           bool global);
   Command(const Command& other);
   ~Command();
@@ -31,8 +29,8 @@ class Command {
 
   // Parse a string as an accelerator. If the accelerator is unparsable then
   // a generic ui::Accelerator object will be returns (with key_code Unknown).
-  static ui::Accelerator StringToAccelerator(const std::string& accelerator,
-                                             const std::string& command_name);
+  static ui::Accelerator StringToAccelerator(std::string_view accelerator,
+                                             std::string_view command_name);
 
   // Returns the string representation of an accelerator without localizing the
   // shortcut text (like accelerator::GetShortcutText() does).
@@ -43,9 +41,14 @@ class Command {
   // key, without any modifiers.
   static bool IsMediaKey(const ui::Accelerator& accelerator);
 
+  // Return true if the |command_name| is one of the following action events:
+  // Action Command Event, Browser Action Command Event, Page Action Command
+  // Event.
+  static bool IsActionRelatedCommand(std::string_view command_name);
+
   // Parse the command.
-  bool Parse(const base::DictionaryValue* command,
-             const std::string& command_name,
+  bool Parse(const base::Value::Dict& command,
+             std::string_view command_name,
              int index,
              std::u16string* error);
 
@@ -69,7 +72,7 @@ class Command {
 };
 
 // A mapping of command name (std::string) to a command object.
-typedef std::map<std::string, Command> CommandMap;
+using CommandMap = std::map<std::string, Command>;
 
 }  // namespace extensions
 

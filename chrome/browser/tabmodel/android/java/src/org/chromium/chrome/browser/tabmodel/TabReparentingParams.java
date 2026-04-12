@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,16 +12,12 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 
-/**
- * Class for handling tab reparenting operations across multiple activities.
- */
+/** Class for handling tab reparenting operations across multiple activities. */
 public class TabReparentingParams implements AsyncTabParams {
     private final Tab mTabToReparent;
     private final Runnable mFinalizeCallback;
 
-    /**
-     * Basic constructor for {@link TabReparentingParams}.
-     */
+    /** Basic constructor for {@link TabReparentingParams}. */
     public TabReparentingParams(Tab tabToReparent, Runnable finalizeCallback) {
         mTabToReparent = tabToReparent;
         mFinalizeCallback = finalizeCallback;
@@ -52,9 +48,7 @@ public class TabReparentingParams implements AsyncTabParams {
         return mTabToReparent;
     }
 
-    /**
-     * Returns the callback to be used once Tab reparenting has finished, if any.
-     */
+    /** Returns the callback to be used once Tab reparenting has finished, if any. */
     public @Nullable Runnable getFinalizeCallback() {
         return mFinalizeCallback;
     }

@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -103,7 +103,7 @@ TEST(AppModalDialogManagerTest, GetTitle) {
         test_case.is_main_frame
             ? main_frame_origin
             : url::Origin::Create(GURL(test_case.alerting_frame_url));
-    std::u16string result = AppModalDialogManager::GetTitleImpl(
+    std::u16string result = AppModalDialogManager::GetSiteFrameTitle(
         main_frame_origin, alerting_frame_origin);
     EXPECT_EQ(test_case.expected, base::UTF16ToUTF8(result));
   }

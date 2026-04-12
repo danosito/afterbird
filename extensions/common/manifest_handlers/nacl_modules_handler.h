@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,7 +15,7 @@ namespace extensions {
 
 // An NaCl module included in the extension.
 struct NaClModuleInfo {
-  typedef std::list<NaClModuleInfo> List;
+  using List = std::list<NaClModuleInfo>;
   // Returns the NaCl modules for the extensions, or NULL if none exist.
   static const NaClModuleInfo::List* GetNaClModules(
       const Extension* extension);

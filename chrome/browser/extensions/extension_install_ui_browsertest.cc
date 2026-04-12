@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -51,13 +51,13 @@ class ExtensionInstallUIBrowserTest : public extensions::ExtensionBrowserTest {
     ASSERT_TRUE(web_contents);
     infobars::ContentInfoBarManager* infobar_manager =
         infobars::ContentInfoBarManager::FromWebContents(web_contents);
-    ASSERT_EQ(1U, infobar_manager->infobar_count());
+    ASSERT_EQ(1U, infobar_manager->infobars().size());
     ConfirmInfoBarDelegate* delegate =
-        infobar_manager->infobar_at(0)->delegate()->AsConfirmInfoBarDelegate();
+        infobar_manager->infobars()[0]->delegate()->AsConfirmInfoBarDelegate();
     ASSERT_TRUE(delegate);
     delegate->Cancel();
     WaitForThemeChange();
-    ASSERT_EQ(0U, infobar_manager->infobar_count());
+    ASSERT_EQ(0U, infobar_manager->infobars().size());
   }
 
   // Install the given theme from the data dir and verify expected name.
@@ -106,7 +106,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionInstallUIBrowserTest,
   ASSERT_TRUE(theme);
   std::string theme_id = theme->id();
   VerifyThemeInfoBarAndUndoInstall();
-  ASSERT_EQ(NULL, GetTheme());
+  ASSERT_EQ(nullptr, GetTheme());
 
   // Set the same theme twice and undo to verify we go back to default theme.
   ASSERT_TRUE(InstallExtensionWithUIAutoConfirm(theme_crx, 0, browser()));
@@ -120,7 +120,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionInstallUIBrowserTest,
   ASSERT_TRUE(theme);
   ASSERT_EQ(theme_id, theme->id());
   VerifyThemeInfoBarAndUndoInstall();
-  ASSERT_EQ(NULL, GetTheme());
+  ASSERT_EQ(nullptr, GetTheme());
 }
 
 IN_PROC_BROWSER_TEST_F(ExtensionInstallUIBrowserTest,

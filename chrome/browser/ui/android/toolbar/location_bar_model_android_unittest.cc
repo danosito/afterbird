@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -34,14 +34,12 @@ TEST(LocationBarModelAndroidTest, ClassifyAndroidNativeNewTabPage) {
   location_bar_model_android.SetURL(GURL(chrome::kChromeUINativeNewTabURL));
   EXPECT_EQ(
       metrics::OmniboxEventProto::INSTANT_NTP_WITH_OMNIBOX_AS_STARTING_FOCUS,
-      location_bar_model_android.GetPageClassification(
-          nullptr, base::android::JavaParamRef<jobject>(nullptr), false));
+      location_bar_model_android.GetPageClassification(nullptr, false));
 
   std::string ntp_with_path_and_query =
       std::string(chrome::kChromeUINativeNewTabURL) + "foopath?foo=bar";
   location_bar_model_android.SetURL(GURL(ntp_with_path_and_query));
   EXPECT_EQ(
       metrics::OmniboxEventProto::INSTANT_NTP_WITH_OMNIBOX_AS_STARTING_FOCUS,
-      location_bar_model_android.GetPageClassification(
-          nullptr, base::android::JavaParamRef<jobject>(nullptr), false));
+      location_bar_model_android.GetPageClassification(nullptr, false));
 }

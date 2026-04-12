@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,7 +12,7 @@
 #include "extensions/buildflags/buildflags.h"
 
 class ChromeDownloadManagerDelegate;
-class ExtensionDownloadsEventRouter;
+class DownloadUIController;
 
 namespace content {
 class DownloadManager;
@@ -26,6 +26,12 @@ class ExtensionDownloadsEventRouter;
 // DownloadCoreServiceImpl for implementation.
 class DownloadCoreService : public KeyedService {
  public:
+  // This enum represents when `CancelDownloads` is called.
+  enum class CancelDownloadsTrigger {
+    kShutdown = 0,
+    kProfileDeletion = 1,
+  };
+
   DownloadCoreService();
 
   DownloadCoreService(const DownloadCoreService&) = delete;
@@ -35,6 +41,9 @@ class DownloadCoreService : public KeyedService {
 
   // Get the download manager delegate, creating it if it doesn't already exist.
   virtual ChromeDownloadManagerDelegate* GetDownloadManagerDelegate() = 0;
+
+  // Get the download UI controller, return nullptr if it doesn't already exist.
+  virtual DownloadUIController* GetDownloadUIController() = 0;
 
   // Get the interface to the history system. Returns NULL if profile is
   // incognito or if the DownloadManager hasn't been created yet or if there is
@@ -49,18 +58,18 @@ class DownloadCoreService : public KeyedService {
   // Has a download manager been created?
   virtual bool HasCreatedDownloadManager() = 0;
 
-  // Number of non-malicious downloads associated with this instance of the
+  // Number of downloads blocking shutdown associated with this instance of the
   // service.
-  virtual int NonMaliciousDownloadCount() const = 0;
+  virtual int BlockingShutdownCount() const = 0;
 
   // Cancels all in-progress downloads for this profile.
-  virtual void CancelDownloads() = 0;
+  virtual void CancelDownloads(CancelDownloadsTrigger trigger) = 0;
 
-  // Number of non-malicious downloads associated with all profiles.
-  static int NonMaliciousDownloadCountAllProfiles();
+  // Number of downloads blocking shutdown associated with all profiles.
+  static int BlockingShutdownCountAllProfiles();
 
   // Cancels all in-progress downloads for all profiles.
-  static void CancelAllDownloads();
+  static void CancelAllDownloads(CancelDownloadsTrigger trigger);
 
   // Sets the DownloadManagerDelegate associated with this object and
   // its DownloadManager.  Takes ownership of |delegate|, and destroys

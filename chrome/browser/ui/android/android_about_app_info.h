@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,6 +15,10 @@ class AndroidAboutAppInfo {
 
   // Returns a string containing detailed info about the os environment.
   static std::string GetOsInfo();
+
+  // Returns a string containing info about whether the device is at least
+  // Android U and whether Chrome targets at least U.
+  static std::string GetTargetsUInfo();
 };
 
 #endif  // CHROME_BROWSER_UI_ANDROID_ANDROID_ABOUT_APP_INFO_H_

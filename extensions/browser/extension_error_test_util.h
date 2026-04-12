@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "extensions/common/extension_id.h"
 
 namespace extensions {
 
@@ -17,18 +18,18 @@ namespace error_test_util {
 
 // Create a new RuntimeError.
 std::unique_ptr<ExtensionError> CreateNewRuntimeError(
-    const std::string& extension_id,
+    const ExtensionId& extension_id,
     const std::string& message,
     bool from_incognito);
 
 // Create a new RuntimeError; incognito defaults to "false".
 std::unique_ptr<ExtensionError> CreateNewRuntimeError(
-    const std::string& extension_id,
+    const ExtensionId& extension_id,
     const std::string& message);
 
 // Create a new ManifestError.
 std::unique_ptr<ExtensionError> CreateNewManifestError(
-    const std::string& extension_id,
+    const ExtensionId& extension_id,
     const std::string& message);
 
 }  // namespace error_test_util

@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -42,7 +42,6 @@ bool IsAlternateProtocolValid(NextProto protocol) {
       return true;
   }
   NOTREACHED();
-  return false;
 }
 
 bool IsProtocolEnabled(NextProto protocol,
@@ -51,7 +50,6 @@ bool IsProtocolEnabled(NextProto protocol,
   switch (protocol) {
     case kProtoUnknown:
       NOTREACHED();
-      return false;
     case kProtoHTTP11:
       return true;
     case kProtoHTTP2:
@@ -60,7 +58,6 @@ bool IsProtocolEnabled(NextProto protocol,
       return is_quic_enabled;
   }
   NOTREACHED();
-  return false;
 }
 
 // static
@@ -109,6 +106,8 @@ std::string AlternativeService::ToString() const {
 }
 
 std::string AlternativeServiceInfo::ToString() const {
+  // NOTE: Cannot use `base::UnlocalizedTimeFormatWithPattern()` since
+  // `net/DEPS` disallows `base/i18n`.
   base::Time::Exploded exploded;
   expiration_.LocalExplode(&exploded);
   return base::StringPrintf(
@@ -137,7 +136,7 @@ AlternativeServiceInfoVector ProcessAlternativeServices(
     bool is_quic_enabled,
     const quic::ParsedQuicVersionVector& supported_quic_versions) {
   // Convert spdy::SpdyAltSvcWireFormat::AlternativeService entries
-  // to net::AlternativeServiceInfo.
+  // to AlternativeServiceInfo.
   AlternativeServiceInfoVector alternative_service_info_vector;
   for (const spdy::SpdyAltSvcWireFormat::AlternativeService&
            alternative_service_entry : alternative_service_vector) {

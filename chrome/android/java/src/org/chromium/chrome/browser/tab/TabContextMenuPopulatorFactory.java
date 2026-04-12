@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,14 +6,14 @@ package org.chromium.chrome.browser.tab;
 
 import android.content.Context;
 
-import org.chromium.chrome.browser.contextmenu.ContextMenuNativeDelegate;
-import org.chromium.chrome.browser.contextmenu.ContextMenuPopulator;
-import org.chromium.chrome.browser.contextmenu.ContextMenuPopulatorFactory;
+import org.chromium.components.embedder_support.contextmenu.ContextMenuNativeDelegate;
 import org.chromium.components.embedder_support.contextmenu.ContextMenuParams;
+import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulator;
+import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulatorFactory;
 
 /**
- * A simple wrapper around a {@link ContextMenuPopulatorFactory} for creating
- * {@link TabContextMenuPopulator} which is able to handle observer notifications.
+ * A simple wrapper around a {@link ContextMenuPopulatorFactory} for creating {@link
+ * TabContextMenuPopulator} which is able to handle observer notifications.
  */
 class TabContextMenuPopulatorFactory implements ContextMenuPopulatorFactory {
     private final ContextMenuPopulatorFactory mPopulatorFactory;
@@ -33,6 +33,11 @@ class TabContextMenuPopulatorFactory implements ContextMenuPopulatorFactory {
     public void onDestroy() {
         // |mPopulatorFactory| can be null for activities that do not use context menu.
         if (mPopulatorFactory != null) mPopulatorFactory.onDestroy();
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return mPopulatorFactory != null;
     }
 
     @Override

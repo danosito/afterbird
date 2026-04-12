@@ -1,9 +1,14 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_URL_REQUEST_REFERRER_POLICY_H_
 #define NET_URL_REQUEST_REFERRER_POLICY_H_
+
+#include <optional>
+#include <string_view>
+
+#include "net/base/net_export.h"
 
 namespace net {
 
@@ -44,6 +49,17 @@ enum class ReferrerPolicy {
   NO_REFERRER = 7,
   MAX = NO_REFERRER,
 };
+
+// Convert the last known-valid value of a pre-concatenated "Referrer-Policy"
+// header to the corresponding ReferrerPolicy. For example, the input "origin,
+// strict-origin" would result in output of
+// ReferrerPolicy::ORIGIN_CLEAR_ON_TRANSITION_FROM_SECURE_TO_INSECURE. If no
+// recognized values were found then std::nullopt is returned.
+
+// TODO(crbug.com/40217150): Consider updating
+// blink::SecurityPolicy::ReferrerPolicyFromString() to use this.
+NET_EXPORT std::optional<ReferrerPolicy> ReferrerPolicyFromHeader(
+    std::string_view referrer_policy_header_value);
 
 }  // namespace net
 

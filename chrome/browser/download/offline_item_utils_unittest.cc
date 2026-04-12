@@ -1,6 +1,11 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
+#pragma allow_unsafe_buffers
+#endif
 
 #include "chrome/browser/download/offline_item_utils.h"
 
@@ -18,11 +23,9 @@ using OfflineItemFilter = offline_items_collection::OfflineItemFilter;
 using OfflineItemState = offline_items_collection::OfflineItemState;
 using OfflineItemProgressUnit =
     offline_items_collection::OfflineItemProgressUnit;
-using OfflineItemSchedule = offline_items_collection::OfflineItemSchedule;
 using FailState = offline_items_collection::FailState;
 using PendingState = offline_items_collection::PendingState;
 using DownloadItem = download::DownloadItem;
-using DownloadSchedule = download::DownloadSchedule;
 
 using ::testing::_;
 using ::testing::Return;
@@ -33,6 +36,7 @@ namespace {
 constexpr char kNameSpace[] = "LEGACY_DOWNLOAD";
 constexpr char kTestUrl[] = "http://www.example.com";
 constexpr char kTestOriginalUrl[] = "http://www.exampleoriginalurl.com";
+constexpr char kTestReferrerUrl[] = "http://www.examplereferrerurl.com";
 
 }  // namespace
 
@@ -87,6 +91,8 @@ OfflineItemUtilsTest::CreateDownloadItem(
   ON_CALL(*item, GetTabUrl()).WillByDefault(ReturnRefOfCopy(GURL(kTestUrl)));
   ON_CALL(*item, GetOriginalUrl())
       .WillByDefault(ReturnRefOfCopy(GURL(kTestOriginalUrl)));
+  ON_CALL(*item, GetReferrerUrl())
+      .WillByDefault(ReturnRefOfCopy(GURL(kTestReferrerUrl)));
   ON_CALL(*item, GetDangerType())
       .WillByDefault(Return(download::DOWNLOAD_DANGER_TYPE_NOT_DANGEROUS));
   ON_CALL(*item, GetId()).WillByDefault(Return(0));
@@ -105,8 +111,6 @@ OfflineItemUtilsTest::CreateDownloadItem(
   ON_CALL(*item, GetReceivedBytes()).WillByDefault(Return(received_bytes));
   ON_CALL(*item, GetTotalBytes()).WillByDefault(Return(total_bytes));
   ON_CALL(*item, IsDone()).WillByDefault(Return(IsDownloadDone(item.get())));
-  ON_CALL(*item, GetDownloadSchedule())
-      .WillByDefault(ReturnRefOfCopy(absl::optional<DownloadSchedule>()));
   return item;
 }
 
@@ -190,6 +194,7 @@ TEST_F(OfflineItemUtilsTest, BasicConversions) {
 
   EXPECT_EQ(GURL(kTestUrl), offline_item.url);
   EXPECT_EQ(GURL(kTestOriginalUrl), offline_item.original_url);
+  EXPECT_EQ(GURL(kTestReferrerUrl), offline_item.referrer_url);
   EXPECT_FALSE(offline_item.is_off_the_record);
   EXPECT_EQ("", offline_item.attribution);
 
@@ -351,24 +356,4 @@ TEST_F(OfflineItemUtilsTest, PendingAndFailedStates) {
   EXPECT_EQ(OfflineItemState::INTERRUPTED, offline_item3.state);
   EXPECT_EQ(FailState::SERVER_NO_RANGE, offline_item3.fail_state);
   EXPECT_EQ(PendingState::NOT_PENDING, offline_item3.pending_state);
-}
-
-TEST_F(OfflineItemUtilsTest, OfflineItemSchedule) {
-  auto time = base::Time::Now();
-  std::vector<DownloadSchedule> download_schedules = {{false, time},
-                                                      {true, absl::nullopt}};
-
-  for (const auto& download_schedule : download_schedules) {
-    auto download =
-        CreateDownloadItem(DownloadItem::IN_PROGRESS, false,
-                           download::DOWNLOAD_INTERRUPT_REASON_NONE);
-    absl::optional<DownloadSchedule> copy = download_schedule;
-    ON_CALL(*download, GetDownloadSchedule())
-        .WillByDefault(ReturnRefOfCopy(copy));
-    OfflineItem offline_item =
-        OfflineItemUtils::CreateOfflineItem(kNameSpace, download.get());
-    auto offline_item_schedule = absl::make_optional<OfflineItemSchedule>(
-        download_schedule.only_on_wifi(), download_schedule.start_time());
-    EXPECT_EQ(offline_item.schedule, offline_item.schedule);
-  }
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,6 +13,7 @@
 
 #if BUILDFLAG(IS_WIN)
 #include <winsock2.h>
+
 #include "net/base/winsock_init.h"
 #endif
 
@@ -28,14 +29,16 @@ NetworkInterface::NetworkInterface(const std::string& name,
                                    NetworkChangeNotifier::ConnectionType type,
                                    const IPAddress& address,
                                    uint32_t prefix_length,
-                                   int ip_address_attributes)
+                                   int ip_address_attributes,
+                                   std::optional<Eui48MacAddress> mac_address)
     : name(name),
       friendly_name(friendly_name),
       interface_index(interface_index),
       type(type),
       address(address),
       prefix_length(prefix_length),
-      ip_address_attributes(ip_address_attributes) {}
+      ip_address_attributes(ip_address_attributes),
+      mac_address(mac_address) {}
 
 NetworkInterface::NetworkInterface(const NetworkInterface& other) = default;
 

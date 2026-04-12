@@ -1,12 +1,13 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "third_party/blink/renderer/core/frame/navigator_language.h"
 
+#include "services/network/public/cpp/features.h"
+#include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/platform/language.h"
-#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 namespace blink {
@@ -25,7 +26,7 @@ Vector<String> ParseAndSanitize(const String& accept_languages) {
       token.replace(2, 1, "-");
   }
 
-  if (languages.IsEmpty())
+  if (languages.empty())
     languages.push_back(DefaultLanguage());
 
   return languages;
@@ -35,21 +36,12 @@ NavigatorLanguage::NavigatorLanguage(ExecutionContext* execution_context)
     : execution_context_(execution_context) {}
 
 AtomicString NavigatorLanguage::language() {
-  if (RuntimeEnabledFeatures::NavigatorLanguageInInsecureContextEnabled() ||
-      (execution_context_ && execution_context_->IsSecureContext())) {
-    return AtomicString(languages().front());
-  }
-  return AtomicString();
+  return AtomicString(languages().front());
 }
 
 const Vector<String>& NavigatorLanguage::languages() {
-  if (RuntimeEnabledFeatures::NavigatorLanguageInInsecureContextEnabled() ||
-      (execution_context_ && execution_context_->IsSecureContext())) {
-    EnsureUpdatedLanguage();
-    return languages_;
-  }
-  DEFINE_STATIC_LOCAL(const Vector<String>, empty_vector, {});
-  return empty_vector;
+  EnsureUpdatedLanguage();
+  return languages_;
 }
 
 bool NavigatorLanguage::IsLanguagesDirty() const {
@@ -75,6 +67,16 @@ void NavigatorLanguage::EnsureUpdatedLanguage() {
       languages_ = ParseAndSanitize(accept_languages_override);
     } else {
       languages_ = ParseAndSanitize(GetAcceptLanguages());
+      // Reduce the Accept-Language if the ReduceAcceptLanguage deprecation
+      // trial is not enabled and feature flag ReduceAcceptLanguage is enabled.
+      if (RuntimeEnabledFeatures::DisableReduceAcceptLanguageEnabled(
+              execution_context_)) {
+        UseCounter::Count(execution_context_,
+                          WebFeature::kDisableReduceAcceptLanguage);
+      } else if (base::FeatureList::IsEnabled(
+                     network::features::kReduceAcceptLanguage)) {
+        languages_ = Vector<String>({languages_.front()});
+      }
     }
 
     languages_dirty_ = false;

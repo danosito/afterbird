@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,8 +14,9 @@ namespace extensions {
 
 std::string ComputeTreeHashRoot(const std::vector<std::string>& leaf_hashes,
                                 int branch_factor) {
-  if (leaf_hashes.empty() || branch_factor < 2)
+  if (leaf_hashes.empty() || branch_factor < 2) {
     return std::string();
+  }
 
   // The nodes of the tree we're currently operating on.
   std::vector<std::string> current_nodes;

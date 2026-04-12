@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -27,6 +27,6 @@ NTPTileImpression::NTPTileImpression(int index,
       icon_type(icon_type),
       url_for_rappor(url_for_rappor) {}
 
-NTPTileImpression::~NTPTileImpression() {}
+NTPTileImpression::~NTPTileImpression() = default;
 
 }  // namespace ntp_tiles

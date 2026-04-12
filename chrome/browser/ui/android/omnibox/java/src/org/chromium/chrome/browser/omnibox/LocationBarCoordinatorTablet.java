@@ -1,15 +1,12 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.omnibox;
 
-import android.graphics.drawable.Drawable;
-import android.view.View;
+import androidx.annotation.ColorInt;
 
-/**
- * A supplement to {@link LocationBarCoordinator} with methods specific to larger devices.
- */
+/** A supplement to {@link LocationBarCoordinator} with methods specific to larger devices. */
 public class LocationBarCoordinatorTablet implements LocationBarCoordinator.SubCoordinator {
     private LocationBarTablet mLocationBarTablet;
 
@@ -23,13 +20,11 @@ public class LocationBarCoordinatorTablet implements LocationBarCoordinator.SubC
     }
 
     /**
-     * Gets the background drawable.
+     * Sets the color of the background.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
-     *
-     * @see View#getBackground()
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      */
-    public Drawable getBackground() {
-        return mLocationBarTablet.getBackground();
+    public void tintBackground(@ColorInt int color) {
+        mLocationBarTablet.getBackground().mutate().setTint(color);
     }
 }

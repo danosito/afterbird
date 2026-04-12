@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 
 #include "base/command_line.h"
 #include "base/lazy_instance.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
@@ -61,10 +62,12 @@ bool ContentCapabilitiesHandler::Parse(Extension* extension,
     return false;
   }
 
-  std::unique_ptr<ContentCapabilities> capabilities(
-      ContentCapabilities::FromValue(*value, error));
-  if (!capabilities)
+  auto capabilities = ContentCapabilities::FromValue(*value);
+  if (!capabilities.has_value()) {
+    *error = base::StrCat(
+        {errors::kInvalidContentCapabilitiesParsedValue, capabilities.error()});
     return false;
+  }
 
   int supported_schemes = URLPattern::SCHEME_HTTPS;
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(

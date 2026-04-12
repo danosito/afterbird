@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,7 +14,7 @@ bool UploadDataStreamNotAllowHTTP1::AllowHTTP1() const {
 }
 
 int UploadDataStreamNotAllowHTTP1::InitInternal(const NetLogWithSource&) {
-  return net::OK;
+  return OK;
 }
 
 int UploadDataStreamNotAllowHTTP1::ReadInternal(IOBuffer* buf, int buf_len) {

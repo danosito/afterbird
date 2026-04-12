@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,26 +11,18 @@
 #include <tuple>
 #include <type_traits>
 
+#include "base/containers/contains.h"
+
 namespace base {
 
 // Checks if any of the elements in |ilist| is true.
-// Similar to std::any_of for the case of constexpr initializer_list.
 inline constexpr bool any_of(std::initializer_list<bool> ilist) {
-  for (auto c : ilist) {
-    if (c)
-      return true;
-  }
-  return false;
+  return base::Contains(ilist, true);
 }
 
 // Checks if all of the elements in |ilist| are true.
-// Similar to std::all_of for the case of constexpr initializer_list.
 inline constexpr bool all_of(std::initializer_list<bool> ilist) {
-  for (auto c : ilist) {
-    if (!c)
-      return false;
-  }
-  return true;
+  return !base::Contains(ilist, false);
 }
 
 // Counts the elements in |ilist| that are equal to |value|.
@@ -50,25 +42,23 @@ template <typename... Ts>
 struct ParameterPack {
   // Checks if |Type| occurs in the parameter pack.
   template <typename Type>
-  using HasType =
-      std::bool_constant<any_of({std::is_same<Type, Ts>::value...})>;
+  using HasType = std::bool_constant<any_of({std::is_same_v<Type, Ts>...})>;
 
   // Checks if the parameter pack only contains |Type|.
   template <typename Type>
-  using OnlyHasType =
-      std::bool_constant<all_of({std::is_same<Type, Ts>::value...})>;
+  using OnlyHasType = std::bool_constant<all_of({std::is_same_v<Type, Ts>...})>;
 
   // Checks if |Type| occurs only once in the parameter pack.
   template <typename Type>
   using IsUniqueInPack =
-      std::bool_constant<count({std::is_same<Type, Ts>::value...}, true) == 1>;
+      std::bool_constant<count({std::is_same_v<Type, Ts>...}, true) == 1>;
 
   // Returns the zero-based index of |Type| within |Pack...| or |pack_npos| if
   // it's not within the pack.
   template <typename Type>
   static constexpr size_t IndexInPack() {
     size_t index = 0;
-    for (bool value : {std::is_same<Type, Ts>::value...}) {
+    for (bool value : {std::is_same_v<Type, Ts>...}) {
       if (value)
         return index;
       index++;
@@ -82,7 +72,7 @@ struct ParameterPack {
 
   // Checks if every type in the parameter pack is the same.
   using IsAllSameType =
-      std::bool_constant<all_of({std::is_same<NthType<0>, Ts>::value...})>;
+      std::bool_constant<all_of({std::is_same_v<NthType<0>, Ts>...})>;
 };
 
 }  // namespace base

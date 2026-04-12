@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,10 +6,9 @@
 
 #include <string>
 
-#include "base/bind.h"
+#include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/build_config.h"
-#include "chrome/browser/chrome_notification_types.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search/instant_service.h"
 #include "chrome/browser/search/instant_service_factory.h"
@@ -65,8 +64,10 @@ void InstantUnitTestBase::SetUserSelectedDefaultSearchProvider(
   template_url_service_->SetUserSelectedDefaultSearchProvider(template_url);
 }
 
-TestingProfile* InstantUnitTestBase::CreateProfile() {
-  TestingProfile* profile = BrowserWithTestWindowTest::CreateProfile();
+TestingProfile* InstantUnitTestBase::CreateProfile(
+    const std::string& profile_name) {
+  TestingProfile* profile =
+      BrowserWithTestWindowTest::CreateProfile(profile_name);
   TemplateURLServiceFactory::GetInstance()->SetTestingFactoryAndUse(
       profile,
       base::BindRepeating(&TemplateURLServiceFactory::BuildInstanceFor));

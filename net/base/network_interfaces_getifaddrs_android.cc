@@ -1,9 +1,14 @@
-// Copyright 2022 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 // Taken from WebRTC's own implementation.
 // https://webrtc.googlesource.com/src/+/4cad08ff199a46087f8ffe91ef89af60a4dc8df9/rtc_base/ifaddrs_android.cc
+
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
+#pragma allow_unsafe_buffers
+#endif
 
 #include "build/build_config.h"
 

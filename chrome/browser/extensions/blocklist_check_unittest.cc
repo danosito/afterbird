@@ -1,10 +1,10 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/blocklist_check.h"
 
-#include "base/threading/thread_task_runner_handle.h"
+#include "base/task/single_thread_task_runner.h"
 #include "chrome/browser/extensions/blocklist.h"
 #include "chrome/browser/extensions/test_blocklist.h"
 #include "chrome/browser/extensions/test_extension_prefs.h"
@@ -21,8 +21,7 @@ namespace {
 class BlocklistCheckTest : public testing::Test {
  public:
   BlocklistCheckTest()
-      : test_prefs_(base::ThreadTaskRunnerHandle::Get()),
-        blocklist_(test_prefs_.prefs()) {}
+      : test_prefs_(base::SingleThreadTaskRunner::GetCurrentDefault()) {}
 
  protected:
   void SetUp() override {

@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,8 +19,8 @@ namespace history {
 // and main thread).
 class HistoryBackendNotifier {
  public:
-  HistoryBackendNotifier() {}
-  virtual ~HistoryBackendNotifier() {}
+  HistoryBackendNotifier() = default;
+  virtual ~HistoryBackendNotifier() = default;
 
   // Sends notification that the favicons for the given page URLs (e.g.
   // http://www.google.com) and the given icon URL (e.g.
@@ -30,10 +30,14 @@ class HistoryBackendNotifier {
   virtual void NotifyFaviconsChanged(const std::set<GURL>& page_urls,
                                      const GURL& icon_url) = 0;
 
-  // Sends notification that `transition` to `row` occurred at `visit_time`.
-  virtual void NotifyURLVisited(ui::PageTransition transition,
-                                const URLRow& row,
-                                base::Time visit_time) = 0;
+  // Sends notification that a visit to `url_row` occurred with the details
+  // (transition type, visit time, etc) given in `visit_row` and the associated
+  // `local_navigation_id` from the underlying `content::NavigationHandle`,
+  // which will be non-null only for navigations on the local device.
+  // It is valid to call NotifyURLVisited() with an empty `local_navigation_id`.
+  virtual void NotifyURLVisited(const URLRow& url_row,
+                                const VisitRow& visit_row,
+                                std::optional<int64_t> local_navigation_id) = 0;
 
   // Sends notification that `changed_urls` have been changed or added.
   virtual void NotifyURLsModified(const URLRows& changed_urls,
@@ -42,13 +46,15 @@ class HistoryBackendNotifier {
   // Sends notification that some or the totality of the URLs have been
   // deleted.
   // `deletion_info` describes the urls that have been removed from history.
-  virtual void NotifyURLsDeleted(DeletionInfo deletion_info) = 0;
+  virtual void NotifyDeletions(DeletionInfo deletion_info) = 0;
 
   // Called after a visit has been updated.
-  virtual void NotifyVisitUpdated(const VisitRow& visit) = 0;
+  virtual void NotifyVisitUpdated(const VisitRow& visit,
+                                  VisitUpdateReason reason) = 0;
 
-  // Called after a visit has been deleted.
-  virtual void NotifyVisitDeleted(const VisitRow& visit) = 0;
+  // Called after visits have been deleted. May also notify of any deleted
+  // VisitedLinkRows as a result of the VisitRow deletion.
+  virtual void NotifyVisitsDeleted(const std::vector<DeletedVisit>& visits) = 0;
 };
 
 }  // namespace history

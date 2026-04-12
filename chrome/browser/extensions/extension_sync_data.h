@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -108,6 +108,10 @@ class ExtensionSyncData {
     return linked_icons_;
   }
 
+  bool is_deprecated_bookmark_app() const {
+    return is_deprecated_bookmark_app_;
+  }
+
  private:
   FRIEND_TEST_ALL_PREFIXES(ExtensionSyncDataTest,
                            ExtensionSyncDataForExtension);
@@ -148,6 +152,7 @@ class ExtensionSyncData {
   syncer::StringOrdinal page_ordinal_;
   extensions::LaunchType launch_type_;
   std::vector<LinkedAppIconInfo> linked_icons_;
+  bool is_deprecated_bookmark_app_ = false;
 };
 
 }  // namespace extensions

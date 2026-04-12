@@ -29,20 +29,18 @@
 #include "base/synchronization/lock.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_streamer.h"
 #include "third_party/blink/renderer/core/core_export.h"
+#include "third_party/blink/renderer/core/css/parser/css_tokenizer.h"
 #include "third_party/blink/renderer/core/dom/decoded_data_document_parser.h"
 #include "third_party/blink/renderer/core/dom/parser_content_policy.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
+#include "third_party/blink/renderer/platform/wtf/text/string_hash.h"
 #include "third_party/blink/renderer/platform/wtf/text/text_position.h"
 
 namespace blink {
 
-class SourceKeyedCachedMetadataHandler;
-
 class CORE_EXPORT ScriptableDocumentParser : public DecodedDataDocumentParser {
  public:
-  void Trace(Visitor*) const override;
-
   // Only used by Document::open for deciding if its safe to act on a
   // JavaScript document.open() call right now, or it should be ignored.
   virtual bool IsExecutingScript() const { return false; }
@@ -67,14 +65,6 @@ class CORE_EXPORT ScriptableDocumentParser : public DecodedDataDocumentParser {
     return parser_content_policy_;
   }
 
-  void SetInlineScriptCacheHandler(
-      SourceKeyedCachedMetadataHandler* cache_handler) {
-    inline_script_cache_handler_ = cache_handler;
-  }
-  SourceKeyedCachedMetadataHandler* GetInlineScriptCacheHandler() const {
-    return inline_script_cache_handler_;
-  }
-
   // Adds a script streamer for |source| which can be later retrieved with
   // TakeInlineScriptStreamer(). This may be called on any thread.
   void AddInlineScriptStreamer(
@@ -85,6 +75,7 @@ class CORE_EXPORT ScriptableDocumentParser : public DecodedDataDocumentParser {
   // The returned streamer is guaranteed to be correct for script text that
   // matches the passed in |source|.
   InlineScriptStreamer* TakeInlineScriptStreamer(const String& source);
+  bool HasInlineScriptStreamerForTesting(const String& source);
 
  protected:
   explicit ScriptableDocumentParser(
@@ -93,8 +84,6 @@ class CORE_EXPORT ScriptableDocumentParser : public DecodedDataDocumentParser {
 
  private:
   ScriptableDocumentParser* AsScriptableDocumentParser() final { return this; }
-
-  Member<SourceKeyedCachedMetadataHandler> inline_script_cache_handler_;
 
   // http://www.whatwg.org/specs/web-apps/current-work/#script-created-parser
   bool was_created_by_script_;

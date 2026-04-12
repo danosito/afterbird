@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -83,7 +83,7 @@ void RecentlyAudibleHelper::OnRecentlyAudibleTimerFired() {
   // notified by AudioStreamMonitor of changes due to audio in its own frames
   // (but not in inner contents) directly.
   //
-  // TODO(https://crbug.com/846374): Remove this once WebContents is notified
+  // TODO(crbug.com/41390955): Remove this once WebContents is notified
   // via |callback_list_| in this class instead.
   web_contents()->NotifyNavigationStateChanged(content::INVALIDATE_TYPE_AUDIO);
 }

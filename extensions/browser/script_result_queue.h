@@ -1,13 +1,11 @@
-// Copyright 2022 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef EXTENSIONS_BROWSER_SCRIPT_RESULT_QUEUE_H_
 #define EXTENSIONS_BROWSER_SCRIPT_RESULT_QUEUE_H_
 
-#include <vector>
-
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "base/scoped_observation.h"
 #include "base/values.h"
 #include "extensions/browser/api/test/test_api_observer.h"
@@ -29,14 +27,12 @@ class ScriptResultQueue : public TestApiObserver {
   // Returns the next result, optionally waiting for it to come in.
   base::Value GetNextResult();
 
-  const std::vector<base::Value>& results() const { return results_; }
-
  private:
   // The index of the next result to return.
   size_t next_result_index_ = 0u;
 
   // The collection of all script results this queue has seen.
-  std::vector<base::Value> results_;
+  base::Value::List results_;
 
   // Quit closure to call when waiting for a result.
   base::OnceClosure quit_closure_;

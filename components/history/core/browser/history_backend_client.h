@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,12 +19,12 @@ struct URLAndTitle {
 
 class HistoryBackendClient {
  public:
-  HistoryBackendClient() {}
+  HistoryBackendClient() = default;
 
   HistoryBackendClient(const HistoryBackendClient&) = delete;
   HistoryBackendClient& operator=(const HistoryBackendClient&) = delete;
 
-  virtual ~HistoryBackendClient() {}
+  virtual ~HistoryBackendClient() = default;
 
   // Returns true if the specified URL is pinned due to being bookmarked or used
   // by the password manager.

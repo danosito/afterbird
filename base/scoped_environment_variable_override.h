@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,7 +29,6 @@ class BASE_EXPORT ScopedEnvironmentVariableOverride final {
 
   base::Environment* GetEnv() { return environment_.get(); }
   bool IsOverridden() { return overridden_; }
-  bool WasSet() { return was_set_; }
 
  private:
   ScopedEnvironmentVariableOverride(const std::string& variable_name,

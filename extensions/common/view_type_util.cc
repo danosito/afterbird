@@ -1,10 +1,11 @@
-// Copyright 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "extensions/common/view_type_util.h"
 
-#include "base/strings/string_piece.h"
+#include <string_view>
+
 #include "extensions/common/mojom/view_type.mojom.h"
 
 namespace extensions {
@@ -18,13 +19,14 @@ bool GetViewTypeFromString(const std::string& view_type,
   // Why? Is it just because we don't expose those types to JS?
   static const struct {
     mojom::ViewType type;
-    base::StringPiece name;
+    std::string_view name;
   } constexpr kTypeMap[] = {
       {mojom::ViewType::kAppWindow, "APP_WINDOW"},
       {mojom::ViewType::kExtensionBackgroundPage, "BACKGROUND"},
-      {mojom::ViewType::kExtensionDialog, "EXTENSION_DIALOG"},
       {mojom::ViewType::kExtensionPopup, "POPUP"},
       {mojom::ViewType::kTabContents, "TAB"},
+      {mojom::ViewType::kExtensionSidePanel, "SIDE_PANEL"},
+      {mojom::ViewType::kDeveloperTools, "DEVELOPER_TOOLS"},
   };
 
   for (const auto& entry : kTypeMap) {

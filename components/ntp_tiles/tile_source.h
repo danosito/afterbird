@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -24,10 +24,8 @@ enum class TileSource {
   ALLOWLIST,
   // Tile containing the user-set home page is replacing the home page button.
   HOMEPAGE,
-  // Tile comes from explore sites list.
-  EXPLORE,
 
-  LAST = EXPLORE
+  LAST = HOMEPAGE
 };
 
 }  // namespace ntp_tiles

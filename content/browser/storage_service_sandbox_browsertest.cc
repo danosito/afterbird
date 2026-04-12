@@ -1,12 +1,12 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <tuple>
 
 #include "base/run_loop.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/test/bind.h"
-#include "base/threading/sequenced_task_runner_handle.h"
 #include "build/build_config.h"
 #include "components/services/storage/public/mojom/storage_service.mojom.h"
 #include "components/services/storage/public/mojom/storage_usage_info.mojom.h"
@@ -47,7 +47,7 @@ class StorageServiceSandboxBrowserTest : public ContentBrowserTest {
             return;
           }
 
-          base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+          base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
               FROM_HERE,
               base::BindOnce(&StorageServiceSandboxBrowserTest::
                                  WaitForAnyLocalStorageDataAsync,
@@ -60,12 +60,6 @@ class StorageServiceSandboxBrowserTest : public ContentBrowserTest {
   void WaitForAnyLocalStorageData() {
     base::RunLoop loop;
     WaitForAnyLocalStorageDataAsync(loop.QuitClosure());
-    loop.Run();
-  }
-
-  void FlushLocalStorage() {
-    base::RunLoop loop;
-    dom_storage()->GetLocalStorageControl()->Flush(loop.QuitClosure());
     loop.Run();
   }
 
@@ -93,7 +87,6 @@ IN_PROC_BROWSER_TEST_F(StorageServiceSandboxBrowserTest, PRE_DomStorage) {
   std::ignore =
       EvalJs(shell()->web_contents(), R"(window.localStorage.yeet = 42)");
   WaitForAnyLocalStorageData();
-  FlushLocalStorage();
 }
 
 IN_PROC_BROWSER_TEST_F(StorageServiceSandboxBrowserTest, DomStorage) {
@@ -105,7 +98,7 @@ IN_PROC_BROWSER_TEST_F(StorageServiceSandboxBrowserTest, DomStorage) {
             EvalJs(shell()->web_contents(), R"(window.localStorage.yeet)"));
 }
 
-// TODO(https://crbug.com/1318225): Fix and enable the test on Fuchsia.
+// TODO(crbug.com/40835229): Fix and enable the test on Fuchsia.
 #if BUILDFLAG(IS_FUCHSIA)
 #define MAYBE_CompactDatabase DISABLED_CompactDatabase
 #else

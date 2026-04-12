@@ -1,4 +1,4 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -48,7 +48,7 @@ class ProcessSingletonStartupLock {
   typedef std::pair<base::CommandLine::StringVector, base::FilePath>
       DelayedStartupMessage;
 
-  bool NotificationCallbackImpl(const base::CommandLine& command_line,
+  bool NotificationCallbackImpl(base::CommandLine command_line,
                                 const base::FilePath& current_directory);
 
   bool locked_;

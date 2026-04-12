@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,9 +6,8 @@
 
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/renderer/platform/graphics/color_correction_test_utils.h"
-#include "third_party/blink/renderer/platform/testing/runtime_enabled_features_test_helpers.h"
+#include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "ui/gfx/color_space.h"
-#include "ui/gl/buffer_format_utils.h"
 
 namespace blink {
 
@@ -18,14 +17,15 @@ namespace blink {
 // GetStorageGfxColorSpace(). This test verifies that the two different color
 // spaces are approximately the same for different CanvasColorParam objects.
 TEST(CanvasColorParamsTest, MatchSkColorSpaceWithGfxColorSpace) {
+  test::TaskEnvironment task_environment;
   PredefinedColorSpace canvas_color_spaces[] = {
       PredefinedColorSpace::kSRGB,
       PredefinedColorSpace::kRec2020,
       PredefinedColorSpace::kP3,
   };
-  for (int iter_color_space = 0; iter_color_space < 3; iter_color_space++) {
-    CanvasColorParams color_params(canvas_color_spaces[iter_color_space],
-                                   CanvasPixelFormat::kF16, kNonOpaque);
+  for (PredefinedColorSpace color_space : canvas_color_spaces) {
+    CanvasColorParams color_params(color_space, CanvasPixelFormat::kF16,
+                                   kNonOpaque);
     sk_sp<SkColorSpace> canvas_drawing_color_space =
         color_params.GetSkColorSpace();
     sk_sp<SkColorSpace> canvas_media_color_space =

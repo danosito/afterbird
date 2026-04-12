@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,7 +21,7 @@ void ShowCertificateViewer(content::WebContents* web_contents,
 
 // Opens a certificate viewer for client authentication under |parent| to
 // display |cert|.
-// TODO(https://crbug.com/1336065): remove this and use the internal cert
+// TODO(crbug.com/40847472): remove this and use the internal cert
 // viewer for client auth as well.
 void ShowCertificateViewerForClientAuth(content::WebContents* web_contents,
                                         gfx::NativeWindow parent,

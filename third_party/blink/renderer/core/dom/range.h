@@ -206,9 +206,23 @@ class CORE_EXPORT Range final : public AbstractRange {
   void ScheduleVisualUpdateIfInRegisteredHighlight(Document& document);
   void RemoveFromSelectionIfInDifferentRoot(Document& old_document);
 
+  void CollapseIfNeeded(bool did_move_document, bool collapse_to_start);
+
   Member<Document> owner_document_;  // Cannot be null.
   RangeBoundaryPoint start_;
   RangeBoundaryPoint end_;
+
+  struct RangeBoundaryPoints : GarbageCollected<RangeBoundaryPoints> {
+    RangeBoundaryPoints(RangeBoundaryPoint start, RangeBoundaryPoint end)
+        : start(start), end(end) {}
+    RangeBoundaryPoint start;
+    RangeBoundaryPoint end;
+
+    void Trace(Visitor* visitor) const {
+      visitor->Trace(start);
+      visitor->Trace(end);
+    }
+  };
 
   friend class RangeUpdateScope;
 };

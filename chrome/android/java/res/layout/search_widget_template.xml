@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright 2017 The Chromium Authors. All rights reserved.
-     Use of this source code is governed by a BSD-style license that can be
-     found in the LICENSE file. -->
+<!--
+Copyright 2017 The Chromium Authors
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
 
 <!-- NOTES ON SPEC IMPLEMENTATION:
           +................................................................+
@@ -38,7 +40,7 @@
             android:id="@+id/microphone_icon"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@drawable/btn_mic"
+            android:src="@drawable/ic_mic_white_24dp"
             android:tint="@color/default_icon_color_baseline"
             android:scaleType="centerInside"
             android:contentDescription="@string/accessibility_toolbar_btn_mic" />

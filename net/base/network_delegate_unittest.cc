@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,7 +26,7 @@ CanonicalCookie MakeCookie(const std::string& name) {
       /*expiration=*/base::Time(), /*last_access=*/base::Time(),
       /*last_update=*/base::Time(),
       /*secure=*/true, /*httponly=*/false, CookieSameSite::UNSPECIFIED,
-      CookiePriority::COOKIE_PRIORITY_DEFAULT, /*same_party=*/false);
+      CookiePriority::COOKIE_PRIORITY_DEFAULT);
 }
 
 CookieAccessResult Include() {

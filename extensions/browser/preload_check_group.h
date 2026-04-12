@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@
 
 #include <vector>
 
+#include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/threading/thread_checker.h"
 #include "extensions/browser/preload_check.h"
@@ -47,7 +48,7 @@ class PreloadCheckGroup : public PreloadCheck {
   bool stop_on_first_error_ = false;
 
   // Checks to run. Not owned.
-  std::vector<PreloadCheck*> checks_;
+  std::vector<raw_ptr<PreloadCheck, VectorExperimental>> checks_;
 
   ResultCallback callback_;
   int running_checks_ = 0;

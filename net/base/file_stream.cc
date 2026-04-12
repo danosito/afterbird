@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "build/build_config.h"
 #include "net/base/file_stream_context.h"
 #include "net/base/net_errors.h"
 
@@ -90,5 +91,12 @@ int FileStream::Flush(CompletionOnceCallback callback) {
   context_->Flush(std::move(callback));
   return ERR_IO_PENDING;
 }
+
+#if BUILDFLAG(IS_WIN)
+int FileStream::ConnectNamedPipe(CompletionOnceCallback callback) {
+  return IsOpen() ? context_->ConnectNamedPipe(std::move(callback))
+                  : ERR_UNEXPECTED;
+}
+#endif  // BUILDFLAG(IS_WIN)
 
 }  // namespace net

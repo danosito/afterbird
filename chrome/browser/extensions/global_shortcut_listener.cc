@@ -1,10 +1,11 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/global_shortcut_listener.h"
 
 #include "base/check.h"
+#include "base/not_fatal_until.h"
 #include "base/notreached.h"
 #include "content/public/browser/browser_thread.h"
 #include "ui/base/accelerators/accelerator.h"
@@ -26,7 +27,7 @@ GlobalShortcutListener::~GlobalShortcutListener() {
 bool GlobalShortcutListener::RegisterAccelerator(
     const ui::Accelerator& accelerator, Observer* observer) {
   CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
-  if (true || IsShortcutHandlingSuspended())
+  if (IsShortcutHandlingSuspended())
     return false;
 
   AcceleratorMap::const_iterator it = accelerator_map_.find(accelerator);
@@ -56,7 +57,7 @@ void GlobalShortcutListener::UnregisterAccelerator(
 
   auto it = accelerator_map_.find(accelerator);
   // We should never get asked to unregister something that we didn't register.
-  DCHECK(it != accelerator_map_.end());
+  CHECK(it != accelerator_map_.end(), base::NotFatalUntil::M130);
   // The caller should call this function with the right observer.
   DCHECK(it->second == observer);
 
@@ -83,7 +84,6 @@ void GlobalShortcutListener::UnregisterAccelerators(Observer* observer) {
 }
 
 void GlobalShortcutListener::SetShortcutHandlingSuspended(bool suspended) {
-  if (true) return;
   CHECK(BrowserThread::CurrentlyOn(BrowserThread::UI));
   if (shortcut_handling_suspended_ == suspended)
     return;
@@ -113,7 +113,6 @@ void GlobalShortcutListener::NotifyKeyPressed(
     // This should never occur, because if it does, we have failed to unregister
     // or failed to clean up the map after unregistering the shortcut.
     NOTREACHED();
-    return;  // No-one is listening to this key.
   }
 
   iter->second->OnKeyPressed(accelerator);

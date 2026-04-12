@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,16 @@
 #include "base/containers/contains.h"
 #include "base/strings/string_tokenizer.h"
 #include "base/strings/string_util.h"
+#include "base/trace_event/memory_usage_estimator.h"
 
 namespace net {
+
+SchemeHostPortMatcher::SchemeHostPortMatcher() = default;
+SchemeHostPortMatcher::SchemeHostPortMatcher(SchemeHostPortMatcher&& rhs) =
+    default;
+SchemeHostPortMatcher& SchemeHostPortMatcher::operator=(
+    SchemeHostPortMatcher&& rhs) = default;
+SchemeHostPortMatcher::~SchemeHostPortMatcher() = default;
 
 // Declares SchemeHostPortMatcher::kParseRuleListDelimiterList[], not a
 // redefinition. This is needed for link.
@@ -94,5 +102,11 @@ std::string SchemeHostPortMatcher::ToString() const {
 void SchemeHostPortMatcher::Clear() {
   rules_.clear();
 }
+
+#if !BUILDFLAG(CRONET_BUILD)
+size_t SchemeHostPortMatcher::EstimateMemoryUsage() const {
+  return base::trace_event::EstimateMemoryUsage(rules_);
+}
+#endif  // !BUILDFLAG(CRONET_BUILD)
 
 }  // namespace net

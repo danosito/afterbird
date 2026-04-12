@@ -1,11 +1,11 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 // no-include-guard-because-multiply-included
 // Multiply-included file, hence no include guard.
 
-#include "components/version_info/version_info.h"
+#include "components/version_info/channel.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/mojom/feature_session_type.mojom.h"
 #include "ipc/ipc_message_macros.h"

@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -45,12 +45,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   factory->CreateAuthHandlerFromString(
       challenge, net::HttpAuth::AUTH_SERVER, null_ssl_info,
-      net::NetworkIsolationKey(), scheme_host_port, net::NetLogWithSource(),
+      net::NetworkAnonymizationKey(), scheme_host_port, net::NetLogWithSource(),
       host_resolver.get(), &handler);
 
   if (handler) {
     auto followup = data_provider.ConsumeRemainingBytesAsString();
-    net::HttpAuthChallengeTokenizer tokenizer{followup.begin(), followup.end()};
+    net::HttpAuthChallengeTokenizer tokenizer{followup};
     handler->HandleAnotherChallenge(&tokenizer);
   }
   return 0;

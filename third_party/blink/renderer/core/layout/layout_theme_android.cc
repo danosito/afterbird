@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,10 +20,22 @@ LayoutTheme& LayoutTheme::NativeTheme() {
 
 LayoutThemeAndroid::~LayoutThemeAndroid() {}
 
+Color LayoutThemeAndroid::SystemColor(CSSValueID css_value_id,
+                                      mojom::blink::ColorScheme color_scheme,
+                                      const ui::ColorProvider* color_provider,
+                                      bool is_in_web_app_scope) const {
+  // Color providers are not supported for Android, so we should always use
+  // DefaultSystemColor() for system colors.
+  // TODO(crbug.com/40779801): This override can be removed if we can always
+  // guarantee the provider is nullptr for Android.
+  return DefaultSystemColor(css_value_id, color_scheme, color_provider,
+                            is_in_web_app_scope);
+}
+
 Color LayoutThemeAndroid::PlatformActiveSelectionBackgroundColor(
     mojom::blink::ColorScheme color_scheme) const {
   return color_scheme == mojom::blink::ColorScheme::kDark
-             ? 0xFF99C8FF
+             ? Color::FromRGBA32(0xFF99C8FF)
              : LayoutThemeMobile::PlatformActiveSelectionBackgroundColor(
                    color_scheme);
 }
@@ -31,7 +43,7 @@ Color LayoutThemeAndroid::PlatformActiveSelectionBackgroundColor(
 Color LayoutThemeAndroid::PlatformActiveSelectionForegroundColor(
     mojom::blink::ColorScheme color_scheme) const {
   return color_scheme == mojom::blink::ColorScheme::kDark
-             ? 0xFF3B3B3B
+             ? Color::FromRGBA32(0xFF3B3B3B)
              : LayoutThemeMobile::PlatformActiveSelectionForegroundColor(
                    color_scheme);
 }

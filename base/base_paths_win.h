@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -55,7 +55,8 @@ enum {
   DIR_TASKBAR_PINS,            // Directory for the shortcuts pinned to taskbar.
   DIR_IMPLICIT_APP_SHORTCUTS,  // The implicit user pinned shortcut directory.
   DIR_WINDOWS_FONTS,           // Usually C:\Windows\Fonts.
-
+  DIR_SYSTEM_TEMP,             // %SystemRoot%\SystemTemp or %ProgramFiles%;
+                               // only for admin processes.
   PATH_WIN_END
 };
 

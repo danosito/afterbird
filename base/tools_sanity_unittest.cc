@@ -1,7 +1,12 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-//
+
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
+#pragma allow_unsafe_buffers
+#endif
+
 // This file contains intentional memory errors, some of which may lead to
 // crashes if the test is ran without special memory testing tools. We use these
 // errors to verify the sanity of the tools.
@@ -15,10 +20,10 @@
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
 #include "base/sanitizer_buildflags.h"
-#include "base/third_party/dynamic_annotations/dynamic_annotations.h"
 #include "base/threading/thread.h"
 #include "build/build_config.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/base/dynamic_annotations.h"
 
 #if BUILDFLAG(IS_WIN)
 #include <windows.h>
@@ -45,7 +50,7 @@ const base::subtle::Atomic32 kMagicValue = 42;
 #define HARMFUL_ACCESS_IS_NOOP
 #endif
 
-void DoReadUninitializedValue(char *ptr) {
+void DoReadUninitializedValue(volatile char *ptr) {
   // Comparison with 64 is to prevent clang from optimizing away the
   // jump -- valgrind only catches jumps and conditional moves, but clang uses
   // the borrow flag if the condition is just `*ptr == '\0'`.  We no longer
@@ -57,7 +62,7 @@ void DoReadUninitializedValue(char *ptr) {
   }
 }
 
-void ReadUninitializedValue(char *ptr) {
+void ReadUninitializedValue(volatile char *ptr) {
 #if defined(MEMORY_SANITIZER)
   EXPECT_DEATH(DoReadUninitializedValue(ptr),
                "use-of-uninitialized-value");
@@ -89,14 +94,10 @@ void WriteValueOutOfArrayBoundsRight(char *ptr, size_t size) {
 void MakeSomeErrors(char *ptr, size_t size) {
   ReadUninitializedValue(ptr);
 
-  HARMFUL_ACCESS(ReadValueOutOfArrayBoundsLeft(ptr),
-                 "2 bytes to the left");
-  HARMFUL_ACCESS(ReadValueOutOfArrayBoundsRight(ptr, size),
-                 "1 bytes to the right");
-  HARMFUL_ACCESS(WriteValueOutOfArrayBoundsLeft(ptr),
-                 "1 bytes to the left");
-  HARMFUL_ACCESS(WriteValueOutOfArrayBoundsRight(ptr, size),
-                 "0 bytes to the right");
+  HARMFUL_ACCESS(ReadValueOutOfArrayBoundsLeft(ptr), "2 bytes before");
+  HARMFUL_ACCESS(ReadValueOutOfArrayBoundsRight(ptr, size), "1 bytes after");
+  HARMFUL_ACCESS(WriteValueOutOfArrayBoundsLeft(ptr), "1 bytes before");
+  HARMFUL_ACCESS(WriteValueOutOfArrayBoundsRight(ptr, size), "0 bytes after");
 }
 
 }  // namespace
@@ -116,9 +117,9 @@ void MakeSomeErrors(char *ptr, size_t size) {
 // verifies that _sanitizer_options_link_helper actually makes it into our
 // binaries.
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_WIN)
-// TODO(https://crbug.com/1322143): Sanitizer options are currently broken
+// TODO(crbug.com/40224191): Sanitizer options are currently broken
 // on Android.
-// TODO(https://crbug.com/1321584): __asan_default_options should be used
+// TODO(crbug.com/40223949): __asan_default_options should be used
 // on Windows too, but currently isn't.
 #define MAYBE_LinksSanitizerOptions DISABLED_LinksSanitizerOptions
 #else
@@ -254,11 +255,11 @@ TEST(ToolsSanityTest, DISABLED_AddressSanitizerGlobalOOBCrashTest) {
 
 #ifndef HARMFUL_ACCESS_IS_NOOP
 TEST(ToolsSanityTest, AsanHeapOverflow) {
-  HARMFUL_ACCESS(debug::AsanHeapOverflow() ,"to the right");
+  HARMFUL_ACCESS(debug::AsanHeapOverflow(), "after");
 }
 
 TEST(ToolsSanityTest, AsanHeapUnderflow) {
-  HARMFUL_ACCESS(debug::AsanHeapUnderflow(), "to the left");
+  HARMFUL_ACCESS(debug::AsanHeapUnderflow(), "before");
 }
 
 TEST(ToolsSanityTest, AsanHeapUseAfterFree) {
@@ -362,7 +363,8 @@ TEST(ToolsSanityTest, DataRace) {
 
 TEST(ToolsSanityTest, AnnotateBenignRace) {
   bool shared = false;
-  ANNOTATE_BENIGN_RACE(&shared, "Intentional race - make sure doesn't show up");
+  ABSL_ANNOTATE_BENIGN_RACE(
+      &shared, "Intentional race - make sure doesn't show up");
   TOOLS_SANITY_TEST_CONCURRENT_THREAD thread1(&shared), thread2(&shared);
   RunInParallel(&thread1, &thread2);
   EXPECT_TRUE(shared);

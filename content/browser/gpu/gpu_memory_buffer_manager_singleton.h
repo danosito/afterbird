@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -32,6 +32,9 @@ class GpuMemoryBufferManagerSingleton : public viz::HostGpuMemoryBufferManager,
   ~GpuMemoryBufferManagerSingleton() override;
 
   static GpuMemoryBufferManagerSingleton* GetInstance();
+
+  void AddObserver(gpu::GpuMemoryBufferManagerObserver* observer) final;
+  void RemoveObserver(gpu::GpuMemoryBufferManagerObserver* observer) final;
 
  private:
   // GpuDataManagerObserver:

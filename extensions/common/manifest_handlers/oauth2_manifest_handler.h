@@ -1,4 +1,4 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,11 +9,9 @@
 #include "extensions/common/manifest_handler.h"
 
 namespace extensions {
-namespace api {
-namespace oauth2 {
+namespace api::oauth2 {
 struct OAuth2Info;
-}  // namespace oauth2
-}  // namespace api
+}  // namespace api::oauth2
 
 // Parses the "oauth2" manifest key.
 class OAuth2ManifestHandler : public ManifestHandler {

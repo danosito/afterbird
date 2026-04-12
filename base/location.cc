@@ -1,27 +1,22 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
+#pragma allow_unsafe_buffers
+#endif
+
 #include "base/location.h"
-
-#include "build/build_config.h"
-
-// location.h is a widely included header and its size can significantly impact
-// build time. Try not to raise this limit unless absolutely necessary. See
-// https://chromium.googlesource.com/chromium/src/+/HEAD/docs/wmax_tokens.md
-#ifndef NACL_TC_REV
-#pragma clang max_tokens_here 390000
-#endif
-
-#if defined(COMPILER_MSVC)
-#include <intrin.h>
-#endif
 
 #include "base/compiler_specific.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
 #include "base/trace_event/base_tracing.h"
-#include "build/build_config.h"
+
+#if defined(COMPILER_MSVC)
+#include <intrin.h>
+#endif
 
 namespace base {
 
@@ -134,28 +129,6 @@ void Location::WriteIntoTrace(perfetto::TracedValue context) const {
 #define RETURN_ADDRESS() nullptr
 #endif
 
-#if !BUILDFLAG(FROM_HERE_USES_LOCATION_BUILTINS)
-#if !BUILDFLAG(ENABLE_LOCATION_SOURCE)
-
-// static
-NOINLINE Location Location::CreateFromHere(const char* file_name) {
-  return Location(file_name + kStrippedPrefixLength, RETURN_ADDRESS());
-}
-
-#else
-
-// static
-NOINLINE Location Location::CreateFromHere(const char* function_name,
-                                           const char* file_name,
-                                           int line_number) {
-  return Location(function_name, file_name + kStrippedPrefixLength, line_number,
-                  RETURN_ADDRESS());
-}
-
-#endif
-#endif
-
-#if SUPPORTS_LOCATION_BUILTINS && BUILDFLAG(ENABLE_LOCATION_SOURCE)
 // static
 NOINLINE Location Location::Current(const char* function_name,
                                     const char* file_name,
@@ -163,17 +136,6 @@ NOINLINE Location Location::Current(const char* function_name,
   return Location(function_name, file_name + kStrippedPrefixLength, line_number,
                   RETURN_ADDRESS());
 }
-#elif SUPPORTS_LOCATION_BUILTINS
-// static
-NOINLINE Location Location::Current(const char* file_name) {
-  return Location(file_name + kStrippedPrefixLength, RETURN_ADDRESS());
-}
-#else
-// static
-NOINLINE Location Location::Current() {
-  return Location(nullptr, RETURN_ADDRESS());
-}
-#endif
 
 //------------------------------------------------------------------------------
 NOINLINE const void* GetProgramCounter() {

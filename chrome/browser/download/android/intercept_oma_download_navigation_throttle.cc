@@ -1,10 +1,10 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/download/android/intercept_oma_download_navigation_throttle.h"
 
-#include "base/bind.h"
+#include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
 #include "chrome/browser/download/android/download_controller_base.h"
 #include "components/embedder_support/user_agent_utils.h"
@@ -91,12 +91,13 @@ void InterceptOMADownloadNavigationThrottle::InterceptDownload() {
   if (!url_chain.empty())
     original_url = url_chain.front();
 
-  std::string content_disposition;
   std::string mime_type;
   const net::HttpResponseHeaders* headers =
       navigation_handle()->GetResponseHeaders();
   headers->GetMimeType(&mime_type);
-  headers->GetNormalizedHeader("content-disposition", &content_disposition);
+  std::string content_disposition =
+      headers->GetNormalizedHeader("content-disposition")
+          .value_or(std::string());
   content::WebContents* web_contents = navigation_handle()->GetWebContents();
   int process_id =
       web_contents ? web_contents->GetRenderViewHost()->GetProcess()->GetID()
@@ -106,9 +107,9 @@ void InterceptOMADownloadNavigationThrottle::InterceptDownload() {
 
   DownloadControllerBase::Get()->CreateAndroidDownload(
       base::BindRepeating(&GetWebContents, process_id, routing_id),
-      DownloadInfo(
-          navigation_handle()->GetURL(), original_url, content_disposition,
-          mime_type, embedder_support::GetUserAgent(),
-          // TODO(qinmin): Get the cookie from cookie store.
-          std::string(), navigation_handle()->GetReferrer().url.spec()));
+      DownloadInfo(navigation_handle()->GetURL(), original_url,
+                   content_disposition, mime_type,
+                   embedder_support::GetUserAgent(),
+                   // TODO(qinmin): Get the cookie from cookie store.
+                   std::string(), navigation_handle()->GetReferrer().url));
 }

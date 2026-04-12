@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,10 +13,6 @@
 #include "extensions/common/mojom/event_dispatcher.mojom.h"
 #include "ipc/ipc_message.h"
 #include "testing/gtest/include/gtest/gtest.h"
-
-using base::DictionaryValue;
-using base::ListValue;
-using base::Value;
 
 namespace extensions {
 
@@ -43,8 +39,8 @@ class EventFilterUnittest : public testing::Test {
   }
 
   std::unique_ptr<EventMatcher> AllURLs() {
-    return std::make_unique<EventMatcher>(
-        std::make_unique<base::DictionaryValue>(), MSG_ROUTING_NONE);
+    return std::make_unique<EventMatcher>(std::make_unique<base::Value::Dict>(),
+                                          MSG_ROUTING_NONE);
   }
 
   std::unique_ptr<EventMatcher> HostSuffixMatcher(
@@ -55,8 +51,8 @@ class EventFilterUnittest : public testing::Test {
 
   std::unique_ptr<EventMatcher> MatcherFromURLFilterList(
       base::Value::List url_filter_list) {
-    auto filter_dict = std::make_unique<DictionaryValue>();
-    filter_dict->SetKey("url", base::Value(std::move(url_filter_list)));
+    auto filter_dict = std::make_unique<base::Value::Dict>();
+    filter_dict->Set("url", base::Value(std::move(url_filter_list)));
     return std::make_unique<EventMatcher>(std::move(filter_dict),
                                           MSG_ROUTING_NONE);
   }

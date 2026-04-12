@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,9 +12,7 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 
-/**
- * Interface for handling tab related async operations over multiple activities.
- */
+/** Interface for handling tab related async operations over multiple activities. */
 public interface AsyncTabParams {
     /**
      * @return The {@link LoadUrlParams} associated with the initial URL to load.
@@ -45,8 +43,6 @@ public interface AsyncTabParams {
     @Nullable
     Tab getTabToReparent();
 
-    /**
-     * Destroy any internal fields if it is necessary.
-     */
+    /** Destroy any internal fields if it is necessary. */
     void destroy();
 }

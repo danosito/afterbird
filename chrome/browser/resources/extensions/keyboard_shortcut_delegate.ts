@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,4 +25,18 @@ export interface KeyboardShortcutDelegate {
   updateExtensionCommandScope(
       extensionId: string, commandName: string,
       scope: chrome.developerPrivate.CommandScope): void;
+}
+
+class DummyKeyboardShortcutDelegate implements KeyboardShortcutDelegate {
+  setShortcutHandlingSuspended(_isCapturing: boolean) {}
+  updateExtensionCommandKeybinding(
+      _extensionId: string, _commandName: string, _keybinding: string) {}
+  updateExtensionCommandScope(
+      _extensionId: string, _commandName: string,
+      _scope: chrome.developerPrivate.CommandScope) {}
+}
+
+export function createDummyKeyboardShortcutDelegate():
+    KeyboardShortcutDelegate {
+  return new DummyKeyboardShortcutDelegate();
 }

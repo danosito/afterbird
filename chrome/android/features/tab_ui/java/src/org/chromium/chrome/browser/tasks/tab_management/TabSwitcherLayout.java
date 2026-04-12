@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -59,9 +59,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
-import org.chromium.chrome.browser.compositor.LayerTitleCache;
-import org.chromium.chrome.browser.compositor.TitleCache;
-
 /**
  * A {@link Layout} that shows all tabs in one grid or list view.
  */
@@ -72,6 +69,7 @@ public class TabSwitcherLayout extends Layout {
     public static final long ZOOMING_DURATION = 300;
     private static final int TRANSLATE_DURATION_MS = 450;
     private static final int BACKGROUND_FADING_DURATION_MS = 150;
+    private static final int SCRIM_FADE_DURATION_MS = 450;
 
     private static final String TRACE_SHOW_TAB_SWITCHER = "TabSwitcherLayout.Show.TabSwitcher";
     private static final String TRACE_HIDE_TAB_SWITCHER = "TabSwitcherLayout.Hide.TabSwitcher";
@@ -80,7 +78,7 @@ public class TabSwitcherLayout extends Layout {
 
     // The transition animation from a tab to the tab switcher.
     private AnimatorSet mTabToSwitcherAnimation;
-    private boolean mIsAnimating;
+    private boolean mIsAnimatingHide;
 
     private TabListSceneLayer mSceneLayer;
     private final TabSwitcher mTabSwitcher;
@@ -256,7 +254,7 @@ public class TabSwitcherLayout extends Layout {
 
     private void hideBrowserScrim() {
         if (mScrimCoordinator == null || !mScrimCoordinator.isShowingScrim()) return;
-        mScrimCoordinator.hideScrim(true);
+        mScrimCoordinator.hideScrim(true, SCRIM_FADE_DURATION_MS);
     }
 
     @Override
@@ -300,7 +298,7 @@ public class TabSwitcherLayout extends Layout {
 
             updateCacheVisibleIds(new LinkedList<>(Arrays.asList(sourceTabId)));
 
-            mIsAnimating = true;
+            mIsAnimatingHide = true;
             if (TabUiFeatureUtilities.isTabletGridTabSwitcherPolishEnabled(getContext())) {
                 translateDown();
             } else {
@@ -563,6 +561,7 @@ public class TabSwitcherLayout extends Layout {
         mTabToSwitcherAnimation.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationStart(Animator animation) {
+                mController.prepareHideTabSwitcherView();
                 mController.setSnackbarParentView(null);
             }
 
@@ -590,7 +589,7 @@ public class TabSwitcherLayout extends Layout {
 
     private void postHiding() {
         mGridTabListDelegate.postHiding();
-        mIsAnimating = false;
+        mIsAnimatingHide = false;
         doneHiding();
     }
 
@@ -641,17 +640,17 @@ public class TabSwitcherLayout extends Layout {
     @Override
     protected void updateSceneLayer(RectF viewport, RectF contentViewport,
             TabContentManager tabContentManager, ResourceManager resourceManager,
-            BrowserControlsStateProvider browserControls, LayerTitleCache layerTitleCache) {
+            BrowserControlsStateProvider browserControls) {
         ensureSceneLayerCreated();
         super.updateSceneLayer(
-                viewport, contentViewport, tabContentManager, resourceManager, browserControls, layerTitleCache);
+                viewport, contentViewport, tabContentManager, resourceManager, browserControls);
         assert mSceneLayer != null;
 
         // The content viewport is intentionally sent as both params below.
         mSceneLayer.pushLayers(getContext(), contentViewport, contentViewport, this,
                 tabContentManager, resourceManager, browserControls,
                 isTabGtsAnimationEnabled() ? mGridTabListDelegate.getResourceId() : 0,
-                mBackgroundAlpha, mGridTabListDelegate.getTabListTopOffset(), layerTitleCache);
+                mBackgroundAlpha, mGridTabListDelegate.getTabListTopOffset());
         mFrameCount++;
         if (mLastFrameTime != 0) {
             long elapsed = SystemClock.elapsedRealtime() - mLastFrameTime;
@@ -667,7 +666,7 @@ public class TabSwitcherLayout extends Layout {
 
     @Override
     public boolean onUpdateAnimation(long time, boolean jumpToEnd) {
-        return mTabToSwitcherAnimation == null && !mIsAnimating;
+        return mTabToSwitcherAnimation == null && !mIsAnimatingHide;
     }
 
     @Override

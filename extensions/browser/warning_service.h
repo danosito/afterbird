@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -57,11 +57,11 @@ class WarningService : public KeyedService, public ExtensionRegistryObserver {
 
   // Returns all types of warnings effecting extension |extension_id|.
   std::set<Warning::WarningType> GetWarningTypesAffectingExtension(
-      const std::string& extension_id) const;
+      const ExtensionId& extension_id) const;
 
   // Returns all localized warnings for extension |extension_id| in |result|.
   std::vector<std::string> GetWarningMessagesForExtension(
-      const std::string& extension_id) const;
+      const ExtensionId& extension_id) const;
 
   const WarningSet& warnings() const { return warnings_; }
 
@@ -70,7 +70,8 @@ class WarningService : public KeyedService, public ExtensionRegistryObserver {
 
   // Notifies the WarningService of browser_context |browser_context_id| that
   // new |warnings| occurred and triggers a warning badge.
-  static void NotifyWarningsOnUI(void* profile_id, const WarningSet& warnings);
+  static void NotifyWarningsOnUI(void* browser_context_id,
+                                 const WarningSet& warnings);
 
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);

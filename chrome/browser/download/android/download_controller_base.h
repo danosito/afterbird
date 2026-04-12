@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "components/download/public/common/download_item.h"
 #include "components/download/public/common/download_start_observer.h"
 #include "content/public/browser/context_menu_params.h"
@@ -37,7 +37,7 @@ struct DownloadInfo {
                const std::string& original_mime_type,
                const std::string& user_agent,
                const std::string& cookie,
-               const std::string& referer);
+               const GURL& referer);
   ~DownloadInfo();
 
   // The URL from which we are downloading. This is the final URL after any
@@ -49,7 +49,7 @@ struct DownloadInfo {
   std::string original_mime_type;
   std::string user_agent;
   std::string cookie;
-  std::string referer;
+  GURL referer;
 };
 
 // Interface to request GET downloads and send notifications for POST
@@ -88,9 +88,6 @@ class DownloadControllerBase : public download::DownloadItem::Observer,
   virtual void CreateAndroidDownload(
       const content::WebContents::Getter& wc_getter,
       const DownloadInfo& info) = 0;
-
-  // Called before resuming a download.
-  virtual void AboutToResumeDownload(download::DownloadItem* download_item) = 0;
 
  protected:
   ~DownloadControllerBase() override {}

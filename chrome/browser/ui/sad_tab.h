@@ -1,4 +1,4 @@
-// Copyright 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -75,6 +75,7 @@ class SadTab {
   // may suggest additional troubleshooting steps.
   bool is_repeatedly_crashing_;
   // True if repeatedly crashing and the browser is Google Chrome branded.
+  // Always false for the ChromeOS kiosk mode.
   bool show_feedback_button_;
   bool recorded_paint_;
 };

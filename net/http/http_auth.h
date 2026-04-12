@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright 2011 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,14 +9,11 @@
 #include <set>
 #include <string>
 
+#include "base/values.h"
 #include "net/base/auth.h"
 #include "net/base/net_export.h"
 
 template <class T> class scoped_refptr;
-
-namespace base {
-class Value;
-}
 
 namespace url {
 class SchemeHostPort;
@@ -29,7 +26,7 @@ class HttpAuthHandlerFactory;
 class HttpResponseHeaders;
 class HostResolver;
 class NetLogWithSource;
-class NetworkIsolationKey;
+class NetworkAnonymizationKey;
 class SSLInfo;
 
 // Utility class for http authentication.
@@ -157,7 +154,7 @@ class NET_EXPORT_PRIVATE HttpAuth {
       AuthorizationResult authorization_result);
 
   // Returns a value for logging an authorization result to a NetLog.
-  static base::Value NetLogAuthorizationResultParams(
+  static base::Value::Dict NetLogAuthorizationResultParams(
       const char* name,
       AuthorizationResult authorization_result);
 
@@ -178,7 +175,7 @@ class NET_EXPORT_PRIVATE HttpAuth {
       HttpAuthHandlerFactory* http_auth_handler_factory,
       const HttpResponseHeaders& response_headers,
       const SSLInfo& ssl_info,
-      const NetworkIsolationKey& network_isolation_key,
+      const NetworkAnonymizationKey& network_anonymization_key,
       Target target,
       const url::SchemeHostPort& scheme_host_port,
       const std::set<Scheme>& disabled_schemes,

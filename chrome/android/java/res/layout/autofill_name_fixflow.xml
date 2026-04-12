@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright 2018 The Chromium Authors. All rights reserved.
-     Use of this source code is governed by a BSD-style license that can be
-     found in the LICENSE file. -->
+<!--
+Copyright 2018 The Chromium Authors
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
@@ -18,7 +20,7 @@
         android:layout_weight="1"
         android:layout_height="wrap_content">
 
-        <!-- TODO(crbug.com/900912): Fix and remove lint ignore -->
+        <!-- TODO(crbug.com/40600572): Fix and remove lint ignore -->
         <EditText
             tools:ignore="Autofill,LabelFor"
             android:id="@+id/cc_name_edit"

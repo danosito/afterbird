@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,8 +17,8 @@ IN_PROC_BROWSER_TEST_F(WasmAppTest, InstantiateWasmFromFetch) {
       LoadExtension(test_data_dir_.AppendASCII("wasm_app"));
   ASSERT_TRUE(extension);
 
-  EXPECT_EQ("success", ExecuteScriptInBackgroundPage(extension->id(),
-                                                     "instantiateFetch()"));
+  EXPECT_EQ("success", ExecuteScriptInBackgroundPageDeprecated(
+                           extension->id(), "instantiateFetch()"));
 }
 
 IN_PROC_BROWSER_TEST_F(WasmAppTest, InstantiateWasmFromArrayBuffer) {
@@ -26,7 +26,7 @@ IN_PROC_BROWSER_TEST_F(WasmAppTest, InstantiateWasmFromArrayBuffer) {
       LoadExtension(test_data_dir_.AppendASCII("wasm_app"));
   ASSERT_TRUE(extension);
 
-  EXPECT_EQ("success", ExecuteScriptInBackgroundPage(
+  EXPECT_EQ("success", ExecuteScriptInBackgroundPageDeprecated(
                            extension->id(), "instantiateArrayBuffer()"));
 }
 

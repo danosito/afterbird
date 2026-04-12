@@ -1,14 +1,15 @@
-/* Copyright 2022 The Chromium Authors. All rights reserved.
+/* Copyright 2022 The Chromium Authors
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file. */
 
 /* #css_wrapper_metadata_start
  * #type=style
- * #import=./shared_vars_css.m.js
+ * #import=./cr_shared_vars.css.js
+ * #scheme=relative
  * #css_wrapper_metadata_end */
 
 .search-bubble {
-  --search-bubble-color: var(--paper-yellow-500);
+  --search-bubble-color: #ffeb3b;  /* --paper-yellow-500 */
   position: absolute;
   z-index: 1;
 }

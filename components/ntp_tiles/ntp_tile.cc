@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,7 +11,7 @@ NTPTile::NTPTile()
 
 NTPTile::NTPTile(const NTPTile&) = default;
 
-NTPTile::~NTPTile() {}
+NTPTile::~NTPTile() = default;
 
 bool operator==(const NTPTile& a, const NTPTile& b) {
   return (a.title == b.title) && (a.url == b.url) && (a.source == b.source) &&

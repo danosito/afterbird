@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,10 +11,6 @@
 #include "content/public/test/test_renderer_host.h"
 #include "extensions/browser/mock_extension_system.h"
 #include "testing/gtest/include/gtest/gtest.h"
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-#include "chromeos/lacros/lacros_test_helper.h"
-#endif
 
 class ExtensionPrefValueMap;
 class PrefService;
@@ -72,6 +68,10 @@ class ExtensionsTest : public testing::Test {
         extension_system_factory_.GetForBrowserContext(browser_context_.get()));
   }
 
+  content::BrowserTaskEnvironment* task_environment() {
+    return task_environment_.get();
+  }
+
   // testing::Test overrides:
   void SetUp() override;
   void TearDown() override;
@@ -81,10 +81,6 @@ class ExtensionsTest : public testing::Test {
   // constructor to initialize all other members out-of-line.
   explicit ExtensionsTest(
       std::unique_ptr<content::BrowserTaskEnvironment> task_environment);
-
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  chromeos::ScopedLacrosServiceTestHelper lacros_service_test_helper_;
-#endif
 
   std::unique_ptr<content::BrowserContext> browser_context_;
   std::unique_ptr<content::BrowserContext> incognito_context_;

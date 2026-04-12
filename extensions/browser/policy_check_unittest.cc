@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -42,8 +42,9 @@ class ManagementPolicyMock : public ManagementPolicy::Provider {
   bool UserMayLoad(const Extension* extension,
                    std::u16string* error) const override {
     EXPECT_EQ(extension_, extension);
-    if (!may_load_)
+    if (!may_load_) {
       *error = kDummyPolicyError;
+    }
     return may_load_;
   }
 

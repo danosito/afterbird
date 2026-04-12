@@ -45,7 +45,7 @@ namespace blink {
 ProcessingInstruction::ProcessingInstruction(Document& document,
                                              const String& target,
                                              const String& data)
-    : CharacterData(document, data, kCreateOther),
+    : CharacterData(document, data, kCreateProcessingInstruction),
       target_(target),
       loading_(false),
       alternate_(false),
@@ -73,14 +73,11 @@ String ProcessingInstruction::nodeName() const {
   return target_;
 }
 
-Node::NodeType ProcessingInstruction::getNodeType() const {
-  return kProcessingInstructionNode;
-}
-
-Node* ProcessingInstruction::Clone(Document& factory, CloneChildrenFlag) const {
+CharacterData* ProcessingInstruction::CloneWithData(Document& factory,
+                                                    const String& data) const {
   // FIXME: Is it a problem that this does not copy local_href_?
   // What about other data members?
-  return MakeGarbageCollected<ProcessingInstruction>(factory, target_, data_);
+  return MakeGarbageCollected<ProcessingInstruction>(factory, target_, data);
 }
 
 void ProcessingInstruction::DidAttributeChanged() {
@@ -114,7 +111,7 @@ bool ProcessingInstruction::CheckStyleSheet(String& href, String& charset) {
   if (i != attrs.end())
     type = i->value;
 
-  is_css_ = type.IsEmpty() || type == "text/css";
+  is_css_ = type.empty() || type == "text/css";
   is_xsl_ = (type == "text/xml" || type == "text/xsl" ||
              type == "application/xml" || type == "application/xhtml+xml" ||
              type == "application/rss+xml" || type == "application/atom+xml");
@@ -133,7 +130,7 @@ bool ProcessingInstruction::CheckStyleSheet(String& href, String& charset) {
   auto it_media = attrs.find("media");
   media_ = it_media != attrs.end() ? it_media->value : "";
 
-  return !alternate_ || !title_.IsEmpty();
+  return !alternate_ || !title_.empty();
 }
 
 void ProcessingInstruction::Process(const String& href, const String& charset) {
@@ -142,7 +139,7 @@ void ProcessingInstruction::Process(const String& href, const String& charset) {
     // We need to make a synthetic XSLStyleSheet that is embedded.
     // It needs to be able to kick off import/include loads that
     // can hang off some parent sheet.
-    if (is_xsl_ && RuntimeEnabledFeatures::XSLTEnabled()) {
+    if (is_xsl_) {
       KURL final_url(local_href_);
       sheet_ = MakeGarbageCollected<XSLStyleSheet>(this, final_url.GetString(),
                                                    final_url, true);
@@ -153,9 +150,6 @@ void ProcessingInstruction::Process(const String& href, const String& charset) {
 
   ClearResource();
 
-  if (is_xsl_ && !RuntimeEnabledFeatures::XSLTEnabled())
-    return;
-
   ResourceLoaderOptions options(GetExecutionContext()->GetCurrentWorld());
   options.initiator_info.name =
       fetch_initiator_type_names::kProcessinginstruction;
@@ -163,13 +157,12 @@ void ProcessingInstruction::Process(const String& href, const String& charset) {
                          options);
   loading_ = true;
   if (is_xsl_) {
-    DCHECK(RuntimeEnabledFeatures::XSLTEnabled());
     params.MutableResourceRequest().SetMode(
         network::mojom::RequestMode::kSameOrigin);
     XSLStyleSheetResource::Fetch(params, GetDocument().Fetcher(), this);
   } else {
-    params.SetCharset(charset.IsEmpty() ? GetDocument().Encoding()
-                                        : WTF::TextEncoding(charset));
+    params.SetCharset(charset.empty() ? GetDocument().Encoding()
+                                      : WTF::TextEncoding(charset));
     GetDocument().GetStyleEngine().AddPendingBlockingSheet(
         *this, PendingSheetType::kBlocking);
     CSSStyleSheetResource::Fetch(params, GetDocument().Fetcher(), this);
@@ -225,7 +218,7 @@ void ProcessingInstruction::NotifyFinished(Resource* resource) {
     auto* css_sheet = MakeGarbageCollected<CSSStyleSheet>(new_sheet, *this);
     css_sheet->setDisabled(alternate_);
     css_sheet->SetTitle(title_);
-    if (!alternate_ && !title_.IsEmpty()) {
+    if (!alternate_ && !title_.empty()) {
       GetDocument().GetStyleEngine().SetPreferredStylesheetSetNameIfNotSet(
           title_);
     }

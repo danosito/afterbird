@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -28,14 +28,13 @@ class HistoryBackendObserver {
 
   virtual ~HistoryBackendObserver() = default;
 
-  // Called when user visits an URL.
+  // Called when the user visits an URL.
   //
-  // The `row` ID will be set to the value that is currently in effect in the
+  // The row IDs will be set to the values that are currently in effect in the
   // main history database.
   virtual void OnURLVisited(HistoryBackend* history_backend,
-                            ui::PageTransition transition,
-                            const URLRow& row,
-                            base::Time visit_time) = 0;
+                            const URLRow& url_row,
+                            const VisitRow& visit_row) = 0;
 
   // Called when a URL has been added or modified.
   //
@@ -56,16 +55,16 @@ class HistoryBackendObserver {
   // `expired` is set to true, if the URL deletion is due to expiration.
   // `deleted_rows` list of the deleted URLs.
   // `favicon_urls` list of favicon URLs that correspond to the deleted URLs.
-  virtual void OnURLsDeleted(HistoryBackend* history_backend,
-                             bool all_history,
-                             bool expired,
-                             const URLRows& deleted_rows,
-                             const std::set<GURL>& favicon_urls) = 0;
+  virtual void OnHistoryDeletions(HistoryBackend* history_backend,
+                                  bool all_history,
+                                  bool expired,
+                                  const URLRows& deleted_rows,
+                                  const std::set<GURL>& favicon_urls) = 0;
 
-  // Called when a visit is updated. Typically this happens when the visit
-  // duration is updated, and in some redirect cases when the transition type
-  // is updated.
-  virtual void OnVisitUpdated(const VisitRow& visit) = 0;
+  // Called when a visit, or some of its annotations, are updated. `reason`
+  // specifies what specifically was updated.
+  virtual void OnVisitUpdated(const VisitRow& visit,
+                              VisitUpdateReason reason) = 0;
 
   // Called when a visit is deleted - usually either due to expiry, or because
   // the user explicitly deleted it.

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,7 +20,6 @@ class ScopedOleInitializer;
 namespace content {
 
 class BrowserMainLoop;
-class NotificationServiceImpl;
 
 class BrowserMainRunnerImpl : public BrowserMainRunner {
  public:
@@ -54,7 +53,6 @@ class BrowserMainRunnerImpl : public BrowserMainRunner {
   std::unique_ptr<base::ThreadPoolInstance::ScopedExecutionFence>
       scoped_execution_fence_;
 
-  std::unique_ptr<NotificationServiceImpl> notification_service_;
   std::unique_ptr<BrowserMainLoop> main_loop_;
 #if BUILDFLAG(IS_WIN)
   std::unique_ptr<ui::ScopedOleInitializer> ole_initializer_;

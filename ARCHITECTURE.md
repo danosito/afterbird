@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Afterbird currently acts as a Chromium/Kiwi source-tracking and patch-integration repository. It is not yet a complete standalone Chromium source tree.
+Afterbird currently acts as a Chromium/Kiwi source-tracking and patch-integration repository. The current branch baseline is Chromium `132.0.6834.83` (from `CHROMIUM_VERSION`), but it is not yet a complete standalone Chromium source tree.
 
 ## Source-Tree Architecture
 
@@ -27,7 +27,7 @@ These are maintained as a selected subset of Chromium/Kiwi files relevant to the
 
 ### 2) Project Control Layer
 
-- `CHROMIUM_VERSION`: Chromium baseline metadata for update/import workflows.
+- `CHROMIUM_VERSION`: Chromium baseline metadata for update/import workflows (currently `132.0.6834.83`).
 - `KIWI_VERSION`: Kiwi baseline metadata.
 - `VERSION`: legacy app version metadata.
 - `README.md`, `CHANGELOG.md`, `AGENTS.md`: repository governance and contributor guidance.
@@ -78,7 +78,7 @@ Result: this repository should currently be treated as source + governance infra
 
 ### Phase 3: Reproducible Build Recovery
 
-- Choose target engine baseline (for example remain on 105 lineage or rebase to newer Chromium branch).
+- Maintain/update target engine baseline (currently Chromium 132 lineage) with explicit integration cadence.
 - Document exact bootstrap process using full Chromium checkout + overlay from this repo.
 - Restore missing `.build/*/args.gn` profiles and deterministic build targets.
 

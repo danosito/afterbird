@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,9 +22,6 @@ class UIThreadSearchTermsData : public SearchTermsData {
   std::string GetApplicationLocale() const override;
   std::u16string GetRlzParameterValue(bool from_app_list) const override;
   std::string GetSearchClient() const override;
-  std::string GetSuggestClient(bool non_searchbox_ntp) const override;
-  std::string GetSuggestRequestIdentifier(
-      bool non_searchbox_ntp) const override;
   std::string GoogleImageSearchSource() const override;
 
 #if BUILDFLAG(IS_ANDROID)

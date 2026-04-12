@@ -1,13 +1,14 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/startup_helper.h"
 
-#include "base/bind.h"
-#include "base/callback_helpers.h"
 #include "base/command_line.h"
 #include "base/files/file_path.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
+#include "base/memory/raw_ref.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
@@ -33,9 +34,11 @@ void PrintPackExtensionMessage(const std::string& message) {
 
 }  // namespace
 
-StartupHelper::StartupHelper() : pack_job_succeeded_(false) {
+StartupHelper::StartupHelper() {
   EnsureExtensionsClientInitialized();
 }
+
+StartupHelper::~StartupHelper() = default;
 
 void StartupHelper::OnPackSuccess(
     const base::FilePath& crx_path,
@@ -49,10 +52,12 @@ void StartupHelper::OnPackSuccess(
 
 void StartupHelper::OnPackFailure(const std::string& error_message,
                                   ExtensionCreator::ErrorType type) {
+  error_message_ = error_message;
   PrintPackExtensionMessage(error_message);
 }
 
-bool StartupHelper::PackExtension(const base::CommandLine& cmd_line) {
+bool StartupHelper::PackExtension(const base::CommandLine& cmd_line,
+                                  std::string* error) {
   if (!cmd_line.HasSwitch(::switches::kPackExtension))
     return false;
 
@@ -72,6 +77,8 @@ bool StartupHelper::PackExtension(const base::CommandLine& cmd_line) {
   pack_job.set_synchronous();
   pack_job.Start();
 
+  if (!pack_job_succeeded_)
+    *error = error_message_;
   return pack_job_succeeded_;
 }
 
@@ -104,11 +111,10 @@ class ValidateCrxHelper : public SandboxedUnpackerClient {
 
   void OnUnpackSuccess(const base::FilePath& temp_dir,
                        const base::FilePath& extension_root,
-                       std::unique_ptr<base::DictionaryValue> original_manifest,
+                       std::unique_ptr<base::Value::Dict> original_manifest,
                        const Extension* extension,
                        const SkBitmap& install_icon,
-                       declarative_net_request::RulesetInstallPrefs
-                           ruleset_install_prefs) override {
+                       base::Value::Dict ruleset_install_prefs) override {
     DCHECK(GetExtensionFileTaskRunner()->RunsTasksInCurrentSequence());
     success_ = true;
     content::GetUIThreadTaskRunner({})->PostTask(
@@ -132,15 +138,15 @@ class ValidateCrxHelper : public SandboxedUnpackerClient {
     DCHECK(GetExtensionFileTaskRunner()->RunsTasksInCurrentSequence());
     auto unpacker = base::MakeRefCounted<SandboxedUnpacker>(
         mojom::ManifestLocation::kInternal, 0, /* no special creation flags */
-        temp_dir_, GetExtensionFileTaskRunner().get(), this);
-    unpacker->StartWithCrx(crx_file_);
+        *temp_dir_, GetExtensionFileTaskRunner().get(), this);
+    unpacker->StartWithCrx(*crx_file_);
   }
 
   // The file being validated.
-  const CRXFileInfo& crx_file_;
+  const raw_ref<const CRXFileInfo> crx_file_;
 
   // The temporary directory where the sandboxed unpacker will do work.
-  const base::FilePath& temp_dir_;
+  const raw_ref<const base::FilePath> temp_dir_;
 
   // Closure called upon completion.
   base::OnceClosure quit_closure_;
@@ -182,7 +188,5 @@ bool StartupHelper::ValidateCrx(const base::CommandLine& cmd_line,
     *error = base::UTF16ToUTF8(helper->error());
   return success;
 }
-
-StartupHelper::~StartupHelper() {}
 
 }  // namespace extensions

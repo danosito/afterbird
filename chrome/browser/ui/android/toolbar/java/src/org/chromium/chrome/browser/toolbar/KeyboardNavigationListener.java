@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,9 +8,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnKeyListener;
 
-/**
- * This is an abstract class to override keyboard navigation behavior for views.
- */
+/** This is an abstract class to override keyboard navigation behavior for views. */
 public abstract class KeyboardNavigationListener implements OnKeyListener {
     public KeyboardNavigationListener() {
         super();

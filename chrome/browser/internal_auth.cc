@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,10 +15,10 @@
 #include "base/check.h"
 #include "base/containers/circular_deque.h"
 #include "base/containers/contains.h"
-#include "base/cxx17_backports.h"
 #include "base/lazy_instance.h"
 #include "base/notreached.h"
 #include "base/rand_util.h"
+#include "base/ranges/algorithm.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -170,23 +170,18 @@ void CreatePassport(const std::string& domain,
       base::WriteInto(&hmac, kHMACSizeInBytes + 1));
   if (!engine->Sign(blob, hmac_data, kHMACSizeInBytes)) {
     NOTREACHED();
-    return;
   }
-  std::string hmac_base64;
-  base::Base64Encode(hmac, &hmac_base64);
+  std::string hmac_base64 = base::Base64Encode(hmac);
   if (hmac_base64.size() != BASE64_PER_RAW(kHMACSizeInBytes)) {
     NOTREACHED();
-    return;
   }
   DCHECK(hmac_base64.size() < result.size());
-  std::copy(hmac_base64.begin(), hmac_base64.end(), result.begin());
+  base::ranges::copy(hmac_base64, result.begin());
 
   std::string tick_decimal = base::NumberToString(tick);
   DCHECK(tick_decimal.size() <= kTickStringLength);
-  std::copy(
-      tick_decimal.begin(),
-      tick_decimal.end(),
-      result.begin() + kPassportSize - tick_decimal.size());
+  base::ranges::copy(tick_decimal,
+                     result.begin() + kPassportSize - tick_decimal.size());
 
   out->swap(result);
 }
@@ -222,7 +217,7 @@ class InternalAuthVerificationService {
       if (key_change_tick_ + get_verification_window_ticks() < tick) {
         return false;
       }
-      if (old_key_.empty() || old_engine_ == NULL)
+      if (old_key_.empty() || old_engine_ == nullptr)
         return false;
       CreatePassport(domain, map, tick, old_engine_.get(), &reference_passport);
       if (passport != reference_passport)
@@ -251,7 +246,7 @@ class InternalAuthVerificationService {
     old_key_.swap(key_);
     key_.clear();
     old_engine_.swap(engine_);
-    engine_.reset(NULL);
+    engine_.reset();
 
     if (key.size() != kKeySizeInBytes)
       return;
@@ -273,13 +268,10 @@ class InternalAuthVerificationService {
   int64_t PreVerifyPassport(const std::string& passport,
                             const std::string& domain,
                             int64_t current_tick) {
-    if (passport.size() != kPassportSize ||
-        !base::IsStringASCII(passport) ||
-        !IsDomainSane(domain) ||
-        current_tick <= dark_tick_ ||
-        current_tick > key_change_tick_  + kKeyRegenerationHardTicks ||
-        key_.empty() ||
-        engine_ == NULL) {
+    if (passport.size() != kPassportSize || !base::IsStringASCII(passport) ||
+        !IsDomainSane(domain) || current_tick <= dark_tick_ ||
+        current_tick > key_change_tick_ + kKeyRegenerationHardTicks ||
+        key_.empty() || engine_ == nullptr) {
       return 0;
     }
 
@@ -357,9 +349,8 @@ class InternalAuthGenerationService : public base::ThreadChecker {
   // Returns zero on failure.
   int64_t GetUnusedTick(const std::string& domain) {
     DCHECK(CalledOnValidThread());
-    if (engine_ == NULL) {
+    if (engine_ == nullptr) {
       NOTREACHED();
-      return 0;
     }
     if (!IsDomainSane(domain))
       return 0;
@@ -395,7 +386,6 @@ class InternalAuthGenerationService : public base::ThreadChecker {
       }
     }
     NOTREACHED();
-    return 0;
   }
 
   std::string GeneratePassport(const std::string& domain,
@@ -456,7 +446,7 @@ int InternalAuthVerification::get_verification_window_ticks() {
   if (verification_window_seconds_ > 0)
     candidate = verification_window_seconds_ *
         base::Time::kMicrosecondsPerSecond / kTickUs;
-  return base::clamp(candidate, 1, kVerificationWindowTicks);
+  return std::clamp(candidate, 1, kVerificationWindowTicks);
 }
 
 int InternalAuthVerification::verification_window_seconds_ = 0;

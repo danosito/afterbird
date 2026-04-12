@@ -1,15 +1,16 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/breadcrumb_manager_browser_agent.h"
+
+#include <optional>
 
 #include "chrome/browser/breadcrumbs/breadcrumb_manager_keyed_service_factory.h"
 #include "chrome/browser/breadcrumbs/breadcrumb_manager_tab_helper.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "components/breadcrumbs/core/breadcrumb_manager_keyed_service.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace {
 
@@ -78,14 +79,14 @@ void BreadcrumbManagerBrowserAgent::OnTabStripModelChanged(
     }
     case TabStripModelChange::kSelectionOnly: {
       if (selection.active_tab_changed()) {
-        absl::optional<int> old_tab_id =
+        std::optional<int> old_tab_id =
             selection.old_contents
-                ? absl::make_optional(GetTabId(selection.old_contents))
-                : absl::nullopt;
-        absl::optional<int> new_tab_id =
+                ? std::make_optional(GetTabId(selection.old_contents))
+                : std::nullopt;
+        std::optional<int> new_tab_id =
             selection.new_contents
-                ? absl::make_optional(GetTabId(selection.new_contents))
-                : absl::nullopt;
+                ? std::make_optional(GetTabId(selection.new_contents))
+                : std::nullopt;
         LogActiveTabChanged(old_tab_id, new_tab_id,
                             selection.new_model.active());
       }

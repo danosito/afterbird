@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,18 +11,18 @@
 #include <stddef.h>
 
 #import "base/mac/scoped_sending_event.h"
-#import "base/message_loop/message_pump_mac.h"
+#import "base/message_loop/message_pump_apple.h"
 
-@interface BrowserCrApplication : NSApplication<CrAppProtocol,
-                                                CrAppControlProtocol> {
- @private
-  BOOL _handlingSendEvent;
-}
+@interface BrowserCrApplication
+    : NSApplication <CrAppProtocol, CrAppControlProtocol>
 
 // Our implementation of |-terminate:| only attempts to terminate the
 // application, i.e., begins a process which may lead to termination. This
 // method cancels that process.
 - (void)cancelTerminate:(id)sender;
+
+- (BOOL)voiceOverStateForTesting;
+
 @end
 
 #endif  // __OBJC__
@@ -31,6 +31,9 @@ namespace chrome_browser_application_mac {
 
 // To be used to instantiate BrowserCrApplication from C++ code.
 void RegisterBrowserCrApp();
+
+// Provide additional initialization for headless mode from C++ code.
+void InitializeHeadlessMode();
 
 // Calls -[NSApp terminate:].
 void Terminate();

@@ -1,8 +1,10 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser;
+
+import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 
 import static org.chromium.chrome.browser.base.SplitCompatApplication.CHROME_SPLIT_NAME;
 
@@ -10,24 +12,38 @@ import android.app.ActivityManager.TaskDescription;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
-import android.content.res.Resources;
-import android.graphics.BitmapFactory;
 import android.os.Build;
+import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewStub;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.LinearLayout.LayoutParams;
 
 import androidx.annotation.CallSuper;
+import androidx.annotation.IntDef;
+import androidx.annotation.LayoutRes;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.annotation.StyleRes;
+import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.color.DynamicColors;
 
+import org.chromium.base.BuildInfo;
 import org.chromium.base.BundleUtils;
+import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.supplier.ObservableSupplier;
 import org.chromium.base.supplier.ObservableSupplierImpl;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.base.ServiceTracingProxyProvider;
 import org.chromium.chrome.browser.base.SplitChromeApplication;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.language.GlobalAppLocaleController;
@@ -35,10 +51,20 @@ import org.chromium.chrome.browser.metrics.UmaSessionStats;
 import org.chromium.chrome.browser.night_mode.GlobalNightModeStateProviderHolder;
 import org.chromium.chrome.browser.night_mode.NightModeStateProvider;
 import org.chromium.chrome.browser.night_mode.NightModeUtils;
-import org.chromium.chrome.browser.theme.ThemeUtils;
+import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
+import org.chromium.components.browser_ui.edge_to_edge.EdgeToEdgeManager;
+import org.chromium.components.browser_ui.edge_to_edge.EdgeToEdgeStateProvider;
+import org.chromium.components.browser_ui.edge_to_edge.layout.EdgeToEdgeLayoutCoordinator;
+import org.chromium.components.browser_ui.util.AutomotiveUtils;
+import org.chromium.ui.InsetObserver;
+import org.chromium.ui.base.ImmutableWeakReference;
+import org.chromium.ui.display.DisplaySwitches;
+import org.chromium.ui.display.DisplayUtil;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modaldialog.ModalDialogManagerHolder;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.LinkedHashSet;
 
 /**
@@ -47,10 +73,43 @@ import java.util.LinkedHashSet;
  */
 public class ChromeBaseAppCompatActivity extends AppCompatActivity
         implements NightModeStateProvider.Observer, ModalDialogManagerHolder {
+    /**
+     * Chrome in automotive needs a persistent back button toolbar above all activities because
+     * AAOS/cars do not have a built in back button. This is implemented differently in each
+     * activity.
+     *
+     * Activities that use the <merge> tag or delay layout inflation cannot use WITH_TOOLBAR_VIEW.
+     * Activities that appear as Dialogs using themes do not have an automotive toolbar yet (NONE).
+     *
+     * Full screen alert dialogs display the automotive toolbar using FullscreenAlertDialog.
+     * Full screen dialogs display the automotive toolbar using ChromeDialog.
+     */
+    @IntDef({
+        AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW,
+        AutomotiveToolbarImplementation.NONE,
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    protected @interface AutomotiveToolbarImplementation {
+        /**
+         * Automotive toolbar is added by including the original layout into a bigger LinearLayout
+         * that has a Toolbar View, see
+         * R.layout.automotive_layout_with_horizontal_back_button_toolbar and
+         * R.layout.automotive_layout_with_vertical_back_button_toolbar.
+         */
+        int WITH_TOOLBAR_VIEW = 0;
+
+        /** Automotive toolbar is not added. */
+        int NONE = -1;
+    }
+
     private final ObservableSupplierImpl<ModalDialogManager> mModalDialogManagerSupplier =
             new ObservableSupplierImpl<>();
     private NightModeStateProvider mNightModeStateProvider;
     private LinkedHashSet<Integer> mThemeResIds = new LinkedHashSet<>();
+    private ServiceTracingProxyProvider mServiceTracingProxyProvider;
+    private InsetObserver mInsetObserver;
+    private EdgeToEdgeStateProvider mEdgeToEdgeStateProvider;
+    private EdgeToEdgeLayoutCoordinator mEdgeToEdgeLayoutCoordinator;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -62,16 +121,25 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
         Context appContext = ContextUtils.getApplicationContext();
         if (!chromeModuleClassLoader.equals(appContext.getClassLoader())) {
             // This should only happen on Android O. See crbug.com/1146745 for more info.
-            throw new IllegalStateException("ClassLoader mismatch detected.\nA: "
-                    + chromeModuleClassLoader + "\nB: " + appContext.getClassLoader()
-                    + "\nC: " + chromeModuleClassLoader.getParent()
-                    + "\nD: " + appContext.getClassLoader().getParent() + "\nE: " + appContext);
+            throw new IllegalStateException(
+                    "ClassLoader mismatch detected.\nA: "
+                            + chromeModuleClassLoader
+                            + "\nB: "
+                            + appContext.getClassLoader()
+                            + "\nC: "
+                            + chromeModuleClassLoader.getParent()
+                            + "\nD: "
+                            + appContext.getClassLoader().getParent()
+                            + "\nE: "
+                            + appContext);
         }
         // If ClassLoader was corrected by SplitCompatAppComponentFactory, also need to correct
         // the reference in the associated Context.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             BundleUtils.checkContextClassLoader(newBase, this);
         }
+
+        mServiceTracingProxyProvider = ServiceTracingProxyProvider.create(newBase);
 
         mNightModeStateProvider = createNightModeStateProvider();
 
@@ -88,17 +156,27 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         BundleUtils.restoreLoadedSplits(savedInstanceState);
+
+        mEdgeToEdgeStateProvider = new EdgeToEdgeStateProvider(getWindow());
         mModalDialogManagerSupplier.set(createModalDialogManager());
 
         initializeNightModeStateProvider();
         mNightModeStateProvider.addObserver(this);
-        super.onCreate(savedInstanceState);
+
+        // onCreate may initialize some views, need to apply themes before that can happen.
         applyThemeOverlays();
+        super.onCreate(savedInstanceState);
 
         // Activity level locale overrides must be done in onCreate.
         GlobalAppLocaleController.getInstance().maybeOverrideContextConfig(this);
 
         setDefaultTaskDescription();
+
+        mInsetObserver = createInsetObserver();
+        if (EdgeToEdgeUtils.isEdgeToEdgeEverywhereEnabled()) {
+            mEdgeToEdgeLayoutCoordinator = getEdgeToEdgeLayoutCoordinator();
+        }
+        new EdgeToEdgeManager(mEdgeToEdgeStateProvider, supportsEdgeToEdge());
     }
 
     @Override
@@ -107,6 +185,10 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
         if (mModalDialogManagerSupplier.get() != null) {
             mModalDialogManagerSupplier.get().destroy();
             mModalDialogManagerSupplier.set(null);
+        }
+        if (mEdgeToEdgeLayoutCoordinator != null) {
+            mEdgeToEdgeLayoutCoordinator.destroy();
+            mEdgeToEdgeLayoutCoordinator = null;
         }
         super.onDestroy();
     }
@@ -127,9 +209,32 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
     }
 
     @Override
+    protected void onRestoreInstanceState(@Nullable Bundle state) {
+        if (state != null) {
+            // Ensure that classes from previously loaded splits can be read from the bundle.
+            // https://crbug.com/1382227
+            ClassLoader splitClassLoader = BundleUtils.getSplitCompatClassLoader();
+            state.setClassLoader(splitClassLoader);
+            // See: https://cs.android.com/search?q=Activity.java%20symbol:onRestoreInstanceState
+            Bundle windowState = state.getBundle("android:viewHierarchyState");
+            if (windowState != null) {
+                windowState.setClassLoader(splitClassLoader);
+            }
+        }
+        super.onRestoreInstanceState(state);
+    }
+
+    @Override
     public void setTheme(@StyleRes int resid) {
         super.setTheme(resid);
         mThemeResIds.add(resid);
+    }
+
+    @Override
+    @RequiresApi(Build.VERSION_CODES.O)
+    public void onMultiWindowModeChanged(boolean inMultiWindowMode, Configuration configuration) {
+        super.onMultiWindowModeChanged(inMultiWindowMode, configuration);
+        onMultiWindowModeChanged(inMultiWindowMode);
     }
 
     @Override
@@ -164,24 +269,56 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
      * Creates a {@link ModalDialogManager} for this class. Subclasses that need one should override
      * this method.
      */
-    @Nullable
-    protected ModalDialogManager createModalDialogManager() {
+    protected @Nullable ModalDialogManager createModalDialogManager() {
         return null;
+    }
+
+    private EdgeToEdgeLayoutCoordinator getEdgeToEdgeLayoutCoordinator() {
+        if (mEdgeToEdgeLayoutCoordinator == null) {
+            mEdgeToEdgeLayoutCoordinator = new EdgeToEdgeLayoutCoordinator(this, mInsetObserver);
+        }
+        return mEdgeToEdgeLayoutCoordinator;
+    }
+
+    /** Returns whether this activity should draw its content edge-to-edge by default. */
+    protected boolean supportsEdgeToEdge() {
+        return EdgeToEdgeUtils.isEdgeToEdgeEverywhereEnabled();
+    }
+
+    /**
+     * Returns true if the content hosted by this activity should fit within the window insets, or
+     * false if the content can extend beyond the insets and draw edge-to-edge.
+     */
+    protected boolean shouldContentFitWindowInsets() {
+        return supportsEdgeToEdge();
     }
 
     /**
      * Called during {@link #attachBaseContext(Context)} to allow configuration overrides to be
-     * applied. If this methods return true, the overrides will be applied using
-     * {@link #applyOverrideConfiguration(Configuration)}.
+     * applied. If this methods return true, the overrides will be applied using {@link
+     * #applyOverrideConfiguration(Configuration)}.
+     *
      * @param baseContext The base {@link Context} attached to this class.
-     * @param overrideConfig The {@link Configuration} that will be passed to
-     *                       @link #applyOverrideConfiguration(Configuration)} if necessary.
+     * @param overrideConfig The {@link Configuration} that will be passed to {@link}
+     *     #applyOverrideConfiguration(Configuration)} if necessary.
      * @return True if any configuration overrides were applied, and false otherwise.
      */
     @CallSuper
     protected boolean applyOverrides(Context baseContext, Configuration overrideConfig) {
+        applyOverridesForAutomotive(baseContext, overrideConfig);
         return NightModeUtils.applyOverridesForNightMode(
                 getNightModeStateProvider(), overrideConfig);
+    }
+
+    @VisibleForTesting
+    static void applyOverridesForAutomotive(Context baseContext, Configuration overrideConfig) {
+        if (BuildInfo.getInstance().isAutomotive) {
+            DisplayUtil.scaleUpConfigurationForAutomotive(baseContext, overrideConfig);
+
+            // Enable web ui scaling for automotive devices.
+            CommandLine.getInstance()
+                    .appendSwitch(DisplaySwitches.AUTOMOTIVE_WEB_UI_SCALE_UP_ENABLED);
+        }
     }
 
     /**
@@ -206,65 +343,46 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
      */
     protected void initializeNightModeStateProvider() {}
 
-    /**
-     * Apply theme overlay to this activity class.
-     */
+    /** Apply theme overlay to this activity class. */
     @CallSuper
     protected void applyThemeOverlays() {
-        setTheme(R.style.ColorOverlay_ChromiumAndroid);
+        // Note that if you're adding new overlays here, it's quite likely they're needed
+        // in org.chromium.chrome.browser.WarmupManager#applyContextOverrides for Custom Tabs
+        // UI that's pre-inflated using a themed application context as part of CCT warmup.
+        // Note: this should be called before any calls to `Window#getDecorView`.
+        DynamicColors.applyToActivityIfAvailable(this);
 
-        if (supportsDynamicColors()) {
-            DynamicColors.applyIfAvailable(this);
+        DeferredStartupHandler.getInstance()
+                .addDeferredTask(
+                        () -> {
+                            // #registerSyntheticFieldTrial requires native.
+                            boolean isDynamicColorAvailable =
+                                    DynamicColors.isDynamicColorAvailable();
+                            RecordHistogram.recordBooleanHistogram(
+                                    "Android.DynamicColors.IsAvailable", isDynamicColorAvailable);
+                            UmaSessionStats.registerSyntheticFieldTrial(
+                                    "IsDynamicColorAvailable",
+                                    isDynamicColorAvailable ? "Enabled" : "Disabled");
+                        });
+
+        if (ChromeFeatureList.sAndroidElegantTextHeight.isEnabled()) {
+            int elegantTextHeightOverlay = R.style.ThemeOverlay_BrowserUI_ElegantTextHeight;
+            getTheme().applyStyle(elegantTextHeightOverlay, true);
+            mThemeResIds.add(elegantTextHeightOverlay);
         }
-        DeferredStartupHandler.getInstance().addDeferredTask(() -> {
-            // #registerSyntheticFieldTrial requires native.
-            boolean isDynamicColorAvailable = DynamicColors.isDynamicColorAvailable();
-            RecordHistogram.recordBooleanHistogram(
-                    "Android.DynamicColors.IsAvailable", isDynamicColorAvailable);
-            UmaSessionStats.registerSyntheticFieldTrial(
-                    "IsDynamicColorAvailable", isDynamicColorAvailable ? "Enabled" : "Disabled");
-        });
 
-        // Try to enable browser overscroll when content overscroll is enabled for consistency. This
-        // needs to be in a cached feature because activity startup happens before native is
-        // initialized. Unfortunately content overscroll is read in renderer threads, and these two
-        // are not synchronized. Typically the first time overscroll is enabled, the following will
-        // use the old value and then content will pick up the enabled value, causing one execution
-        // of inconsistency.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                && !ChromeFeatureList.sElasticOverscroll.isEnabled()) {
-            setTheme(R.style.ThemeOverlay_DisableOverscroll);
-        }
-
-        // We apply an extra theme overlay to override some of the dynamic colors. For example,
-        // android:textColorHighlight is overridden by dynamic colors, preventing us from specifying
-        // the alpha for the selected text highlight. In this case, the overridden colors should
-        // still use dynamic colors, as in the android:textColorHighlight example where we use a
-        // color state list that depends on colorPrimary.
-        setTheme(R.style.ThemeOverlay_DynamicColorOverrides);
-
-        if (ChromeFeatureList.sDynamicColorButtonsAndroid.isEnabled()) {
-            setTheme(R.style.ThemeOverlay_DynamicButtons);
+        if (Build.VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
+            int defaultFontFamilyOverlay =
+                    R.style.ThemeOverlay_BrowserUI_DefaultFontFamilyThemeOverlay;
+            getTheme().applyStyle(defaultFontFamilyOverlay, true);
+            mThemeResIds.add(defaultFontFamilyOverlay);
         }
     }
 
-    /**
-     * Returns whether the activity supports dynamic colors. For most activities this is only true
-     * if full dynamic colors are enabled.
-     */
-    protected boolean supportsDynamicColors() {
-        return ThemeUtils.ENABLE_FULL_DYNAMIC_COLORS.getValue();
-    }
-
-    /**
-     * Sets the default task description that will appear in the recents UI.
-     */
+    /** Sets the default task description that will appear in the recents UI. */
     protected void setDefaultTaskDescription() {
-        final Resources res = getResources();
         final TaskDescription taskDescription =
-                new TaskDescription(res.getString(R.string.app_name),
-                        BitmapFactory.decodeResource(res, R.mipmap.app_icon),
-                        res.getColor(R.color.default_task_description_color));
+                new TaskDescription(null, null, getColor(R.color.default_task_description_color));
         setTaskDescription(taskDescription);
     }
 
@@ -274,11 +392,156 @@ public class ChromeBaseAppCompatActivity extends AppCompatActivity
         if (!isFinishing()) recreate();
     }
 
-    /**
-     * Required to make preference fragments use InMemorySharedPreferences in tests.
-     */
+    /** Required to make preference fragments use InMemorySharedPreferences in tests. */
     @Override
     public SharedPreferences getSharedPreferences(String name, int mode) {
         return ContextUtils.getApplicationContext().getSharedPreferences(name, mode);
+    }
+
+    // Note that we do not need to (and can't) override getSystemService(Class<T>) as internally
+    // that just gets the name of the Service and calls getSystemService(String) for backwards
+    // compatibility with overrides like this one.
+    @Override
+    public Object getSystemService(String name) {
+        Object service = super.getSystemService(name);
+        if (mServiceTracingProxyProvider != null) {
+            mServiceTracingProxyProvider.traceSystemServices();
+        }
+        return service;
+    }
+
+    /**
+     * Set the back button in the automotive toolbar to perform an Android system level back.
+     *
+     * This toolbar will be used to do things like exit fullscreen YouTube videos because AAOS/cars
+     * don't have a built in back button
+     */
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            getOnBackPressedDispatcher().onBackPressed();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void setContentView(@LayoutRes int layoutResID) {
+        if (BuildInfo.getInstance().isAutomotive
+                && getAutomotiveToolbarImplementation()
+                        == AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW) {
+            super.setContentView(AutomotiveUtils.getAutomotiveLayoutWithBackButtonToolbar(this));
+            setAutomotiveToolbarBackButtonAction();
+            ViewStub stub = findViewById(R.id.original_layout);
+            stub.setLayoutResource(layoutResID);
+            stub.inflate();
+        } else if (shouldContentFitWindowInsets()) {
+            FrameLayout baseLayout = new FrameLayout(this);
+            super.setContentView(getEdgeToEdgeLayoutCoordinator().wrapContentView(baseLayout));
+            getLayoutInflater().inflate(layoutResID, baseLayout, /* attachToRoot= */ true);
+        } else {
+            super.setContentView(layoutResID);
+        }
+    }
+
+    @Override
+    public void setContentView(View view) {
+        if (BuildInfo.getInstance().isAutomotive
+                && getAutomotiveToolbarImplementation()
+                        == AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW) {
+            super.setContentView(AutomotiveUtils.getAutomotiveLayoutWithBackButtonToolbar(this));
+            setAutomotiveToolbarBackButtonAction();
+            LinearLayout linearLayout = findViewById(R.id.automotive_base_linear_layout);
+            linearLayout.addView(view, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+        } else if (shouldContentFitWindowInsets()) {
+            super.setContentView(getEdgeToEdgeLayoutCoordinator().wrapContentView(view));
+        } else {
+            super.setContentView(view);
+        }
+    }
+
+    @Override
+    public void setContentView(View view, ViewGroup.LayoutParams params) {
+        if (BuildInfo.getInstance().isAutomotive
+                && getAutomotiveToolbarImplementation()
+                        == AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW) {
+            super.setContentView(AutomotiveUtils.getAutomotiveLayoutWithBackButtonToolbar(this));
+            setAutomotiveToolbarBackButtonAction();
+            LinearLayout linearLayout = findViewById(R.id.automotive_base_linear_layout);
+            linearLayout.setLayoutParams(params);
+            linearLayout.addView(view, LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+        } else if (shouldContentFitWindowInsets()) {
+            super.setContentView(getEdgeToEdgeLayoutCoordinator().wrapContentView(view, params));
+        } else {
+            super.setContentView(view, params);
+        }
+    }
+
+    @Override
+    public void addContentView(View view, ViewGroup.LayoutParams params) {
+        if (BuildInfo.getInstance().isAutomotive
+                && params.width == MATCH_PARENT
+                && params.height == MATCH_PARENT) {
+            ViewGroup automotiveLayout =
+                    (ViewGroup)
+                            getLayoutInflater()
+                                    .inflate(
+                                            AutomotiveUtils
+                                                    .getAutomotiveLayoutWithBackButtonToolbar(this),
+                                            null);
+            super.addContentView(
+                    automotiveLayout, new LinearLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
+            setAutomotiveToolbarBackButtonAction();
+            automotiveLayout.addView(view, params);
+        } else if (shouldContentFitWindowInsets()) {
+            super.setContentView(getEdgeToEdgeLayoutCoordinator().wrapContentView(view, params));
+        } else {
+            super.addContentView(view, params);
+        }
+    }
+
+    protected int getAutomotiveToolbarImplementation() {
+        int activityStyle = -1;
+        try {
+            activityStyle =
+                    getPackageManager().getActivityInfo(getComponentName(), 0).getThemeResource();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (activityStyle == R.style.Theme_Chromium_DialogWhenLarge) {
+            return AutomotiveToolbarImplementation.NONE;
+        } else {
+            return AutomotiveToolbarImplementation.WITH_TOOLBAR_VIEW;
+        }
+    }
+
+    /**
+     * Returns the {@link EdgeToEdgeStateProvider} for checking and requesting changes to the
+     * edge-to-edge state.
+     */
+    protected EdgeToEdgeStateProvider getEdgeToEdgeStateProvider() {
+        return mEdgeToEdgeStateProvider;
+    }
+
+    /** Returns the {@link InsetObserver} for observing changes to the system insets. */
+    protected InsetObserver getInsetObserver() {
+        assert mInsetObserver != null
+                : "The inset observer should not be accessed before being initialized.";
+        return mInsetObserver;
+    }
+
+    private InsetObserver createInsetObserver() {
+        return new InsetObserver(
+                new ImmutableWeakReference<>(getWindow().getDecorView().getRootView()));
+    }
+
+    private void setAutomotiveToolbarBackButtonAction() {
+        Toolbar backButtonToolbarForAutomotive = findViewById(R.id.back_button_toolbar);
+        if (backButtonToolbarForAutomotive != null) {
+            backButtonToolbarForAutomotive.setNavigationOnClickListener(
+                    backButtonClick -> {
+                        getOnBackPressedDispatcher().onBackPressed();
+                    });
+        }
     }
 }

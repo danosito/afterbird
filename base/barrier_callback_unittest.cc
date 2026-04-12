@@ -1,11 +1,11 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "base/barrier_callback.h"
 
-#include "base/bind.h"
-#include "base/callback.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/bind.h"
 #include "base/test/gtest_util.h"
@@ -15,7 +15,7 @@
 namespace {
 
 TEST(BarrierCallbackTest, RunsImmediatelyForZeroCallbacks) {
-  bool done = true;
+  bool done = false;
   auto barrier_callback = base::BarrierCallback<int>(
       0, base::BindLambdaForTesting([&done](std::vector<int> results) {
         EXPECT_THAT(results, testing::IsEmpty());

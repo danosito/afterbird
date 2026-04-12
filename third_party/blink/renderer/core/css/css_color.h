@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,8 +20,7 @@ namespace cssvalue {
 // Represents the non-keyword subset of <color>.
 class CORE_EXPORT CSSColor : public CSSValue {
  public:
-  // TODO(sashab): Make this create() method take a Color instead.
-  static CSSColor* Create(RGBA32 color);
+  static CSSColor* Create(const Color& color);
 
   CSSColor(Color color) : CSSValue(kColorClass), color_(color) {}
 
@@ -30,6 +29,7 @@ class CORE_EXPORT CSSColor : public CSSValue {
   Color Value() const { return color_; }
 
   bool Equals(const CSSColor& other) const { return color_ == other.color_; }
+  unsigned CustomHash() const { return color_.GetHash(); }
 
   void TraceAfterDispatch(blink::Visitor* visitor) const {
     CSSValue::TraceAfterDispatch(visitor);

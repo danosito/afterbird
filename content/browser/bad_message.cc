@@ -1,11 +1,11 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "content/browser/bad_message.h"
 
-#include "base/bind.h"
 #include "base/debug/dump_without_crashing.h"
+#include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_number_conversions.h"
@@ -67,10 +67,12 @@ void ReceivedBadMessage(int render_process_id, BadMessageReason reason) {
   ReceivedBadMessageOnUIThread(render_process_id, reason);
 }
 
+#if BUILDFLAG(CONTENT_ENABLE_LEGACY_IPC)
 void ReceivedBadMessage(BrowserMessageFilter* filter, BadMessageReason reason) {
   LogBadMessage(reason);
   filter->ShutdownForBadMessage();
 }
+#endif
 
 base::debug::CrashKeyString* GetRequestedSiteInfoKey() {
   static auto* const crash_key = base::debug::AllocateCrashKeyString(

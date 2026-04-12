@@ -1,4 +1,4 @@
-// Copyright (c) 2006-2008 The Chromium Authors. All rights reserved.
+// Copyright 2006-2008 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,9 +18,9 @@ static const size_t kResizeBigTransitionListTo = 64;
 static_assert(kResizeBigTransitionListTo < kMaxItemsInTransitionList,
               "maxium number of items must be larger than we are resizing to");
 
-VisitTracker::VisitTracker() {}
+VisitTracker::VisitTracker() = default;
 
-VisitTracker::~VisitTracker() {}
+VisitTracker::~VisitTracker() = default;
 
 // This function is potentially slow because it may do up to two brute-force
 // searches of the transitions list. This transitions list is kept to a

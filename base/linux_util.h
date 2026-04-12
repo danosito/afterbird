@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -36,6 +36,14 @@ BASE_EXPORT void SetLinuxDistro(const std::string& distro);
 // For a given process |pid|, get a list of all its threads. On success, returns
 // true and appends the list of threads to |tids|. Otherwise, returns false.
 BASE_EXPORT bool GetThreadsForProcess(pid_t pid, std::vector<pid_t>* tids);
+
+// Get a list of all threads for the current process. On success, returns true
+// and appends the list of threads to |tids|. Otherwise, returns false.
+// Unlike the function above, this function reads /proc/self/tasks, not
+// /proc/<pid>/tasks. On Android, the former should always be accessible to
+// GPU and Browser processes, while the latter may or may not be accessible
+// depending on the system and the app configuration.
+BASE_EXPORT bool GetThreadsForCurrentProcess(std::vector<pid_t>* tids);
 
 // For a given process |pid|, look through all its threads and find the first
 // thread with /proc/[pid]/task/[thread_id]/syscall whose first N bytes matches

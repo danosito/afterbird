@@ -51,10 +51,11 @@
 namespace cc {
 class AnimationHost;
 class AnimationTimeline;
-class ScrollbarLayerBase;
+class SolidColorScrollbarLayer;
 }
 
 namespace blink {
+
 enum class PaintPropertyChangeType : unsigned char;
 class EffectPaintPropertyNode;
 class GraphicsContext;
@@ -66,6 +67,8 @@ class ScrollPaintPropertyNode;
 class TracedValue;
 class TransformPaintPropertyNode;
 struct PaintPropertyTreeBuilderFragmentContext;
+
+enum class OverscrollType { kNone, kTransform };
 
 // Represents the visual viewport the user is currently seeing the page through.
 // This class corresponds to the InnerViewport on the compositor. It is a
@@ -91,7 +94,6 @@ struct PaintPropertyTreeBuilderFragmentContext;
 //           +- scroll_translation_node_ (scroll: scroll_node_)
 // Effect tree:
 //  parent effect state
-//  +- overscroll_elasticity_effect_node_
 //  +- horizontal_scrollbar_effect_node_
 //  +- vertical_scrollbar_effect_node_
 //
@@ -145,6 +147,8 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   float Scale() const { return scale_; }
   bool IsPinchGestureActive() const { return is_pinch_gesture_active_; }
 
+  PhysicalOffset LocalToScrollOriginOffset() const final;
+
   // Convert the given rect in the main LocalFrameView's coordinates into a rect
   // in the viewport. The given and returned rects are in CSS pixels, meaning
   // scale isn't applied.
@@ -185,16 +189,17 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   // ScrollableArea implementation
   ChromeClient* GetChromeClient() const override;
   SmoothScrollSequencer* GetSmoothScrollSequencer() const override;
-  void SetScrollOffset(const ScrollOffset&,
+  bool SetScrollOffset(const ScrollOffset&,
                        mojom::blink::ScrollType,
                        mojom::blink::ScrollBehavior,
                        ScrollCallback on_finish) override;
-  void SetScrollOffset(const ScrollOffset&,
+  bool SetScrollOffset(const ScrollOffset&,
                        mojom::blink::ScrollType,
                        mojom::blink::ScrollBehavior =
                            mojom::blink::ScrollBehavior::kInstant) override;
   PhysicalRect ScrollIntoView(
       const PhysicalRect&,
+      const PhysicalBoxStrut& scroll_margin,
       const mojom::blink::ScrollIntoViewParamsPtr&) override;
   bool IsThrottled() const override {
     // VisualViewport is always in the main frame, so the frame does not get
@@ -206,12 +211,13 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   bool IsScrollCornerVisible() const override { return false; }
   gfx::Rect ScrollCornerRect() const override { return gfx::Rect(); }
   gfx::Vector2d ScrollOffsetInt() const override {
-    return gfx::ToFlooredVector2d(offset_);
+    return SnapScrollOffsetToPhysicalPixels(offset_);
   }
   ScrollOffset GetScrollOffset() const override { return offset_; }
   gfx::Vector2d MinimumScrollOffsetInt() const override;
   gfx::Vector2d MaximumScrollOffsetInt() const override;
   ScrollOffset MaximumScrollOffset() const override;
+  ScrollOffset MaximumScrollOffsetAtScale(float scale) const;
   // Note: Because scrollbars are conceptually owned by the LayoutView,
   // ContentsSize includes the main frame's scrollbars. This is necessary for
   // correct cc Layer sizing.
@@ -235,7 +241,7 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
       IncludeScrollbarsInRect = kExcludeScrollbars) const override;
   scoped_refptr<base::SingleThreadTaskRunner> GetTimerTaskRunner()
       const override;
-  mojom::blink::ColorScheme UsedColorScheme() const override;
+  mojom::blink::ColorScheme UsedColorSchemeScrollbars() const override;
   ScrollbarTheme& GetPageScrollbarTheme() const override;
   bool VisualViewportSuppliesScrollbars() const override;
   const Document* GetDocument() const override;
@@ -257,21 +263,18 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   double VisibleWidthCSSPx() const;
   double VisibleHeightCSSPx() const;
 
-  // Used for gathering data on user pinch-zoom statistics.
-  void UserDidChangeScale();
-  void SendUMAMetrics();
-  void StartTrackingPinchStats();
-
   // Heuristic-based function for determining if we should disable workarounds
   // for viewing websites that are not optimized for mobile devices.
   bool ShouldDisableDesktopWorkarounds() const;
 
-  TransformPaintPropertyNode* GetDeviceEmulationTransformNode() const;
-  TransformPaintPropertyNode* GetOverscrollElasticityTransformNode() const;
-  EffectPaintPropertyNode* GetOverscrollElasticityEffectNode() const;
-  TransformPaintPropertyNode* GetPageScaleNode() const;
-  TransformPaintPropertyNode* GetScrollTranslationNode() const;
-  ScrollPaintPropertyNode* GetScrollNode() const;
+  const TransformPaintPropertyNode* GetDeviceEmulationTransformNode() const;
+  const TransformPaintPropertyNode* GetOverscrollElasticityTransformNode()
+      const;
+  const TransformPaintPropertyNode* GetPageScaleNode() const;
+  const TransformPaintPropertyNode* GetScrollTranslationNode() const;
+  const ScrollPaintPropertyNode* GetScrollNode() const;
+
+  const TransformPaintPropertyNode* TransformNodeForViewportScrollbars() const;
 
   // Create/update the page scale translation, viewport scroll, and viewport
   // translation property nodes. Returns the maximum paint property change
@@ -293,6 +296,7 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   void Paint(GraphicsContext&) const;
 
   void UsedColorSchemeChanged();
+  void ScrollbarColorChanged();
 
   // Returns whether this VisualViewport is "active", that is, whether it'll
   // affect paint property trees. If false, this renderer cannot be
@@ -300,9 +304,17 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   //
   // A VisualViewport is created in renderers for remote frames / nested pages;
   // however, in those cases it is "inert", it cannot change scale or location
-  // values. Only a <portal> or outermost main frame can have an active
-  // viewport.
+  // values. Only an outermost main frame can have an active viewport.
   bool IsActiveViewport() const;
+
+  OverscrollType GetOverscrollType() const { return overscroll_type_; }
+  void SetOverscrollTypeForTesting(OverscrollType type) {
+    overscroll_type_ = type;
+    SetNeedsPaintPropertyUpdate();
+  }
+  std::optional<blink::Color> CSSScrollbarThumbColor() const;
+
+  void DropCompositorScrollDeltaNextCommit() override;
 
  private:
   bool DidSetScaleOrLocation(float scale,
@@ -317,6 +329,7 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   EScrollbarWidth CSSScrollbarWidth() const;
   int ScrollbarThickness() const;
   void UpdateScrollbarLayer(ScrollbarOrientation);
+  void UpdateScrollbarColor(cc::SolidColorScrollbarLayer&);
 
   void NotifyRootFrameViewport() const;
 
@@ -344,19 +357,18 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   Member<Page> page_;
 
   scoped_refptr<cc::Layer> scroll_layer_;
-  scoped_refptr<cc::ScrollbarLayerBase> scrollbar_layer_horizontal_;
-  scoped_refptr<cc::ScrollbarLayerBase> scrollbar_layer_vertical_;
+  scoped_refptr<cc::SolidColorScrollbarLayer> scrollbar_layer_horizontal_;
+  scoped_refptr<cc::SolidColorScrollbarLayer> scrollbar_layer_vertical_;
 
-  PropertyTreeStateOrAlias parent_property_tree_state_;
-  scoped_refptr<TransformPaintPropertyNode> device_emulation_transform_node_;
-  scoped_refptr<TransformPaintPropertyNode>
-      overscroll_elasticity_transform_node_;
-  scoped_refptr<TransformPaintPropertyNode> page_scale_node_;
-  scoped_refptr<TransformPaintPropertyNode> scroll_translation_node_;
-  scoped_refptr<ScrollPaintPropertyNode> scroll_node_;
-  scoped_refptr<EffectPaintPropertyNode> overscroll_elasticity_effect_node_;
-  scoped_refptr<EffectPaintPropertyNode> horizontal_scrollbar_effect_node_;
-  scoped_refptr<EffectPaintPropertyNode> vertical_scrollbar_effect_node_;
+  TraceablePropertyTreeStateOrAlias parent_property_tree_state_{
+      TraceablePropertyTreeStateOrAlias::kUninitialized};
+  Member<TransformPaintPropertyNode> device_emulation_transform_node_;
+  Member<TransformPaintPropertyNode> overscroll_elasticity_transform_node_;
+  Member<TransformPaintPropertyNode> page_scale_node_;
+  Member<TransformPaintPropertyNode> scroll_translation_node_;
+  Member<ScrollPaintPropertyNode> scroll_node_;
+  Member<EffectPaintPropertyNode> horizontal_scrollbar_effect_node_;
+  Member<EffectPaintPropertyNode> vertical_scrollbar_effect_node_;
 
   // Offset of the visual viewport from the main frame's origin, in CSS pixels.
   ScrollOffset offset_;
@@ -378,20 +390,15 @@ class CORE_EXPORT VisualViewport : public GarbageCollected<VisualViewport>,
   // they expand or shrink the visible content height.
   float browser_controls_adjustment_;
 
-  // The maximum page scale the user has zoomed to on the current page. Used
-  // only to report statistics about pinch-zoom usage.
-  float max_page_scale_;
-  bool track_pinch_zoom_stats_for_page_;
-
   // For page scale animation on page_scale_node_.
   CompositorElementId page_scale_element_id_;
   // For scrolling, on scroll_layer_, scroll_node_, and scroll element ids of
   // scrollbar layers.
   CompositorElementId scroll_element_id_;
-  // For overscroll elasticity.
-  CompositorElementId elasticity_effect_node_id_;
 
   bool needs_paint_property_update_;
+
+  OverscrollType overscroll_type_;
 };
 
 }  // namespace blink

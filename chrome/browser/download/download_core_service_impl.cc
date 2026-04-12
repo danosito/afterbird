@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,10 +6,11 @@
 
 #include <memory>
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/download/chrome_download_manager_delegate.h"
+#include "chrome/browser/download/download_core_service.h"
 #include "chrome/browser/download/download_history.h"
 #include "chrome/browser/download/download_offline_content_provider.h"
 #include "chrome/browser/download/download_offline_content_provider_factory.h"
@@ -94,6 +95,10 @@ DownloadCoreServiceImpl::GetDownloadManagerDelegate() {
   return manager_delegate_.get();
 }
 
+DownloadUIController* DownloadCoreServiceImpl::GetDownloadUIController() {
+  return download_ui_ ? download_ui_.get() : nullptr;
+}
+
 DownloadHistory* DownloadCoreServiceImpl::GetDownloadHistory() {
   if (!download_manager_created_) {
     GetDownloadManagerDelegate();
@@ -113,22 +118,28 @@ bool DownloadCoreServiceImpl::HasCreatedDownloadManager() {
   return download_manager_created_;
 }
 
-int DownloadCoreServiceImpl::NonMaliciousDownloadCount() const {
+int DownloadCoreServiceImpl::BlockingShutdownCount() const {
   if (!download_manager_created_)
     return 0;
-  return profile_->GetDownloadManager()->NonMaliciousInProgressCount();
+  return profile_->GetDownloadManager()->BlockingShutdownCount();
 }
 
-void DownloadCoreServiceImpl::CancelDownloads() {
-  if (!download_manager_created_)
+void DownloadCoreServiceImpl::CancelDownloads(
+    DownloadCoreService::CancelDownloadsTrigger trigger) {
+  if (!download_manager_created_) {
     return;
+  }
 
   DownloadManager* download_manager = profile_->GetDownloadManager();
   DownloadManager::DownloadVector downloads;
   download_manager->GetAllDownloads(&downloads);
-  for (auto it = downloads.begin(); it != downloads.end(); ++it) {
-    if ((*it)->GetState() == download::DownloadItem::IN_PROGRESS)
-      (*it)->Cancel(false);
+  for (auto& download : downloads) {
+    if (download->GetState() == download::DownloadItem::IN_PROGRESS) {
+      download->Cancel(/*user_cancel=*/false);
+      if (trigger == DownloadCoreService::CancelDownloadsTrigger::kShutdown) {
+        manager_delegate_->OnDownloadCanceledAtShutdown(download);
+      }
+    }
   }
 }
 

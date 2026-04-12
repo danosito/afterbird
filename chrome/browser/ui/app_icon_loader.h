@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -49,7 +49,7 @@ class AppIconLoader {
   AppIconLoaderDelegate* delegate() { return delegate_; }
 
  private:
-  const raw_ptr<Profile> profile_ = nullptr;
+  const raw_ptr<Profile, DanglingUntriaged> profile_ = nullptr;
   const int icon_size_in_dip_ = 0;
 
   // The delegate object which receives the icon images. No ownership.

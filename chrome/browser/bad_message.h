@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,6 @@
 #define CHROME_BROWSER_BAD_MESSAGE_H_
 
 namespace content {
-class BrowserMessageFilter;
 class RenderProcessHost;
 }
 
@@ -31,6 +30,7 @@ enum BadMessageReason {
   PVM_SCRIPTED_PRINT_FENCED_FRAME = 7,
   PVMB_SCRIPTED_PRINT_FENCED_FRAME = 8,
   SSI_CREATE_FENCED_FRAME = 9,
+  CCU_SUPERFLUOUS_BIND = 10,
 
   // Please add new elements here. The naming convention is abbreviated class
   // name (e.g. RenderFrameHost becomes RFH) plus a unique description of the
@@ -43,12 +43,6 @@ enum BadMessageReason {
 // the UI thread. Logs the event, records a histogram metric for the |reason|,
 // and terminates the process for |host|.
 void ReceivedBadMessage(content::RenderProcessHost* host,
-                        BadMessageReason reason);
-
-// Called when a browser message filter receives a bad IPC message from a
-// renderer or other child process. Logs the event, records a histogram metric
-// for the |reason|, and terminates the process for |filter|.
-void ReceivedBadMessage(content::BrowserMessageFilter* filter,
                         BadMessageReason reason);
 
 }  // namespace bad_message

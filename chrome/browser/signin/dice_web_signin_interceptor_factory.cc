@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,7 +19,8 @@ DiceWebSigninInterceptor* DiceWebSigninInterceptorFactory::GetForProfile(
 //  static
 DiceWebSigninInterceptorFactory*
 DiceWebSigninInterceptorFactory::GetInstance() {
-  return base::Singleton<DiceWebSigninInterceptorFactory>::get();
+  static base::NoDestructor<DiceWebSigninInterceptorFactory> instance;
+  return instance.get();
 }
 
 DiceWebSigninInterceptorFactory::DiceWebSigninInterceptorFactory()
@@ -34,9 +35,10 @@ void DiceWebSigninInterceptorFactory::RegisterProfilePrefs(
   DiceWebSigninInterceptor::RegisterProfilePrefs(registry);
 }
 
-KeyedService* DiceWebSigninInterceptorFactory::BuildServiceInstanceFor(
+std::unique_ptr<KeyedService>
+DiceWebSigninInterceptorFactory::BuildServiceInstanceForBrowserContext(
     content::BrowserContext* context) const {
-  return new DiceWebSigninInterceptor(
+  return std::make_unique<DiceWebSigninInterceptor>(
       Profile::FromBrowserContext(context),
       std::make_unique<DiceWebSigninInterceptorDelegate>());
 }

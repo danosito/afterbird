@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -27,98 +27,91 @@ public class LoadProgressMediator {
     private final PropertyModel mModel;
     private final CurrentTabObserver mTabObserver;
     private final LoadProgressSimulator mLoadProgressSimulator;
-    private final boolean mIsStartSurfaceEnabled;
     private boolean mPreventUpdates;
 
     /**
      * @param tabSupplier An observable supplier of the current {@link Tab}.
      * @param model MVC property model instance used for load progress bar.
-     * @param isStartSurfaceEnabled Whether start surface is enabled via a feature flag.
      */
-    public LoadProgressMediator(@NonNull ObservableSupplier<Tab> tabSupplier,
-            @NonNull PropertyModel model, boolean isStartSurfaceEnabled) {
+    public LoadProgressMediator(
+            @NonNull ObservableSupplier<Tab> tabSupplier, @NonNull PropertyModel model) {
         mModel = model;
         mLoadProgressSimulator = new LoadProgressSimulator(model);
-        mIsStartSurfaceEnabled = isStartSurfaceEnabled;
-        mTabObserver = new CurrentTabObserver(tabSupplier, new EmptyTabObserver() {
-            @Override
-            public void onDidStartNavigation(Tab tab, NavigationHandle navigation) {
-                if (navigation.isSameDocument() || !navigation.isInPrimaryMainFrame()) {
-                    return;
-                }
+        mTabObserver =
+                new CurrentTabObserver(
+                        tabSupplier,
+                        new EmptyTabObserver() {
+                            @Override
+                            public void onDidStartNavigationInPrimaryMainFrame(
+                                    Tab tab, NavigationHandle navigation) {
+                                if (navigation.isSameDocument()) {
+                                    return;
+                                }
 
-                if (NativePage.isNativePageUrl(navigation.getUrl(), tab.isIncognito())) {
-                    finishLoadProgress(false);
-                    return;
-                }
+                                if (NativePage.isNativePageUrl(
+                                        navigation.getUrl(),
+                                        tab.isIncognito(),
+                                        navigation.isPdf())) {
+                                    finishLoadProgress(false);
+                                    return;
+                                }
 
-                if ((tab.getUrl().getSpec().contains("https://search.kiwibrowser.org/"))
-                 || (tab.getUrl().getSpec().contains("https://bsearch.kiwibrowser.org/"))
-                 || (tab.getUrl().getSpec().contains("https://ysearch.kiwibrowser.org/"))
-                 || (tab.getUrl().getSpec().contains("https://kiwisearchservices.com/"))
-                 || (tab.getUrl().getSpec().contains("https://www.kiwisearchservices.com/"))
-                 || (tab.getUrl().getSpec().contains("https://kiwisearchservices.net/"))
-                 || (tab.getUrl().getSpec().contains("https://www.kiwisearchservices.net/")))
-                   return;
+                                mLoadProgressSimulator.cancel();
+                                startLoadProgress();
+                                updateLoadProgress(tab.getProgress());
+                            }
 
-                mLoadProgressSimulator.cancel();
-                startLoadProgress();
-                updateLoadProgress(tab.getProgress());
-            }
+                            @Override
+                            public void onLoadStopped(Tab tab, boolean toDifferentDocument) {
+                                if (!toDifferentDocument) return;
 
-            @Override
-            public void onLoadStopped(Tab tab, boolean toDifferentDocument) {
-                if (!toDifferentDocument) return;
+                                // If we made some progress, fast-forward to complete, otherwise
+                                // just dismiss any MINIMUM_LOAD_PROGRESS that had been set.
+                                if (tab.getProgress() > MINIMUM_LOAD_PROGRESS
+                                        && tab.getProgress() < 1) {
+                                    updateLoadProgress(1.0f);
+                                }
+                                finishLoadProgress(true);
+                            }
 
-                // If we made some progress, fast-forward to complete, otherwise just dismiss any
-                // MINIMUM_LOAD_PROGRESS that had been set.
-                if (tab.getProgress() > MINIMUM_LOAD_PROGRESS && tab.getProgress() < 1) {
-                    updateLoadProgress(1.0f);
-                }
-                finishLoadProgress(true);
-            }
+                            @Override
+                            public void onLoadProgressChanged(Tab tab, float progress) {
+                                if (tab.getUrl() == null
+                                        || UrlUtilities.isNtpUrl(tab.getUrl())
+                                        || NativePage.isNativePageUrl(
+                                                tab.getUrl(),
+                                                tab.isIncognito(),
+                                                tab.isNativePage()
+                                                        && tab.getNativePage().isPdf())) {
+                                    return;
+                                }
 
-            @Override
-            public void onLoadProgressChanged(Tab tab, float progress) {
-                if (tab.getUrl() == null || UrlUtilities.isNTPUrl(tab.getUrl())
-                        || NativePage.isNativePageUrl(tab.getUrl(), tab.isIncognito())) {
-                    return;
-                }
+                                updateLoadProgress(progress);
+                            }
 
-                if ((tab.getUrl().getSpec().contains("https://search.kiwibrowser.org/") && progress >= MINIMUM_LOAD_PROGRESS)
-                 || (tab.getUrl().getSpec().contains("https://bsearch.kiwibrowser.org/") && progress >= MINIMUM_LOAD_PROGRESS)
-                 || (tab.getUrl().getSpec().contains("https://ysearch.kiwibrowser.org/") && progress >= MINIMUM_LOAD_PROGRESS)
-                 || (tab.getUrl().getSpec().contains("https://kiwisearchservices.com/") && progress >= MINIMUM_LOAD_PROGRESS)
-                 || (tab.getUrl().getSpec().contains("https://www.kiwisearchservices.com/") && progress >= MINIMUM_LOAD_PROGRESS)
-                 || (tab.getUrl().getSpec().contains("https://kiwisearchservices.net/") && progress >= MINIMUM_LOAD_PROGRESS)
-                 || (tab.getUrl().getSpec().contains("https://www.kiwisearchservices.net/") && progress >= MINIMUM_LOAD_PROGRESS))
-                    progress = MINIMUM_LOAD_PROGRESS;
+                            @Override
+                            public void onWebContentsSwapped(
+                                    Tab tab, boolean didStartLoad, boolean didFinishLoad) {
+                                // If loading both started and finished before we swapped in the
+                                // WebContents, we won't get any load progress signals. Otherwise,
+                                // we should receive at least one real signal so we don't need to
+                                // simulate them.
+                                if (didStartLoad && didFinishLoad && !mPreventUpdates) {
+                                    mLoadProgressSimulator.start();
+                                }
+                            }
 
-                updateLoadProgress(progress);
-            }
-
-            @Override
-            public void onWebContentsSwapped(Tab tab, boolean didStartLoad, boolean didFinishLoad) {
-                // If loading both started and finished before we swapped in the WebContents, we
-                // won't get any load progress signals. Otherwise, we should receive at least one
-                // real signal so we don't need to simulate them.
-                if (didStartLoad && didFinishLoad && !mPreventUpdates) {
-                    mLoadProgressSimulator.start();
-                }
-            }
-
-            @Override
-            public void onCrash(Tab tab) {
-                finishLoadProgress(false);
-            }
-        }, this::onNewTabObserved);
+                            @Override
+                            public void onCrash(Tab tab) {
+                                finishLoadProgress(false);
+                            }
+                        },
+                        this::onNewTabObserved);
 
         onNewTabObserved(tabSupplier.get());
     }
 
-    /**
-     * Simulates progressbar being filled over a short time.
-     */
+    /** Simulates progressbar being filled over a short time. */
     void simulateLoadProgressCompletion() {
         mLoadProgressSimulator.start();
     }
@@ -134,14 +127,14 @@ public class LoadProgressMediator {
 
     private void onNewTabObserved(Tab tab) {
         if (tab == null) {
-            // If start surface is enabled and new tab is null, then new tab is home page or tab
-            // switcher. Finish progress bar loading.
-            if (mIsStartSurfaceEnabled) finishLoadProgress(false);
             return;
         }
 
         if (tab.isLoading()) {
-            if (NativePage.isNativePageUrl(tab.getUrl(), tab.isIncognito())) {
+            if (NativePage.isNativePageUrl(
+                    tab.getUrl(),
+                    tab.isIncognito(),
+                    tab.isNativePage() && tab.getNativePage().isPdf())) {
                 finishLoadProgress(false);
             } else {
                 startLoadProgress();
@@ -169,8 +162,10 @@ public class LoadProgressMediator {
     private void finishLoadProgress(boolean animateCompletion) {
         mLoadProgressSimulator.cancel();
         @CompletionState
-        int completionState = animateCompletion ? CompletionState.FINISHED_DO_ANIMATE
-                                                : CompletionState.FINISHED_DONT_ANIMATE;
+        int completionState =
+                animateCompletion
+                        ? CompletionState.FINISHED_DO_ANIMATE
+                        : CompletionState.FINISHED_DONT_ANIMATE;
         mModel.set(LoadProgressProperties.COMPLETION_STATE, completionState);
     }
 

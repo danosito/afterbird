@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright 2011 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,7 +31,7 @@ class FilePath;
 
 class BASE_EXPORT FileVersionInfo {
  public:
-  virtual ~FileVersionInfo() {}
+  virtual ~FileVersionInfo() = default;
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE)
   // Creates a FileVersionInfo for the specified path. Returns nullptr if
   // something goes wrong (typically the file does not exit or cannot be

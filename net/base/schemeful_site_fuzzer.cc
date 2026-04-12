@@ -1,17 +1,18 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/base/schemeful_site.h"
 
 #include <stdlib.h>
+
 #include <iostream>
+#include <optional>
 #include <string>
 
 #include "testing/libfuzzer/proto/lpm_interface.h"
 #include "testing/libfuzzer/proto/url.pb.h"
 #include "testing/libfuzzer/proto/url_proto_converter.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -31,7 +32,7 @@ DEFINE_PROTO_FUZZER(const url_proto::Url& url_message) {
 
   net::SchemefulSite site(origin);
 
-  absl::optional<net::SchemefulSite> site_with_registrable_domain =
+  std::optional<net::SchemefulSite> site_with_registrable_domain =
       net::SchemefulSite::CreateIfHasRegisterableDomain(origin);
 
   if (site_with_registrable_domain) {

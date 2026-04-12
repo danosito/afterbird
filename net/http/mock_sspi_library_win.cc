@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright 2010 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -88,9 +88,9 @@ struct MockContext {
 
   std::string ToString() const {
     return base::StringPrintf(
-        "%s's token #%d for %S",
+        "%s's token #%d for %s",
         base::UTF16ToUTF8(credential->source_principal).c_str(), rounds + 1,
-        base::as_wcstr(target_principal));
+        base::UTF16ToUTF8(target_principal).c_str());
   }
 
   static MockContext* FromHandle(PCtxtHandle handle) {

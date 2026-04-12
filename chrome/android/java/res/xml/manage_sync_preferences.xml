@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright 2019 The Chromium Authors. All rights reserved.
-     Use of this source code is governed by a BSD-style license that can be
-     found in the LICENSE file. -->
+<!--
+Copyright 2019 The Chromium Authors
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
 
 <PreferenceScreen
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -59,6 +61,11 @@
     <org.chromium.components.browser_ui.settings.ChromeBaseCheckBoxPreference
         android:key="sync_settings"
         android:title="@string/sync_settings"
+        android:persistent="false"/>
+
+    <org.chromium.components.browser_ui.settings.ChromeBaseCheckBoxPreference
+        android:key="sync_apps"
+        android:title="@string/sync_apps"
         android:persistent="false"/>
 
     <org.chromium.components.browser_ui.settings.ChromeBasePreference

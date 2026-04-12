@@ -1,11 +1,11 @@
-// Copyright 2022 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CONTENT_BROWSER_NETWORK_SANDBOX_H_
 #define CONTENT_BROWSER_NETWORK_SANDBOX_H_
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 
 // As of 2022-03 there is no plan to sandbox the network service in any special

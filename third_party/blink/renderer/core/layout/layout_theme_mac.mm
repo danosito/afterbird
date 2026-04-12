@@ -40,11 +40,12 @@ Color GetSystemColor(MacSystemColorID color_id,
   // here instead if forced colors mode is enabled.
 
   // In tests, a WebSandboxSupport may not be set up. Just return a dummy
-  // color, in this case, black.
+  // color, in this case opaque black.
   auto* sandbox_support = Platform::Current()->GetSandboxSupport();
   if (!sandbox_support)
-    return Color();
-  return sandbox_support->GetSystemColor(color_id, color_scheme);
+    return Color(0, 0, 0, 255);
+  return Color::FromSkColor(
+      sandbox_support->GetSystemColor(color_id, color_scheme));
 }
 }
 
@@ -85,45 +86,49 @@ Color LayoutThemeMac::PlatformGrammarMarkerUnderlineColor() const {
 
 bool LayoutThemeMac::IsAccentColorCustomized(
     mojom::blink::ColorScheme color_scheme) const {
-  if (@available(macOS 10.14, *)) {
-    static const Color kControlBlueAccentColor =
-        GetSystemColor(MacSystemColorID::kControlAccentBlueColor, color_scheme);
-    if (kControlBlueAccentColor ==
-        GetSystemColor(MacSystemColorID::kControlAccentColor, color_scheme)) {
-      return false;
-    }
-  } else {
-    NSInteger user_custom_color = [[NSUserDefaults standardUserDefaults]
-        integerForKey:@"AppleAquaColorVariant"];
-    if (user_custom_color == NSBlueControlTint ||
-        user_custom_color == NSDefaultControlTint) {
-      return false;
-    }
+  static const Color kControlBlueAccentColor =
+      GetSystemColor(MacSystemColorID::kControlAccentBlueColor, color_scheme);
+  if (kControlBlueAccentColor ==
+      GetSystemColor(MacSystemColorID::kControlAccentColor, color_scheme)) {
+    return false;
   }
+
   return true;
 }
 
-Color LayoutThemeMac::GetAccentColor(
+Color LayoutThemeMac::GetSystemAccentColor(
     mojom::blink::ColorScheme color_scheme) const {
-  if (@available(macOS 10.14, *)) {
-    return GetSystemColor(MacSystemColorID::kControlAccentColor, color_scheme);
-  } else {
-    return static_cast<RGBA32>([[NSUserDefaults standardUserDefaults]
-        integerForKey:@"AppleAquaColorVariant"]);
+  return GetSystemColor(MacSystemColorID::kControlAccentColor, color_scheme);
+}
+
+Color LayoutThemeMac::SystemHighlightFromColorProvider(
+    mojom::blink::ColorScheme color_scheme,
+    const ui::ColorProvider* color_provider) const {
+  SkColor system_highlight_color =
+      color_provider->GetColor(ui::kColorCssSystemHighlight);
+  Color color = Color::FromSkColor(system_highlight_color);
+  // BlendWithWhite() darkens Mac system colors too much.
+  // Apply .8 (204/255) alpha instead, same as Safari.
+  if (color_scheme == mojom::blink::ColorScheme::kDark) {
+    return Color(color.Red(), color.Green(), color.Blue(), 204);
   }
+
+  return color.BlendWithWhite();
 }
 
 Color LayoutThemeMac::GetCustomFocusRingColor(
     mojom::blink::ColorScheme color_scheme) const {
   return color_scheme == mojom::blink::ColorScheme::kDark
-             ? SkColorSetRGB(0x99, 0xC8, 0xFF)
+             ? Color::FromRGB(0x99, 0xC8, 0xFF)
              : LayoutTheme::GetCustomFocusRingColor();
 }
 
 Color LayoutThemeMac::FocusRingColor(
     mojom::blink::ColorScheme color_scheme) const {
-  static const RGBA32 kDefaultFocusRingColorLight = 0xFF101010;
-  static const RGBA32 kDefaultFocusRingColorDark = 0xFF99C8FF;
+  const Color kDefaultFocusRingColorLight =
+      Color::FromRGBA(0x10, 0x10, 0x10, 0xFF);
+  const Color kDefaultFocusRingColorDark =
+      Color::FromRGBA(0x99, 0xC8, 0xFF, 0xFF);
   if (UsesTestModeFocusRingColor()) {
     return HasCustomFocusRingColor()
                ? GetCustomFocusRingColor(color_scheme)
@@ -134,14 +139,15 @@ Color LayoutThemeMac::FocusRingColor(
 
   if (ui::NativeTheme::GetInstanceForWeb()->UserHasContrastPreference()) {
     // When high contrast is enabled, #101010 should be used.
-    return Color(0xFF101010);
+    return Color::FromRGBA(0x10, 0x10, 0x10, 0xFF);
   }
 
-  SkColor keyboard_focus_indicator = SkColor(
-      GetSystemColor(MacSystemColorID::kKeyboardFocusIndicator, color_scheme));
-  Color focus_ring =
+  SkColor4f keyboard_focus_indicator =
+      GetSystemColor(MacSystemColorID::kKeyboardFocusIndicator, color_scheme)
+          .toSkColor4f();
+  Color focus_ring = Color::FromSkColor4f(
       ui::NativeTheme::GetInstanceForWeb()->FocusRingColorForBaseColor(
-          keyboard_focus_indicator);
+          keyboard_focus_indicator));
 
   if (!HasCustomFocusRingColor())
     return focus_ring;

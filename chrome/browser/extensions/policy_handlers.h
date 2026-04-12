@@ -1,11 +1,15 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_EXTENSIONS_POLICY_HANDLERS_H_
 #define CHROME_BROWSER_EXTENSIONS_POLICY_HANDLERS_H_
 
+#include <optional>
+
 #include "base/values.h"
+#include "build/build_config.h"
+#include "build/chromeos_buildflags.h"
 #include "components/policy/core/browser/configuration_policy_handler.h"
 
 namespace policy {
@@ -36,7 +40,7 @@ class ExtensionListPolicyHandler : public policy::ListPolicyHandler {
   bool CheckListEntry(const base::Value& value) override;
 
   // Sets |prefs| at pref_path() to |filtered_list|.
-  void ApplyList(base::Value filtered_list, PrefValueMap* prefs) override;
+  void ApplyList(base::Value::List filtered_list, PrefValueMap* prefs) override;
 
  private:
   const char* pref_path_;
@@ -44,6 +48,10 @@ class ExtensionListPolicyHandler : public policy::ListPolicyHandler {
 };
 
 // Class for parsing the list of extensions to force install.
+//
+// On ChromeOS the policy values will be filtered before updating the prefs,
+// such that the prefs on Ash only contain the extensions that must be force
+// installed on Ash.
 class ExtensionInstallForceListPolicyHandler
     : public policy::TypeCheckingPolicyHandler {
  public:
@@ -60,11 +68,39 @@ class ExtensionInstallForceListPolicyHandler
   void ApplyPolicySettings(const policy::PolicyMap& policies,
                            PrefValueMap* prefs) override;
 
+  // Returns a `base::Value::Dict` with the extensions that must be force
+  // installed.
+  //
+  // Returns nullopt if the policy is unset.
+  std::optional<base::Value::Dict> GetPolicyDict(
+      const policy::PolicyMap& policy_map);
+
  private:
   // Parses the data in |policy_value| and writes them to |extension_dict|.
   bool ParseList(const base::Value* policy_value,
-                 base::DictionaryValue* extension_dict,
+                 base::Value::Dict* extension_dict,
                  policy::PolicyErrorMap* errors);
+};
+
+// Class for parsing the list of extensions that are blocklisted.
+class ExtensionInstallBlockListPolicyHandler
+    : public policy::ConfigurationPolicyHandler {
+ public:
+  ExtensionInstallBlockListPolicyHandler();
+  ExtensionInstallBlockListPolicyHandler(
+      const ExtensionInstallBlockListPolicyHandler&) = delete;
+  ExtensionInstallBlockListPolicyHandler& operator=(
+      const ExtensionInstallBlockListPolicyHandler&) = delete;
+  ~ExtensionInstallBlockListPolicyHandler() override;
+
+  // `ConfigurationPolicyHandler`:
+  bool CheckPolicySettings(const policy::PolicyMap& policies,
+                           policy::PolicyErrorMap* errors) override;
+  void ApplyPolicySettings(const policy::PolicyMap& policies,
+                           PrefValueMap* prefs) override;
+
+ private:
+  ExtensionListPolicyHandler list_handler_;
 };
 
 // Implements additional checks for policies that are lists of extension

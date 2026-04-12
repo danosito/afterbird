@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright 2011 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,8 @@
 #include <urlmon.h>
 #include <wrl/client.h>
 
+#include "base/debug/crash_logging.h"
+#include "base/debug/dump_without_crashing.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "base/strings/string_util.h"
@@ -100,7 +102,9 @@ bool URLSecurityManagerWin::CanUseDefaultCredentials(
       // TODO(wtc): we should fail the authentication.
       return false;
     default:
-      NOTREACHED();
+      LOG(ERROR) << "Unexpected policy: " << policy;
+      SCOPED_CRASH_KEY_NUMBER("CanUseDefaultCredentials", "policy", policy);
+      base::debug::DumpWithoutCrashing();
       return false;
   }
 }

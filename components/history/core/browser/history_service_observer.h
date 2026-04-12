@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,45 +26,47 @@ class HistoryServiceObserver {
 
   virtual ~HistoryServiceObserver() = default;
 
-  // Called when a new visit is added to History. This happens in two scenarios:
+  // Called when a `new_visit` is added to History. This happens in two
+  // scenarios:
   //  1. User makes a new visit on the local device.
   //  2. Sync brings a visit from a different device onto the local device.
   //     Notably, this is called for each visit brought over.
   //
-  // The values in `row` are set to what is cuurrently in the history database.
-  //
-  // TODO(crbug.com/1345274): We should either add a parameter to this method,
-  // or wholly merge this with `OnURLsModified` before enabling Full History
-  // Sync, as this will start to get called way more often.
+  // The values in `url_row` and `new_visit` are set to what is currently in the
+  // history database.
   virtual void OnURLVisited(HistoryService* history_service,
-                            ui::PageTransition transition,
-                            const URLRow& row,
-                            base::Time visit_time) {}
+                            const URLRow& url_row,
+                            const VisitRow& new_visit) {}
 
-  // Called when a `URLRow` is modified without necessarily having a new visit.
-  // This happens in these scenarios:
+  // Same as above, but including the navigation_id from the underlying
+  // `content::NavigationHandle`. Observers only need to override `OnURLVisited`
+  // or `OnNavigationURLVisited`, but not both.
+  virtual void OnURLVisitedWithNavigationId(
+      HistoryService* history_service,
+      const URLRow& url_row,
+      const VisitRow& new_visit,
+      std::optional<int64_t> local_navigation_id) {}
+
+  // Called when a URL has a metadata-only update. In situations where a URL has
+  // a metadata-only update AND new visits, both `OnURLsModified` and
+  // `OnURLVisited` will be called. Therefore observers that only care about new
+  // visits should only override `OnURLVisited`.
+  //
+  // These metadata-only updates happen in these scenarios:
   //  1. When the Page Title is updated shortly after the page loads.
-  //  2. When `TypedURLSyncBridge` updates the `URLRow` data. This often happens
-  //     in addition to adding new visits, so `OnURLVisited` will be called too.
-  //  3. When History expiration expires some, but not all visits related to
+  //  2. When History expiration expires some, but not all visits related to
   //     a URL. In that case, the URL's metadata is updated.
   //
   // `changed_urls` lists the information for each of the URLs affected. The
   // rows will have the IDs that are currently in effect in the main history
   // database.
-  //
-  // TODO(crbug.com/1345274): The differences between this and `OnURLVisited`
-  // are pretty deep into the implementation of History, and we may be forcing
-  // observers to think too hard. Many observers simply map both calls to the
-  // same on-changed code. Consider merging this with `OnURLVisited`.
   virtual void OnURLsModified(HistoryService* history_service,
                               const URLRows& changed_urls) {}
 
-  // Called when one or more URLs are deleted.
-  //
-  // `deletion_info` describes the urls that have been removed from history.
-  virtual void OnURLsDeleted(HistoryService* history_service,
-                             const DeletionInfo& deletion_info) {}
+  // Called when one or more URLs and/or Visits are deleted.
+  // `deletion_info` describes all the deletions that have occurred.
+  virtual void OnHistoryDeletions(HistoryService* history_service,
+                                  const DeletionInfo& deletion_info) {}
 
   // Is called to notify when `history_service` has finished loading.
   virtual void OnHistoryServiceLoaded(HistoryService* history_service) {}
@@ -85,13 +87,6 @@ class HistoryServiceObserver {
   // `url_id` is the id of the url row.
   virtual void OnKeywordSearchTermDeleted(HistoryService* history_service,
                                           URLID url_id) {}
-
-  // Called when content model annotation is modified for a url.
-  // `url_id` is the id of the url row.
-  virtual void OnContentModelAnnotationModified(
-      HistoryService* history_service,
-      const URLRow& row,
-      const VisitContentModelAnnotations& model_annotations) {}
 };
 
 }  // namespace history

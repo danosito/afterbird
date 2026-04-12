@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -92,4 +92,16 @@ public interface Toolbar {
      * @param isReloading Whether or not the page is loading.
      */
     void updateReloadButtonVisibility(boolean isReloading);
+
+    /**
+     * Updates the visibility of the toolbar hairline.
+     * @param isVisible whether or not the hairline should be visible.
+     * */
+    void setBrowsingModeHairlineVisibility(boolean isVisible);
+
+    /**
+     * Returns whether the ToolbarLayout is visible. The ToolbarLayout might be gone when the Start
+     * surface's toolbar is showing.
+     */
+    boolean isBrowsingModeToolbarVisible();
 }

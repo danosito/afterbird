@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,12 +25,7 @@ IN_PROC_BROWSER_TEST_F(CalculatorBrowserTest, Model) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(),
                                            net::FilePathToFileURL(test_file)));
 
-  bool success;
-  bool executed = content::ExecuteScriptAndExtractBool(
-      browser()->tab_strip_model()->GetActiveWebContents(),
-      "window.domAutomationController.send(window.runTests().success)",
-      &success);
-
-  ASSERT_TRUE(executed);
-  ASSERT_TRUE(success);
+  ASSERT_EQ(true, content::EvalJs(
+                      browser()->tab_strip_model()->GetActiveWebContents(),
+                      "window.runTests().success"));
 }
