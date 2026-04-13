@@ -88,5 +88,6 @@ Until those are formalized, treat this repository as a source-tracking and patch
 ## License
 
 Top-level project license: BSD 3-Clause (see `LICENSE`).
-Imported Chromium and third-party components may retain their own notices in
-file headers and third-party metadata.
+This repository also includes inherited Kiwi-layer provenance and imported
+Chromium/third-party components that may retain their own notices in file
+headers, history, and third-party metadata.
