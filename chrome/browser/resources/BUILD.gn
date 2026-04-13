@@ -150,7 +150,7 @@ group("resources") {
     public_deps += [ "tab_strip:resources" ]
   }
 
-  if (enable_extensions) {
+  if (enable_extensions || enable_desktop_android_extensions) {
     public_deps += [ "extensions:resources" ]
   }
 

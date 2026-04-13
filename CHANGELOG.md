@@ -91,3 +91,4 @@ All notable changes to this repository are documented in this file.
 - Registered InspectUIConfig and extensions::ExtensionsUIConfig at startup for Android desktop-extensions mode so chrome://inspect/#devices and chrome://extensions no longer fall through to ERR_INVALID_URL in runtime checks.
 - Added android-side compilation of webui/inspect_ui and webui/extensions/extensions_ui when enable_desktop_android_extensions is enabled, fixing libchrome__combined.so linker errors for InspectUI and ExtensionsUIConfig.
 - Enabled component_extension_resources generation and dependency wiring for Android desktop-extensions mode, so chrome/grit/extensions_resources*.h is available during extensions WebUI compilation.
+- Enabled chrome/browser/resources/extensions WebUI resource generation for desktop-android extensions mode (without full enable_extensions), wiring extensions:resources into chrome/browser/resources so chrome/grit/extensions_resources*.h is produced.
