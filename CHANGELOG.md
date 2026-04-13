@@ -93,3 +93,4 @@ All notable changes to this repository are documented in this file.
 - Enabled component_extension_resources generation and dependency wiring for Android desktop-extensions mode, so chrome/grit/extensions_resources*.h is available during extensions WebUI compilation.
 - Enabled chrome/browser/resources/extensions WebUI resource generation for desktop-android extensions mode (without full enable_extensions), wiring extensions:resources into chrome/browser/resources so chrome/grit/extensions_resources*.h is produced.
 - Made chrome/browser/resources/extensions TypeScript deps Android-safe by excluding managed_footnote:build_ts under is_android, resolving gn assert failures in desktop-extensions mode.
+- Enabled desktop-android extensions mode to include Polymer-era WebUI TypeScript surfaces in //ui/webui/resources/js and //ui/webui/resources/cr_elements, so //chrome/browser/resources/extensions:build_ts can resolve chrome://resources module imports on Android.
