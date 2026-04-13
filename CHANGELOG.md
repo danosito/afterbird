@@ -72,3 +72,4 @@ All notable changes to this repository are documented in this file.
 - Added a default `TabList#getLastNonExtensionActiveIndex()` implementation (`return index();`) to keep Android tabmodel implementations source-compatible while extension-tab specific overrides are absent in some Chromium paths.
 - Fixed Android full-build compile stop in `extensions/common/command.cc` by mapping `BUILDFLAG(IS_ANDROID)` to Linux-style keybinding platform instead of hitting the unsupported-platform preprocessor error path.
 - Removed legacy density PNG overlays for `ic_incognito` (`drawable-{h,md, x,xx,xxx}dpi`) so Android resource linking no longer conflicts with the upstream vector `drawable/ic_incognito.xml`.
+- Removed legacy `chrome/android` copy of `custom_tabs_toast_branding_layout.xml` to avoid duplicate resource collisions with Chromium 132 `//chrome/browser/android/customtabs/branding:java_resources`.
