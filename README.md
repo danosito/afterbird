@@ -132,6 +132,11 @@ Network/performance overrides (optional):
 AFTERBIRD_CHROMIUM_SRC_GIT_URL="https://github.com/chromium/chromium.git" \
   ci/chromium_android_pipeline.sh --workdir "$HOME/afterbird-chromium"
 
+# For an existing workspace, also force rewrite of .gclient/origin when switching remotes
+AFTERBIRD_CHROMIUM_SRC_GIT_URL="https://github.com/chromium/chromium.git" \
+AFTERBIRD_FORCE_WORKSPACE_CONFIG=1 \
+  ci/chromium_android_pipeline.sh --workdir "$HOME/afterbird-chromium"
+
 # Keep lightweight sync defaults and tune retries/timeouts
 AFTERBIRD_GCLIENT_NO_HISTORY=1 \
 AFTERBIRD_FETCH_RETRIES=4 \
@@ -171,6 +176,8 @@ Notes:
 - The script is idempotent for the same tag/workdir: each run resets and cleans `src` before applying overlay files.
 - `--out-dir` must be a safe relative path under `src` (absolute paths and `.`/`..` traversal are rejected).
 - Default sync mode uses `gclient sync -D --no-history`; override via `AFTERBIRD_GCLIENT_NO_HISTORY=0` when full history is required.
+- Existing workspace config is preserved by default; set `AFTERBIRD_FORCE_WORKSPACE_CONFIG=1` to rewrite `.gclient` and update `src` origin URL.
+- If `timeout`/`gtimeout` is unavailable, the script logs a warning and continues without enforced per-attempt timeout.
 
 ## Next Documentation
 

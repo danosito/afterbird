@@ -49,6 +49,9 @@ All notable changes to this repository are documented in this file.
 - Optimized Chromium startup fetch in `ci/chromium_android_pipeline.sh` by fetching only the pinned tag ref (`refs/tags/<version>`) instead of all remote tags.
 - Added retry/backoff + timeout controls for remote tag fetch and `gclient sync`, with clearer logs and mirror guidance for blocked/slow networks.
 - Added environment override support for Chromium source URL (`AFTERBIRD_CHROMIUM_SRC_GIT_URL`) and lightweight sync controls (`AFTERBIRD_GCLIENT_NO_HISTORY`, retry/timeout knobs).
+- Fixed retry handling in `run_with_retries` so it preserves the actual command exit code (including timeout exit code `124`) across retry decisions.
+- Restored workspace-config backward compatibility: existing `.gclient` and `src` origin are now preserved by default and changed only when missing or when `AFTERBIRD_FORCE_WORKSPACE_CONFIG=1`.
+- Added explicit warning behavior when no `timeout`/`gtimeout` binary is available and timeout enforcement cannot be applied.
 - Replaced top-level `LICENSE` with an explicit combined licensing notice covering both Afterbird/Kiwi fork-origin files and Chromium-origin files, with third-party license caveats.
 - Fixed top-level `OWNERS` references to missing paths by replacing unresolved `file://...` targets (`build/OWNERS`, `styleguide/c++/OWNERS`, `styleguide/rust/OWNERS`) with existing in-repo ownership references.
 - Noted that the Chromium 132 merge may have dropped historical Kiwi integrations; those are tracked for explicit re-port follow-up.

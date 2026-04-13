@@ -19,6 +19,8 @@ GCLIENT_RETRIES="${AFTERBIRD_GCLIENT_RETRIES:-2}"
 GCLIENT_BACKOFF_SECONDS="${AFTERBIRD_GCLIENT_BACKOFF_SECONDS:-20}"
 GCLIENT_NO_HISTORY="${AFTERBIRD_GCLIENT_NO_HISTORY:-1}"
 GCLIENT_EXTRA_ARGS="${AFTERBIRD_GCLIENT_EXTRA_ARGS:-}"
+FORCE_WORKSPACE_CONFIG="${AFTERBIRD_FORCE_WORKSPACE_CONFIG:-0}"
+TIMEOUT_WARNING_EMITTED=0
 
 usage() {
   cat <<'USAGE'
@@ -45,11 +47,16 @@ Environment overrides:
   AFTERBIRD_GCLIENT_BACKOFF_SECONDS Backoff base for gclient retries (default: 20)
   AFTERBIRD_GCLIENT_NO_HISTORY     Use --no-history during sync (default: 1)
   AFTERBIRD_GCLIENT_EXTRA_ARGS     Extra args appended to gclient sync
+  AFTERBIRD_FORCE_WORKSPACE_CONFIG Rewrite existing .gclient/origin URL (default: 0)
 USAGE
 }
 
 log() {
   printf '[ci-pipeline] %s\n' "$*"
+}
+
+warn() {
+  printf '[ci-pipeline][warn] %s\n' "$*" >&2
 }
 
 die() {
@@ -94,6 +101,10 @@ run_with_timeout() {
   if [[ -n "${tbin}" ]]; then
     "${tbin}" "${timeout_seconds}s" "$@"
   else
+    if [[ "${TIMEOUT_WARNING_EMITTED}" -eq 0 ]]; then
+      warn "No timeout binary found ('timeout'/'gtimeout'). Running without timeout enforcement."
+      TIMEOUT_WARNING_EMITTED=1
+    fi
     "$@"
   fi
 }
@@ -108,10 +119,15 @@ run_with_retries() {
   local rc
   while true; do
     if "$@"; then
+      rc=0
+    else
+      rc=$?
+    fi
+
+    if [[ "${rc}" -eq 0 ]]; then
       return 0
     fi
 
-    rc=$?
     if [[ "${try}" -ge "${attempts}" ]]; then
       die "${label} failed after ${try} attempt(s) (exit ${rc})"
     fi
@@ -155,8 +171,13 @@ read_version_part() {
 ensure_workspace() {
   mkdir -p "${WORKDIR}"
 
-  log "Writing ${WORKDIR}/.gclient"
-  cat > "${WORKDIR}/.gclient" <<GCLIENT
+  if [[ ! -f "${WORKDIR}/.gclient" || "${FORCE_WORKSPACE_CONFIG}" == "1" ]]; then
+    if [[ -f "${WORKDIR}/.gclient" ]]; then
+      log "Rewriting ${WORKDIR}/.gclient (AFTERBIRD_FORCE_WORKSPACE_CONFIG=1)"
+    else
+      log "Creating ${WORKDIR}/.gclient"
+    fi
+    cat > "${WORKDIR}/.gclient" <<GCLIENT
 solutions = [
   {
     "name": "src",
@@ -168,6 +189,9 @@ solutions = [
 ]
 target_os = ["android"]
 GCLIENT
+  else
+    log "Keeping existing ${WORKDIR}/.gclient (set AFTERBIRD_FORCE_WORKSPACE_CONFIG=1 to rewrite)"
+  fi
 
   if [[ ! -d "${WORKDIR}/src/.git" ]]; then
     log "Initializing Chromium source repo in ${WORKDIR}/src"
@@ -180,9 +204,11 @@ GCLIENT
     if [[ -z "${existing_origin}" ]]; then
       log "Adding missing src origin '${CHROMIUM_SRC_GIT_URL}'"
       git -C "${WORKDIR}/src" remote add origin "${CHROMIUM_SRC_GIT_URL}"
-    elif [[ "${existing_origin}" != "${CHROMIUM_SRC_GIT_URL}" ]]; then
+    elif [[ "${existing_origin}" != "${CHROMIUM_SRC_GIT_URL}" && "${FORCE_WORKSPACE_CONFIG}" == "1" ]]; then
       log "Updating src origin from '${existing_origin}' to '${CHROMIUM_SRC_GIT_URL}'"
       git -C "${WORKDIR}/src" remote set-url origin "${CHROMIUM_SRC_GIT_URL}"
+    elif [[ "${existing_origin}" != "${CHROMIUM_SRC_GIT_URL}" ]]; then
+      log "Keeping existing src origin '${existing_origin}' (set AFTERBIRD_FORCE_WORKSPACE_CONFIG=1 to update)"
     fi
   fi
 }
@@ -353,6 +379,9 @@ main() {
   fi
   if [[ "${GCLIENT_NO_HISTORY}" != "0" && "${GCLIENT_NO_HISTORY}" != "1" ]]; then
     die "AFTERBIRD_GCLIENT_NO_HISTORY must be '0' or '1'"
+  fi
+  if [[ "${FORCE_WORKSPACE_CONFIG}" != "0" && "${FORCE_WORKSPACE_CONFIG}" != "1" ]]; then
+    die "AFTERBIRD_FORCE_WORKSPACE_CONFIG must be '0' or '1'"
   fi
 
   require_cmd awk
