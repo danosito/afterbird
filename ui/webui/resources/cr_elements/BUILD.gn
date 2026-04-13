@@ -220,7 +220,7 @@ build_webui("build") {
     ]
   }
 
-  if (enable_desktop_android_extensions) {
+  if (is_android && enable_desktop_android_extensions) {
     web_component_files += [ "cr_a11y_announcer/cr_a11y_announcer.ts" ]
 
     non_web_component_files += [
