@@ -23,7 +23,6 @@ import java.lang.annotation.RetentionPolicy;
 import android.content.SharedPreferences.Editor;
 
 import org.chromium.base.ContextUtils;
-import org.chromium.chrome.browser.preferences.SharedPreferencesManager;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.base.Log;
 import org.chromium.base.SysUtils;
@@ -151,27 +150,6 @@ public class WebContentsDarkModeController {
         return true;
     }
 
-    /**
-     * Return the current enabled state for auto dark mode. If the input {@link GURL} is not null,
-     * the enabled state will also check if auto dark is enabled for URL.
-     * @param browserContextHandle Current browser context handle.
-     * @param context {@link Context} used to check whether UI is in night mode.
-     * @param url Queried URL whether auto dark is enabled.
-     * @return Whether auto dark is enabled for the given input.
-     */
-    public static boolean getEnabledState(
-            BrowserContextHandle browserContextHandle, Context context, GURL url) {
-        if (!isGlobalUserSettingsEnabled(browserContextHandle)) {
-            return false;
-        }
-        if (!ColorUtils.inNightMode(context)) {
-            return false;
-        }
-        if (!url.isEmpty() && !isEnabledForUrl(browserContextHandle, url)) {
-            return false;
-        }
-        return true;
-    }
 
     // copy-paste of the setting in AccessibilityPreferences
     private static float getUserNightModeFactor() {
@@ -205,7 +183,7 @@ public class WebContentsDarkModeController {
         else
           nightModeSettings += "isDarkUi=0";
 
-        SharedPreferencesManager.getInstance().writeStringUnchecked("night_mode_settings", nightModeSettings);
+        ContextUtils.getAppSharedPreferences().edit().putString("night_mode_settings", nightModeSettings).apply();
         Log.i("Kiwi", "SetContentCommandLineFlags - Setting new dark mode settings to [" + nightModeSettings + "]");
     }
 }
