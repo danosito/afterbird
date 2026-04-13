@@ -208,7 +208,7 @@ if (current_toolchain == default_toolchain) {
   android_resources("chrome_app_java_resources") {
     sources = chrome_java_resources
     sources += [ "//chrome/android/java/res_app/layout/main.xml" ]
-    allow_missing_resources = true
+    allow_missing_resources = false
 
     deps = [
       ":chrome_base_module_resources",
