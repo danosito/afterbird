@@ -71,3 +71,4 @@ All notable changes to this repository are documented in this file.
 - Fixed `WebContentsDarkModeController` Java compile break by removing a duplicated `getEnabledState(...)` implementation and replacing unavailable `SharedPreferencesManager` usage with `ContextUtils.getAppSharedPreferences()` writes for `night_mode_settings`.
 - Added a default `TabList#getLastNonExtensionActiveIndex()` implementation (`return index();`) to keep Android tabmodel implementations source-compatible while extension-tab specific overrides are absent in some Chromium paths.
 - Fixed Android full-build compile stop in `extensions/common/command.cc` by mapping `BUILDFLAG(IS_ANDROID)` to Linux-style keybinding platform instead of hitting the unsupported-platform preprocessor error path.
+- Removed legacy density PNG overlays for `ic_incognito` (`drawable-{h,md, x,xx,xxx}dpi`) so Android resource linking no longer conflicts with the upstream vector `drawable/ic_incognito.xml`.
