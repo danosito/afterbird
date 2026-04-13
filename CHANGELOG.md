@@ -55,3 +55,4 @@ All notable changes to this repository are documented in this file.
 - Replaced top-level `LICENSE` with an explicit combined licensing notice covering both Afterbird/Kiwi fork-origin files and Chromium-origin files, with third-party license caveats.
 - Fixed top-level `OWNERS` references to missing paths by replacing unresolved `file://...` targets (`build/OWNERS`, `styleguide/c++/OWNERS`, `styleguide/rust/OWNERS`) with existing in-repo ownership references.
 - Noted that the Chromium 132 merge may have dropped historical Kiwi integrations; those are tracked for explicit re-port follow-up.
+- Fixed Chromium 132 `gn gen` failure in the Android production args by explicitly enabling `enable_guest_view = true` when `enable_extensions = true` (required by `//extensions/BUILD.gn` assert).

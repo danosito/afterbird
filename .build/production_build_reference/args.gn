@@ -39,6 +39,7 @@ v8_use_external_startup_data = true
 update_android_aar_prebuilts = true
 
 enable_extensions = true
+enable_guest_view = true
 enable_pdf = false
 enable_plugins = false
 
