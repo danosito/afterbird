@@ -1,16 +1,9 @@
 export function html(...args: any[]): any;
 export const templatize: any;
 
-export type SpliceRecord = {
-  index: number;
-  removed: any[];
-  addedCount: number;
-};
+export type SpliceRecord = any;
 
-export function calculateSplices(
-  current: any[],
-  previous: any[],
-): SpliceRecord[];
+export function calculateSplices(current: any[], previous: any[]): SpliceRecord[];
 
 export function dedupingMixin<T>(mixin: T): T;
 
@@ -27,13 +20,13 @@ export function beforeNextRender(
 ): void;
 
 export class PolymerElement extends HTMLElement {
-  root: Document | ShadowRoot | Element;
+  root: any;
   connectedCallback(): void;
   disconnectedCallback(): void;
   ready(): void;
-  get(path: string, root?: any): any;
-  set(path: string, value: any): void;
-  notifySplices(path: string, splices: SpliceRecord[]): void;
+  get(path: any, root?: any): any;
+  set(path: any, value: any): void;
+  notifySplices(path: any, splices: SpliceRecord[]): void;
 }
 
 export type TemplateInstanceBase = any;
