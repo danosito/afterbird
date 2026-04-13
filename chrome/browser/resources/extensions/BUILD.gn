@@ -157,7 +157,7 @@ build_webui("build") {
     "//ui/webui/resources/js:build_ts",
   ]
 
-  if (!is_android) {
+  if (!is_android || enable_desktop_android_extensions) {
     ts_deps += [ "//ui/webui/resources/cr_components/managed_footnote:build_ts" ]
   }
 
