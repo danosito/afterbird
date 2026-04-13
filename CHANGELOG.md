@@ -32,6 +32,7 @@ All notable changes to this repository are documented in this file.
 
 ### Changed
 
+- Rebuilt Android icon assets from `afterbird-browser-icon.png` with adaptive-layer semantics across `res_chromium_base` and `res_chromium_contributor`: opaque `ic_background`/`layered_app_icon_background`, transparent `ic_foreground`/`layered_app_icon`, and updated flattened `app_icon` renders, while preserving existing per-density dimensions and PNG formats.
 - Rewrote `README.md` to reflect the current Afterbird state, including project rename/purpose, branch roles (`afterbird`, `kiwi`, `chromium`), in-tree version markers with caveats, and realistic build requirements.
 - Clarified branch wording to avoid time-sensitive claims about `afterbird`/`kiwi` alignment after future merges.
 - Documented how to create a local `chromium` branch when only `origin/chromium` exists: `git switch -c chromium --track origin/chromium`.
