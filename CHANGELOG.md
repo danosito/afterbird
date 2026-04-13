@@ -84,3 +84,4 @@ All notable changes to this repository are documented in this file.
 - Removed legacy PNG assets (`ic_chrome`, `ic_pause_white_24dp`, `ic_play_arrow_white_24dp` across all densities) from `components/browser_ui/styles/android` to align with Chromium 132 vector resources and satisfy strict resource-source checks.
 - Removed additional legacy `chrome/android` layouts (`accessibility_tab_switcher*`, `bookmark_*`, `empty_background_view_tablet`, `experimental_explore_sites_section`) that referenced non-existent resources and blocked `chrome_public_apk` aapt2 linking.
 - Removed legacy explore-sites layout overlays from chrome/android/java/res/layout (not present in pinned Chromium tree) to resolve missing-resource aapt2 link failures in full APK builds.
+- Removed overlay-only layouts fre_tosanduma/fullscreen_notification/history_toggle from chrome/android/java/res/layout to fix missing-resource aapt2 link failures during chrome_public_apk packaging.
