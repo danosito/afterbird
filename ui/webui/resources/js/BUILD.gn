@@ -5,7 +5,7 @@
 import("../tools/build_webui.gni")
 import("//extensions/buildflags/buildflags.gni")
 
-include_polymer = (!is_android && !is_ios) || enable_desktop_android_extensions
+include_polymer = !is_android && !is_ios
 
 build_webui("build") {
   grd_prefix = "webui_js"
@@ -63,6 +63,10 @@ build_webui("build") {
       "focus_without_ink.ts",
       "browser_command/browser_command_proxy.ts",
     ]
+  }
+
+  if (enable_desktop_android_extensions) {
+    non_web_component_files += [ "focus_without_ink.ts" ]
   }
 
   mojo_files_deps = [ "./metrics_reporter:mojo_bindings_ts__generator" ]

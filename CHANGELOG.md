@@ -98,3 +98,4 @@ All notable changes to this repository are documented in this file.
 - Added an Android-only TypeScript compatibility shim for polymer_bundled imports in //ui/webui/resources/cr_elements desktop-extensions mode, avoiding //third_party/polymer Android assert while keeping required cr_elements wrappers buildable.
 - Expanded the Android desktop-extensions polymer TS shim with wildcard module matching and permissive typings for polymer_bundled imports used by cr_elements generated wrappers.
 - Added explicit TS path mappings for polymer_bundled.min.js in //ui/webui/resources/cr_elements desktop-android mode, so generated Polymer-style wrappers resolve without enabling //third_party/polymer Android targets.
+- Narrowed Android desktop-extensions WebUI inclusion to a targeted cr_elements/js subset (plus focus_without_ink), avoiding full Polymer surface compilation while keeping required extension-facing modules.

@@ -1,9 +1,10 @@
 declare module '*polymer/polymer_bundled.min.js' {
-  export const html: (...args: any[]) => any;
+  export function html(...args: any[]): any;
   export const templatize: any;
-  export const dedupingMixin: any;
+  export function dedupingMixin<T>(mixin: T): T;
+  export function afterNextRender(context: any, callback: (...args: any[]) => void, args?: any[]): void;
+  export class PolymerElement extends HTMLElement {}
   export type TemplateInstanceBase = any;
-  export type PolymerElement = any;
 }
 
 declare module '//resources/polymer/v3_0/polymer/polymer_bundled.min.js' {
