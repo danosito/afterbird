@@ -95,3 +95,4 @@ All notable changes to this repository are documented in this file.
 - Made chrome/browser/resources/extensions TypeScript deps Android-safe by excluding managed_footnote:build_ts under is_android, resolving gn assert failures in desktop-extensions mode.
 - Enabled desktop-android extensions mode to include Polymer-era WebUI TypeScript surfaces in //ui/webui/resources/js and //ui/webui/resources/cr_elements, so //chrome/browser/resources/extensions:build_ts can resolve chrome://resources module imports on Android.
 - Kept //third_party/polymer/v3_0 TypeScript dependency disabled on Android in //ui/webui/resources/cr_elements (polymer target asserts on Android), while still enabling desktop-extension WebUI element sources.
+- Added an Android-only TypeScript compatibility shim for polymer_bundled imports in //ui/webui/resources/cr_elements desktop-extensions mode, avoiding //third_party/polymer Android assert while keeping required cr_elements wrappers buildable.
