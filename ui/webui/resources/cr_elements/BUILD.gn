@@ -230,7 +230,7 @@ build_webui("build") {
     "../js:build_ts",
     "//third_party/lit/v3_0:build_ts",
   ]
-  if ((!is_android && !is_ios) || (is_android && enable_desktop_android_extensions)) {
+  if (!is_android && !is_ios) {
     ts_deps += [ "//third_party/polymer/v3_0:library" ]
   }
   ts_definitions = [
@@ -238,6 +238,9 @@ build_webui("build") {
     "//tools/typescript/definitions/pending.d.ts",
     "//tools/typescript/definitions/settings_private.d.ts",
   ]
+  if (is_android && enable_desktop_android_extensions) {
+    ts_definitions += [ "polymer_bundled_compat.d.ts" ]
+  }
   webui_context_type = "relative"
   generate_grdp = true
   grd_resource_path_prefix = rebase_path(".", "//ui/webui/resources")

@@ -7,10 +7,15 @@ declare module '*polymer/polymer_bundled.min.js' {
   export type TemplateInstanceBase = any;
 }
 
-declare module '//resources/polymer/v3_0/polymer/polymer_bundled.min.js' {
-  export * from '*polymer/polymer_bundled.min.js';
-}
-
 declare module 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js' {
   export * from '*polymer/polymer_bundled.min.js';
 }
+
+
+declare global {
+  interface HTMLElement {
+    register(id: string): void;
+  }
+}
+
+export {};
