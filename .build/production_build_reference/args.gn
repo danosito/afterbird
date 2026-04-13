@@ -49,4 +49,4 @@ disable_android_lint = true
 treat_warnings_as_errors = false
 
 # Fast APK
-cc_wrapper = "ccache"
+cc_wrapper = ""
