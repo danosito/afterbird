@@ -113,7 +113,8 @@ ci/chromium_android_pipeline.sh \
 Notes:
 
 - The first run is heavy and can consume significant disk/network/time.
-- The script is idempotent and intended to be re-run against the same workdir.
+- The script is idempotent for the same tag/workdir: each run resets and cleans `src` before applying overlay files.
+- `--out-dir` must be a safe relative path under `src` (absolute paths and `.`/`..` traversal are rejected).
 
 ## Next Documentation
 

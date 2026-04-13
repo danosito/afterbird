@@ -44,6 +44,21 @@ require_cmd() {
   command -v "${cmd}" >/dev/null 2>&1 || die "Missing required command: ${cmd}"
 }
 
+validate_out_dir() {
+  [[ -n "${OUT_DIR}" ]] || die "--out-dir cannot be empty"
+  [[ "${OUT_DIR}" != /* ]] || die "--out-dir must be relative to src, not absolute"
+
+  if [[ "${OUT_DIR}" =~ (^|/)\.\.?(/|$) ]]; then
+    die "--out-dir must not contain '.' or '..' path traversal segments"
+  fi
+
+  case "${OUT_DIR}" in
+    *$'\n'*|*$'\r'*)
+      die "--out-dir must not contain newlines"
+      ;;
+  esac
+}
+
 read_version_part() {
   local key="$1"
   local value
@@ -102,6 +117,14 @@ sync_dependencies() {
   log "Running gclient sync (this can take a long time)"
   pushd "${WORKDIR}" >/dev/null
   gclient sync --with_branch_heads --with_tags -D
+  popd >/dev/null
+}
+
+clean_source_tree() {
+  pushd "${WORKDIR}/src" >/dev/null
+  log "Resetting source tree to a clean ${PWD} state before overlay"
+  git reset --hard HEAD
+  git clean -ffd
   popd >/dev/null
 }
 
@@ -190,6 +213,7 @@ main() {
   done
 
   [[ -f "${CHROMIUM_VERSION_FILE}" ]] || die "Missing ${CHROMIUM_VERSION_FILE}"
+  validate_out_dir
 
   require_cmd awk
   require_cmd git
@@ -215,6 +239,7 @@ main() {
   ensure_workspace
   checkout_tag "${tag}"
   sync_dependencies
+  clean_source_tree
   apply_overlay
   run_gn_checks
 

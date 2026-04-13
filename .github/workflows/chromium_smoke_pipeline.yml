@@ -4,9 +4,45 @@ on:
   pull_request:
     branches:
       - afterbird
+    paths:
+      - 'CHROMIUM_VERSION'
+      - '.build/production_build_reference/args.gn'
+      - 'ci/**'
+      - '.github/workflows/chromium_smoke_pipeline.yml'
+      - '.github/workflows/chromium_full_build.yml'
+      - 'BUILD.gn'
+      - 'DEPS'
+      - 'base/**'
+      - 'chrome/**'
+      - 'components/**'
+      - 'content/**'
+      - 'extensions/**'
+      - 'net/**'
+      - 'remoting/**'
+      - 'services/**'
+      - 'third_party/**'
+      - 'ui/**'
   push:
     branches:
       - afterbird
+    paths:
+      - 'CHROMIUM_VERSION'
+      - '.build/production_build_reference/args.gn'
+      - 'ci/**'
+      - '.github/workflows/chromium_smoke_pipeline.yml'
+      - '.github/workflows/chromium_full_build.yml'
+      - 'BUILD.gn'
+      - 'DEPS'
+      - 'base/**'
+      - 'chrome/**'
+      - 'components/**'
+      - 'content/**'
+      - 'extensions/**'
+      - 'net/**'
+      - 'remoting/**'
+      - 'services/**'
+      - 'third_party/**'
+      - 'ui/**'
 
 concurrency:
   group: chromium-smoke-${{ github.ref }}
