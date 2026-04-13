@@ -56,3 +56,4 @@ All notable changes to this repository are documented in this file.
 - Fixed top-level `OWNERS` references to missing paths by replacing unresolved `file://...` targets (`build/OWNERS`, `styleguide/c++/OWNERS`, `styleguide/rust/OWNERS`) with existing in-repo ownership references.
 - Noted that the Chromium 132 merge may have dropped historical Kiwi integrations; those are tracked for explicit re-port follow-up.
 - Fixed Chromium 132 `gn gen` failure in the Android production args by explicitly enabling `enable_guest_view = true` when `enable_extensions = true` (required by `//extensions/BUILD.gn` assert).
+- Disabled Chrome PGO phase in Android production GN args (`chrome_pgo_phase = 0`) so `gn gen` does not fail when pinned PGO profile artifacts are unavailable in external CI/local workdirs.
