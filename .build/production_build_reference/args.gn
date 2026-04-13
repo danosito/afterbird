@@ -38,9 +38,9 @@ rtc_use_h264 = false
 v8_use_external_startup_data = true
 update_android_aar_prebuilts = true
 
-enable_extensions = false
+enable_extensions = true
 enable_desktop_android_extensions = true
-enable_guest_view = false
+enable_guest_view = true
 chrome_pgo_phase = 0
 enable_pdf = false
 enable_plugins = false
