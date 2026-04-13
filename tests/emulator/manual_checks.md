@@ -11,7 +11,7 @@
   - `chrome://inspect/`
   - `chrome://inspect/#devices`
 - Modern-site e2e traversal for a target duration (default 120 seconds)
-- Obvious crash-signal scan from `logcat`
+- Package-scoped obvious crash-signal scan from `logcat`
 - Memory trend sampling (`dumpsys meminfo <package>`)
 
 ## Manual checks still required

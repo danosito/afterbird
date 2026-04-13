@@ -83,7 +83,7 @@ What is now available:
   - startup check
   - internal page launchability checks for extension/devtools entry points
   - ~120s modern-site traversal
-  - logcat crash signal scan + `dumpsys meminfo` trend summary
+  - package-scoped logcat crash signal scan + `dumpsys meminfo` trend summary
 - GitHub Actions now expose:
   - Smoke on `push`/`pull_request` to `afterbird`.
   - Full build on manual `workflow_dispatch`.

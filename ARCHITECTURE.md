@@ -81,7 +81,7 @@ Emulator coverage intentionally focuses on pragmatic smoke-level signals:
 2. Check launchability for extension/devtools-related internal entry points (`chrome://extensions`, `chrome://inspect`, etc.).
 3. Run a time-boxed modern-site traversal (~120 seconds by default) to exercise startup + navigation lifecycle.
 4. Collect two low-cost telemetry channels:
-   - `logcat` crash-pattern scan for obvious fatal signals.
+   - package-scoped `logcat` crash-pattern scan for obvious fatal signals.
    - `dumpsys meminfo` sampled trend summary (min/max/avg/delta PSS).
 
 Validation boundaries are explicit:

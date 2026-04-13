@@ -53,7 +53,7 @@ Behavior:
   2) Smoke-launches browser
   3) Runs internal page launchability checks
   4) Runs ~120s modern-site flow
-  5) Captures logcat crash signals and dumpsys meminfo trend
+  5) Captures package-scoped logcat crash signals and dumpsys meminfo trend
 USAGE
 }
 
@@ -437,17 +437,100 @@ summarize_meminfo() {
 }
 
 scan_crash_signals() {
-  local crash_regex
-  crash_regex='FATAL EXCEPTION|Fatal signal [0-9]+|AndroidRuntime: FATAL EXCEPTION|crash_dump(32|64)|SIGSEGV|SIGABRT|Process [^ ]+ has died'
+  # Scope crash detection to the app-under-test package and its subprocesses so
+  # unrelated emulator/system crashes do not fail the run.
+  if awk -v pkg="${APP_PACKAGE}" '
+    function add_line(line, lower_line) {
+      block_n += 1
+      block_lines[block_n] = line
+      lower_line = tolower(line)
+      if (index(lower_line, pkg_lower) > 0 ||
+          index(lower_line, ">>> " pkg_lower " <<<") > 0 ||
+          lower_line ~ ("process: " pkg_regex "([,: ]|$)") ||
+          lower_line ~ ("cmdline: " pkg_regex "([ :]|$)")) {
+        block_match_pkg = 1
+      }
+    }
 
-  if grep -E -i "${crash_regex}" "${LOGCAT_FILE}" > "${CRASH_FILE}"; then
+    function start_block(reason, window, line) {
+      in_block = 1
+      block_reason = reason
+      block_remaining = window
+      block_n = 0
+      block_match_pkg = 0
+      delete block_lines
+      add_line(line)
+    }
+
+    function flush_block(i) {
+      if (in_block && block_match_pkg) {
+        print "--- crash: " block_reason " ---"
+        for (i = 1; i <= block_n; i++) {
+          print block_lines[i]
+        }
+        print ""
+        found = 1
+      }
+      in_block = 0
+      block_reason = ""
+      block_remaining = 0
+      block_n = 0
+      block_match_pkg = 0
+      delete block_lines
+    }
+
+    BEGIN {
+      pkg_lower = tolower(pkg)
+      pkg_regex = pkg
+      gsub(/\./, "\\.", pkg_regex)
+      in_block = 0
+      found = 0
+    }
+
+    {
+      line = $0
+      lower_line = tolower(line)
+
+      if (in_block) {
+        add_line(line)
+        block_remaining -= 1
+        if (block_remaining <= 0) {
+          flush_block()
+        }
+        next
+      }
+
+      if (index(lower_line, "fatal exception") > 0) {
+        start_block("java_fatal_exception", 20, line)
+        next
+      }
+
+      if (index(lower_line, "fatal signal ") > 0 ||
+          index(lower_line, "sigsegv") > 0 ||
+          index(lower_line, "sigabrt") > 0 ||
+          index(lower_line, "crash_dump32") > 0 ||
+          index(lower_line, "crash_dump64") > 0) {
+        start_block("native_fatal_signal", 40, line)
+        next
+      }
+    }
+
+    END {
+      flush_block()
+      if (found) {
+        exit 0
+      }
+      exit 1
+    }
+  ' "${LOGCAT_FILE}" > "${CRASH_FILE}"; then
     local count
-    count="$(wc -l < "${CRASH_FILE}" | tr -d '[:space:]')"
-    die "Detected ${count} crash signal line(s) in logcat"
+    count="$(grep -c '^--- crash:' "${CRASH_FILE}" || true)"
+    [[ -n "${count}" ]] || count=1
+    die "Detected ${count} package-scoped crash signal block(s) in logcat"
   fi
 
   : > "${CRASH_FILE}"
-  log "No obvious crash patterns detected"
+  log "No package-scoped crash patterns detected"
 }
 
 main() {
