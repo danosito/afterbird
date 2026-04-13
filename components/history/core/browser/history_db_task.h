@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,7 +18,7 @@ class HistoryDatabase;
 // main thread.
 class HistoryDBTask {
  public:
-  virtual ~HistoryDBTask() {}
+  virtual ~HistoryDBTask() = default;
 
   // Invoked on the database thread. The return value indicates whether the
   // task is done. A return value of true signals the task is done and

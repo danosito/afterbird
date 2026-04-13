@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,10 +11,8 @@
 #include "chrome/browser/autocomplete/in_memory_url_index_factory.h"
 #include "chrome/browser/autocomplete/remote_suggestions_service_factory.h"
 #include "chrome/browser/autocomplete/shortcuts_backend_factory.h"
-#include "chrome/browser/profiles/incognito_helpers.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
-#include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
 #include "components/omnibox/browser/autocomplete_controller.h"
 #include "extensions/buildflags/buildflags.h"
@@ -33,7 +31,8 @@ AutocompleteClassifier* AutocompleteClassifierFactory::GetForProfile(
 
 // static
 AutocompleteClassifierFactory* AutocompleteClassifierFactory::GetInstance() {
-  return base::Singleton<AutocompleteClassifierFactory>::get();
+  static base::NoDestructor<AutocompleteClassifierFactory> instance;
+  return instance.get();
 }
 
 // static
@@ -48,11 +47,18 @@ std::unique_ptr<KeyedService> AutocompleteClassifierFactory::BuildInstanceFor(
 }
 
 AutocompleteClassifierFactory::AutocompleteClassifierFactory()
-    : BrowserContextKeyedServiceFactory(
-        "AutocompleteClassifier",
-        BrowserContextDependencyManager::GetInstance()) {
+    : ProfileKeyedServiceFactory(
+          "AutocompleteClassifier",
+          ProfileSelections::Builder()
+              .WithRegular(ProfileSelection::kRedirectedToOriginal)
+              // TODO(crbug.com/40257657): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kRedirectedToOriginal)
+              // TODO(crbug.com/41488885): Check if this service is needed for
+              // Ash Internals.
+              .WithAshInternals(ProfileSelection::kRedirectedToOriginal)
+              .Build()) {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
-if (extensions::ExtensionsBrowserClient::Get())
   DependsOn(
       extensions::ExtensionsBrowserClient::Get()->GetExtensionSystemFactory());
 #endif
@@ -62,19 +68,14 @@ if (extensions::ExtensionsBrowserClient::Get())
   DependsOn(RemoteSuggestionsServiceFactory::GetInstance());
 }
 
-AutocompleteClassifierFactory::~AutocompleteClassifierFactory() {
-}
-
-content::BrowserContext* AutocompleteClassifierFactory::GetBrowserContextToUse(
-    content::BrowserContext* context) const {
-  return chrome::GetBrowserContextRedirectedInIncognito(context);
-}
+AutocompleteClassifierFactory::~AutocompleteClassifierFactory() = default;
 
 bool AutocompleteClassifierFactory::ServiceIsNULLWhileTesting() const {
   return true;
 }
 
-KeyedService* AutocompleteClassifierFactory::BuildServiceInstanceFor(
+std::unique_ptr<KeyedService>
+AutocompleteClassifierFactory::BuildServiceInstanceForBrowserContext(
     content::BrowserContext* profile) const {
-  return BuildInstanceFor(static_cast<Profile*>(profile)).release();
+  return BuildInstanceFor(static_cast<Profile*>(profile));
 }

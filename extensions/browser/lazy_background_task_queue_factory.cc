@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -37,15 +37,17 @@ LazyBackgroundTaskQueueFactory::LazyBackgroundTaskQueueFactory()
 LazyBackgroundTaskQueueFactory::~LazyBackgroundTaskQueueFactory() {
 }
 
-KeyedService* LazyBackgroundTaskQueueFactory::BuildServiceInstanceFor(
+std::unique_ptr<KeyedService>
+LazyBackgroundTaskQueueFactory::BuildServiceInstanceForBrowserContext(
     BrowserContext* context) const {
-  return new LazyBackgroundTaskQueue(context);
+  return std::make_unique<LazyBackgroundTaskQueue>(context);
 }
 
 BrowserContext* LazyBackgroundTaskQueueFactory::GetBrowserContextToUse(
     BrowserContext* context) const {
   // Redirected in incognito.
-  return ExtensionsBrowserClient::Get()->GetOriginalContext(context);
+  return ExtensionsBrowserClient::Get()->GetContextRedirectedToOriginal(
+      context);
 }
 
 }  // namespace extensions

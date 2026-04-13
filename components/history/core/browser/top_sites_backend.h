@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright 2011 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,8 +7,8 @@
 
 #include <memory>
 
-#include "base/callback.h"
 #include "base/files/file_path.h"
+#include "base/functional/callback.h"
 #include "base/memory/ref_counted.h"
 #include "components/history/core/browser/history_types.h"
 
@@ -27,15 +27,6 @@ class TopSitesDatabase;
 // thread.
 class TopSitesBackend : public base::RefCountedThreadSafe<TopSitesBackend> {
  public:
-  // TODO(yiyaoliu): Remove the enums and related code when crbug/223430 is
-  // fixed.
-  // An enum representing whether the UpdateTopSites execution time related
-  // histogram should be recorded.
-  enum RecordHistogram {
-    RECORD_HISTOGRAM_YES,
-    RECORD_HISTOGRAM_NO
-  };
-
   using GetMostVisitedSitesCallback =
       base::OnceCallback<void(MostVisitedURLList)>;
 
@@ -54,8 +45,7 @@ class TopSitesBackend : public base::RefCountedThreadSafe<TopSitesBackend> {
                            base::CancelableTaskTracker* tracker);
 
   // Updates top sites database from the specified delta.
-  void UpdateTopSites(const TopSitesDelta& delta,
-                      const RecordHistogram record_or_not);
+  void UpdateTopSites(const TopSitesDelta& delta);
 
   // Deletes the database and recreates it.
   void ResetDatabase();
@@ -75,8 +65,7 @@ class TopSitesBackend : public base::RefCountedThreadSafe<TopSitesBackend> {
   MostVisitedURLList GetMostVisitedSitesOnDBThread();
 
   // Updates top sites.
-  void UpdateTopSitesOnDBThread(const TopSitesDelta& delta,
-                                const RecordHistogram record_or_not);
+  void UpdateTopSitesOnDBThread(const TopSitesDelta& delta);
 
   // Resets the database.
   void ResetDatabaseOnDBThread(const base::FilePath& file_path);

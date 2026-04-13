@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -105,7 +105,7 @@ bool OptionsPageInfo::ShouldOpenInTab(const Extension* extension) {
 
 std::unique_ptr<OptionsPageInfo> OptionsPageInfo::Create(
     Extension* extension,
-    const base::Value* options_ui_value,
+    const base::Value::Dict* options_ui_dict,
     const std::string& options_page_string,
     std::vector<InstallWarning>* install_warnings,
     std::u16string* error) {
@@ -117,14 +117,10 @@ std::unique_ptr<OptionsPageInfo> OptionsPageInfo::Create(
   bool open_in_tab = !FeatureSwitch::embedded_extension_options()->IsEnabled();
 
   // Parse the options_ui object.
-  if (options_ui_value) {
-    std::u16string options_ui_error;
-
-    std::unique_ptr<OptionsUI> options_ui =
-        OptionsUI::FromValue(*options_ui_value, &options_ui_error);
-    if (!options_ui) {
-      install_warnings->push_back(
-          InstallWarning(base::UTF16ToASCII(options_ui_error)));
+  if (options_ui_dict) {
+    auto options_ui = OptionsUI::FromValue(*options_ui_dict);
+    if (!options_ui.has_value()) {
+      install_warnings->emplace_back(base::UTF16ToASCII(options_ui.error()));
     } else {
       std::u16string options_parse_error;
       if (!ParseOptionsUrl(extension,
@@ -132,10 +128,9 @@ std::unique_ptr<OptionsPageInfo> OptionsPageInfo::Create(
                            keys::kOptionsUI,
                            &options_parse_error,
                            &options_page)) {
-        install_warnings->push_back(
-            InstallWarning(base::UTF16ToASCII(options_parse_error)));
+        install_warnings->emplace_back(base::UTF16ToASCII(options_parse_error));
       }
-      if (options_ui->chrome_style.get()) {
+      if (options_ui->chrome_style) {
         if (extension->manifest_version() < 3)
           chrome_style = *options_ui->chrome_style;
         else {
@@ -143,9 +138,7 @@ std::unique_ptr<OptionsPageInfo> OptionsPageInfo::Create(
           return nullptr;
         }
       }
-      open_in_tab = false;
-      if (options_ui->open_in_tab.get())
-        open_in_tab = *options_ui->open_in_tab;
+      open_in_tab = options_ui->open_in_tab.value_or(false);
     }
   }
 
@@ -165,14 +158,11 @@ std::unique_ptr<OptionsPageInfo> OptionsPageInfo::Create(
                                            open_in_tab);
 }
 
-OptionsPageManifestHandler::OptionsPageManifestHandler() {
-}
+OptionsPageHandler::OptionsPageHandler() {}
 
-OptionsPageManifestHandler::~OptionsPageManifestHandler() {
-}
+OptionsPageHandler::~OptionsPageHandler() {}
 
-bool OptionsPageManifestHandler::Parse(Extension* extension,
-                                       std::u16string* error) {
+bool OptionsPageHandler::Parse(Extension* extension, std::u16string* error) {
   std::vector<InstallWarning> install_warnings;
   const Manifest* manifest = extension->manifest();
 
@@ -186,10 +176,11 @@ bool OptionsPageManifestHandler::Parse(Extension* extension,
     options_page_string = temp->GetString();
   }
 
-  const base::Value* options_ui_value = manifest->FindPath(keys::kOptionsUI);
+  const base::Value::Dict* options_ui_dict =
+      manifest->FindDictPath(keys::kOptionsUI);
 
   std::unique_ptr<OptionsPageInfo> info =
-      OptionsPageInfo::Create(extension, options_ui_value, options_page_string,
+      OptionsPageInfo::Create(extension, options_ui_dict, options_page_string,
                               &install_warnings, error);
   if (!info)
     return false;
@@ -199,10 +190,9 @@ bool OptionsPageManifestHandler::Parse(Extension* extension,
   return true;
 }
 
-bool OptionsPageManifestHandler::Validate(
-    const Extension* extension,
-    std::string* error,
-    std::vector<InstallWarning>* warnings) const {
+bool OptionsPageHandler::Validate(const Extension* extension,
+                                  std::string* error,
+                                  std::vector<InstallWarning>* warnings) const {
   // Validate path to the options page.  Don't check the URL for hosted apps,
   // because they are expected to refer to an external URL.
   if (!OptionsPageInfo::HasOptionsPage(extension) || extension->is_hosted_app())
@@ -219,7 +209,7 @@ bool OptionsPageManifestHandler::Validate(
   return true;
 }
 
-base::span<const char* const> OptionsPageManifestHandler::Keys() const {
+base::span<const char* const> OptionsPageHandler::Keys() const {
   static constexpr const char* kKeys[] = {keys::kOptionsPage, keys::kOptionsUI};
   return kKeys;
 }

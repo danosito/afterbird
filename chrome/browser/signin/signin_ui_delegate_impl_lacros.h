@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,7 +9,6 @@
 
 #include <string>
 
-#include "base/memory/weak_ptr.h"
 #include "components/signin/core/browser/consistency_cookie_manager.h"
 
 namespace base {
@@ -57,7 +56,8 @@ class SigninUiDelegateImplLacros : public SigninUiDelegate {
       const base::FilePath& profile_path,
       signin_metrics::AccessPoint access_point,
       signin_metrics::PromoAction promo_action,
-      const std::string& email);
+      const std::string& email,
+      const account_manager::AccountUpsertionResult& result);
 };
 
 }  // namespace signin_ui_util

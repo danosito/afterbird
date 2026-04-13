@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,49 +6,63 @@
 
 #import <Cocoa/Cocoa.h>
 
-#include "base/bind.h"
+#include "base/apple/foundation_util.h"
+#include "base/apple/osstatus_logging.h"
+#include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/functional/bind.h"
 #include "base/logging.h"
-#include "base/mac/mac_logging.h"
 #include "base/strings/sys_string_conversions.h"
 #include "chrome/browser/platform_util_internal.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/common/content_switches.h"
+#include "net/base/apple/url_conversions.h"
+#include "ui/gfx/geometry/rect.h"
+#include "ui/gfx/mac/coordinate_conversion.h"
 #include "ui/views/widget/widget.h"
 #include "url/gurl.h"
 
 namespace platform_util {
 
+// Returns true if revealing file paths in the Finder should be skipped
+// because it's not needed while running a test.
+bool WorkspacePathRevealDisabledForTest() {
+  // Note: the kTestType switch is only added on browser tests, but not unit
+  // tests. Unit tests need to add the switch manually:
+  //
+  //   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+  //   command_line->AppendSwitch(switches::kTestType);
+  //
+  return base::CommandLine::ForCurrentProcess()->HasSwitch(switches::kTestType);
+}
+
 void ShowItemInFolder(Profile* profile, const base::FilePath& full_path) {
   DCHECK([NSThread isMainThread]);
-  NSString* path_string = base::SysUTF8ToNSString(full_path.value());
-  if (!path_string || ![[NSWorkspace sharedWorkspace] selectFile:path_string
-                                        inFileViewerRootedAtPath:@""])
-    LOG(WARNING) << "NSWorkspace failed to select file " << full_path.value();
+
+  // The Finder creates a new window on each `full_path` reveal. Skip
+  // revealing the path during testing to avoid an avalanche of new
+  // Finder windows.
+  if (WorkspacePathRevealDisabledForTest() ||
+      !internal::AreShellOperationsAllowed()) {
+    return;
+  }
+
+  NSURL* url = base::apple::FilePathToNSURL(full_path);
+  [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:@[ url ]];
 }
 
 void OpenFileOnMainThread(const base::FilePath& full_path) {
   DCHECK([NSThread isMainThread]);
-  NSString* path_string = base::SysUTF8ToNSString(full_path.value());
-  if (!path_string)
-    return;
-
-  // On Mavericks or later, NSWorkspaceLaunchWithErrorPresentation will
-  // properly handle Finder activation for quarantined files
-  // (http://crbug.com/32921) and unassociated file types
-  // (http://crbug.com/50263).
-  NSURL* url = [NSURL fileURLWithPath:path_string];
+  NSURL* url = base::apple::FilePathToNSURL(full_path);
   if (!url)
     return;
 
-  const NSWorkspaceLaunchOptions launch_options =
-      NSWorkspaceLaunchAsync | NSWorkspaceLaunchWithErrorPresentation;
-  [[NSWorkspace sharedWorkspace] openURLs:@[ url ]
-                  withAppBundleIdentifier:nil
-                                  options:launch_options
-           additionalEventParamDescriptor:nil
-                        launchIdentifiers:NULL];
+  [[NSWorkspace sharedWorkspace]
+                openURL:url
+          configuration:[NSWorkspaceOpenConfiguration configuration]
+      completionHandler:nil];
 }
 
 namespace internal {
@@ -60,25 +74,27 @@ void PlatformOpenVerifiedItem(const base::FilePath& path, OpenItemType type) {
           FROM_HERE, base::BindOnce(&OpenFileOnMainThread, path));
       return;
     case OPEN_FOLDER:
-      NSString* path_string = base::SysUTF8ToNSString(path.value());
-      if (!path_string)
+      NSURL* url = base::apple::FilePathToNSURL(path);
+      if (!url)
         return;
+
       // Note that there exists a TOCTOU race between the time that |path| was
       // verified as being a directory and when NSWorkspace invokes Finder (or
       // alternative) to open |path_string|.
-      [[NSWorkspace sharedWorkspace] openFile:path_string];
+      [[NSWorkspace sharedWorkspace] openURL:url];
       return;
   }
 }
 
 }  // namespace internal
 
-void OpenExternal(Profile* profile, const GURL& url) {
+void OpenExternal(const GURL& url) {
   DCHECK([NSThread isMainThread]);
-  NSString* url_string = base::SysUTF8ToNSString(url.spec());
-  NSURL* ns_url = [NSURL URLWithString:url_string];
-  if (!ns_url || ![[NSWorkspace sharedWorkspace] openURL:ns_url])
+  NSURL* ns_url = net::NSURLWithGURL(url);
+
+  if (!ns_url || ![[NSWorkspace sharedWorkspace] openURL:ns_url]) {
     LOG(WARNING) << "NSWorkspace failed to open URL " << url;
+  }
 }
 
 gfx::NativeWindow GetTopLevel(gfx::NativeView view) {
@@ -133,13 +149,15 @@ bool IsVisible(gfx::NativeView native_view) {
 }
 
 bool IsSwipeTrackingFromScrollEventsEnabled() {
-  SEL selector = @selector(isSwipeTrackingFromScrollEventsEnabled);
-  return [NSEvent respondsToSelector:selector]
-      && [NSEvent performSelector:selector];
+  return NSEvent.swipeTrackingFromScrollEventsEnabled;
 }
 
 NSWindow* GetActiveWindow() {
   return [NSApp keyWindow];
+}
+
+gfx::Rect GetWindowScreenBounds(gfx::NativeWindow window) {
+  return gfx::ScreenRectFromNSRect([window.GetNativeNSWindow() frame]);
 }
 
 }  // namespace platform_util

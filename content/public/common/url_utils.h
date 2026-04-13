@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,9 @@ CONTENT_EXPORT bool HasWebUIScheme(const GURL& url);
 
 // Returns true if the origin is a WebUI.
 CONTENT_EXPORT bool HasWebUIOrigin(const url::Origin& origin);
+
+// Returns true if the origin is allowed to access the PDF internal plugin.
+CONTENT_EXPORT bool IsPdfInternalPluginAllowedOrigin(const url::Origin& origin);
 
 // Check whether we can do the saving page operation for the specified URL.
 CONTENT_EXPORT bool IsSavableURL(const GURL& url);

@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -57,7 +57,8 @@ IN_PROC_BROWSER_TEST_F(SendMouseMoveUITest, DISABLED_Fullscreen) {
 }
 
 // Test that the mouse can be positioned at a few locations on the screen.
-IN_PROC_BROWSER_TEST_F(SendMouseMoveUITest, Probe) {
+// TODO(crbug.com/337060697): This test is flaky.
+IN_PROC_BROWSER_TEST_F(SendMouseMoveUITest, DISABLED_Probe) {
   // Make the browser fullscreen so that we can position the mouse anywhere on
   // the display, as ui_controls::SendMouseMoveNotifyWhenDone can only provide
   // notifications when the mouse is moved over a window belonging to the
@@ -80,7 +81,7 @@ IN_PROC_BROWSER_TEST_F(SendMouseMoveUITest, Probe) {
                  << "(" << point.x() << ", " << point.y() << ")");
     // Move the pointer.
     base::RunLoop run_loop;
-    EXPECT_TRUE(ui_controls::SendMouseMoveNotifyWhenDone(
+    ASSERT_TRUE(ui_controls::SendMouseMoveNotifyWhenDone(
         point.x(), point.y(), run_loop.QuitClosure()));
     run_loop.Run();
 

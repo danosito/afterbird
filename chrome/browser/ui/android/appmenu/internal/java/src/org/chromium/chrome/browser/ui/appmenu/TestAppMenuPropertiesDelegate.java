@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -95,14 +95,20 @@ class TestAppMenuPropertiesDelegate implements AppMenuPropertiesDelegate {
         menu.findItem(R.id.icon_row_menu_id).setVisible(enableAppIconRow);
         if (enableAppIconRow) {
             menu.findItem(R.id.icon_one)
-                    .setIcon(AppCompatResources.getDrawable(ContextUtils.getApplicationContext(),
-                            R.drawable.test_ic_arrow_forward_black_24dp));
+                    .setIcon(
+                            AppCompatResources.getDrawable(
+                                    ContextUtils.getApplicationContext(),
+                                    R.drawable.test_ic_arrow_forward_black_24dp));
             menu.findItem(R.id.icon_two)
-                    .setIcon(AppCompatResources.getDrawable(ContextUtils.getApplicationContext(),
-                            R.drawable.test_ic_arrow_forward_black_24dp));
+                    .setIcon(
+                            AppCompatResources.getDrawable(
+                                    ContextUtils.getApplicationContext(),
+                                    R.drawable.test_ic_arrow_forward_black_24dp));
             menu.findItem(R.id.icon_three)
-                    .setIcon(AppCompatResources.getDrawable(ContextUtils.getApplicationContext(),
-                            R.drawable.test_ic_arrow_forward_black_24dp));
+                    .setIcon(
+                            AppCompatResources.getDrawable(
+                                    ContextUtils.getApplicationContext(),
+                                    R.drawable.test_ic_arrow_forward_black_24dp));
             menu.findItem(R.id.icon_three).setEnabled(false);
         }
     }
@@ -161,12 +167,6 @@ class TestAppMenuPropertiesDelegate implements AppMenuPropertiesDelegate {
         return iconBeforeItem;
     }
 
-    @Override
-    public void recordHighlightedMenuItemShown(Integer menuItemId) {}
-
-    @Override
-    public void recordHighlightedMenuItemClicked(Integer menuItemId) {}
-
     protected int getAppMenuLayoutId() {
         return R.menu.test_menu;
     }
@@ -175,4 +175,7 @@ class TestAppMenuPropertiesDelegate implements AppMenuPropertiesDelegate {
     public boolean isMenuIconAtStart() {
         return false;
     }
+
+    @Override
+    public void onMenuShown() {}
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,10 +8,12 @@
 #include "base/android/jni_string.h"
 #include "base/notreached.h"
 #include "chrome/browser/platform_util.h"
-#include "chrome/browser/util/jni_headers/PlatformUtil_jni.h"
 #include "ui/android/view_android.h"
 #include "ui/android/window_android.h"
 #include "url/gurl.h"
+
+// Must come after all headers that specialize FromJniType() / ToJniType().
+#include "chrome/browser/util/jni_headers/PlatformUtil_jni.h"
 
 using base::android::ScopedJavaLocalRef;
 
@@ -30,7 +32,7 @@ void OpenItem(Profile* profile,
   NOTIMPLEMENTED();
 }
 
-void OpenExternal(Profile* profile, const GURL& url) {
+void OpenExternal(const GURL& url) {
   JNIEnv* env = base::android::AttachCurrentThread();
   ScopedJavaLocalRef<jstring> j_url =
       base::android::ConvertUTF8ToJavaString(env, url.spec());
@@ -40,11 +42,6 @@ void OpenExternal(Profile* profile, const GURL& url) {
 gfx::NativeWindow GetTopLevel(gfx::NativeView view) {
   NOTIMPLEMENTED();
   return view->GetWindowAndroid();
-}
-
-gfx::NativeView GetViewForWindow(gfx::NativeWindow window) {
-  NOTIMPLEMENTED();
-  return window;
 }
 
 gfx::NativeView GetParent(gfx::NativeView view) {

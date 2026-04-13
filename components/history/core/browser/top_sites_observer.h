@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,12 +22,12 @@ class TopSitesObserver {
     FORCED_URL,
   };
 
-  TopSitesObserver() {}
+  TopSitesObserver() = default;
 
   TopSitesObserver(const TopSitesObserver&) = delete;
   TopSitesObserver& operator=(const TopSitesObserver&) = delete;
 
-  virtual ~TopSitesObserver() {}
+  virtual ~TopSitesObserver() = default;
 
   // Is called when TopSites finishes loading.
   virtual void TopSitesLoaded(TopSites* top_sites) = 0;

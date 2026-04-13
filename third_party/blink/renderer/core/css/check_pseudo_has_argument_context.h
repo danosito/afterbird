@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -58,13 +58,39 @@ enum CheckPseudoHasArgumentTraversalScope {
   //            (.e.g. :has(~ .a > .b), :has(+ .a ~ .b > .c),
   //                   :has(~ .a > .b ~ .c), :has(+ .a ~ .b > .c ~ .d),
   kAllNextSiblingsFixedDepthDescendants,
+
+  // Case 9: Same as case 1, but the :has() argument selector needs to match
+  //         elements in the shadow tree. (e.g. :host:has(.a))
+  kShadowRootSubtree,
+
+  // Case 10: Same as case 6, but the :has() argument selector needs to match
+  //          elements in the shadow tree. (e.g. :host:has(> .a))
+  kShadowRootFixedDepthDescendants,
+
+  // Case 11: :has() argument selector starts with direct or indirect adjacent
+  //          combinator and the selector needs match in the shadow tree of the
+  //          :host, in which case the adjacent combinators could never match.
+  //          (e.g. :host:has(~ .a), :host:has(+ .a))
+  kInvalidShadowRootTraversalScope,
+
+  kTraversalScopeMax = kInvalidShadowRootTraversalScope,
 };
+
+// Unique value of each traversal type. The value can be used as a key of
+// fast reject filter cache.
+//
+// These 3 values are stored by dividing the 4-byte field by:
+// - depth limit : 0 ~ 13 (14bits)
+// - adjacent distance limit : 14 ~ 27 (14 bits)
+// - traversal scope : 28 ~ 31 (4 bits)
+using CheckPseudoHasArgumentTraversalType = uint32_t;
 
 class CORE_EXPORT CheckPseudoHasArgumentContext {
   STACK_ALLOCATED();
 
  public:
-  explicit CheckPseudoHasArgumentContext(const CSSSelector* selector);
+  explicit CheckPseudoHasArgumentContext(const CSSSelector* selector,
+                                         bool match_in_shadow_tree);
 
   inline bool AdjacentDistanceFixed() const {
     return adjacent_distance_limit_ != kInfiniteAdjacentDistance;
@@ -72,6 +98,16 @@ class CORE_EXPORT CheckPseudoHasArgumentContext {
   inline int AdjacentDistanceLimit() const { return adjacent_distance_limit_; }
   inline bool DepthFixed() const { return depth_limit_ != kInfiniteDepth; }
   inline int DepthLimit() const { return depth_limit_; }
+
+  // Returns true if we are matching styles for a shadow host via a :host rule
+  // with :has(). In that case :has() is matching descendants in the shadow
+  // tree, not the light tree descendants of the host.
+  inline bool MatchInShadowTree() const {
+    DCHECK(!match_in_shadow_tree_ || traversal_scope_ == kShadowRootSubtree ||
+           traversal_scope_ == kShadowRootFixedDepthDescendants ||
+           traversal_scope_ == kInvalidShadowRootTraversalScope);
+    return match_in_shadow_tree_;
+  }
 
   inline CSSSelector::RelationType LeftmostRelation() const {
     return leftmost_relation_;
@@ -94,9 +130,28 @@ class CORE_EXPORT CheckPseudoHasArgumentContext {
 
   const CSSSelector* HasArgument() const { return has_argument_; }
 
+  const Vector<unsigned>& GetPseudoHasArgumentHashes() const {
+    return pseudo_has_argument_hashes_;
+  }
+
+  CheckPseudoHasArgumentTraversalType TraversalType() const {
+    return depth_limit_ | (adjacent_distance_limit_ << kDepthBits) |
+           (traversal_scope_ << (kDepthBits + kAdjacentBits));
+  }
+
  private:
-  const static int kInfiniteDepth = std::numeric_limits<int>::max();
-  const static int kInfiniteAdjacentDistance = std::numeric_limits<int>::max();
+  const static size_t kDepthBits = 14;
+  const static size_t kAdjacentBits = 14;
+  const static size_t kTraversalScopeBits = 4;
+
+  const static int kInfiniteDepth = (1 << kDepthBits) - 1;
+  const static int kInfiniteAdjacentDistance = (1 << kAdjacentBits) - 1;
+
+  static_assert(kTraversalScopeMax <= ((1 << kTraversalScopeBits) - 1),
+                "traversal scope size check");
+  static_assert((kDepthBits + kAdjacentBits + kTraversalScopeBits) <=
+                    sizeof(CheckPseudoHasArgumentTraversalType) * 8,
+                "traversal type size check");
 
   // Indicate the :has argument relative type and subtree traversal scope.
   // If 'adjacent_distance_limit' is integer max, it means that all the
@@ -226,6 +281,11 @@ class CORE_EXPORT CheckPseudoHasArgumentContext {
   CheckPseudoHasArgumentTraversalScope traversal_scope_;
   SiblingsAffectedByHasFlags siblings_affected_by_has_flags_;
   const CSSSelector* has_argument_;
+  bool match_in_shadow_tree_;
+
+  Vector<unsigned> pseudo_has_argument_hashes_;
+
+  friend class CheckPseudoHasArgumentContextTest;
 };
 
 // Subtree traversal iterator class for :has() argument checking. To solve the
@@ -279,9 +339,10 @@ class CORE_EXPORT CheckPseudoHasArgumentTraversalIterator {
   inline Element* ScopeElement() const { return has_anchor_element_; }
 
  private:
-  inline Element* LastWithin(Element*);
+  inline Element* LastWithin(ContainerNode*);
 
   Element* const has_anchor_element_;
+  bool match_in_shadow_tree_;
   int depth_limit_;
   Element* last_element_{nullptr};
   Element* sibling_at_fixed_distance_{nullptr};

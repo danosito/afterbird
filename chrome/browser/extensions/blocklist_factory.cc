@@ -1,10 +1,9 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/blocklist_factory.h"
 #include "chrome/browser/extensions/blocklist.h"
-#include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_prefs_factory.h"
 #include "extensions/browser/extensions_browser_client.h"
@@ -21,27 +20,32 @@ Blocklist* BlocklistFactory::GetForBrowserContext(BrowserContext* context) {
 
 // static
 BlocklistFactory* BlocklistFactory::GetInstance() {
-  return base::Singleton<BlocklistFactory>::get();
+  static base::NoDestructor<BlocklistFactory> instance;
+  return instance.get();
 }
 
 BlocklistFactory::BlocklistFactory()
-    : BrowserContextKeyedServiceFactory(
+    : ProfileKeyedServiceFactory(
           "Blocklist",
-          BrowserContextDependencyManager::GetInstance()) {
-  DependsOn(extensions::ExtensionPrefsFactory::GetInstance());
+          // Redirected in incognito.
+          ProfileSelections::Builder()
+              .WithRegular(ProfileSelection::kRedirectedToOriginal)
+              // TODO(crbug.com/40257657): Check if this service is needed in
+              // Guest mode.
+              .WithGuest(ProfileSelection::kRedirectedToOriginal)
+              // TODO(crbug.com/41488885): Check if this service is needed for
+              // Ash Internals.
+              .WithAshInternals(ProfileSelection::kRedirectedToOriginal)
+              .Build()) {
+  DependsOn(ExtensionPrefsFactory::GetInstance());
 }
 
-BlocklistFactory::~BlocklistFactory() {}
+BlocklistFactory::~BlocklistFactory() = default;
 
-KeyedService* BlocklistFactory::BuildServiceInstanceFor(
+std::unique_ptr<KeyedService>
+BlocklistFactory::BuildServiceInstanceForBrowserContext(
     BrowserContext* context) const {
-  return new Blocklist(ExtensionPrefs::Get(context));
-}
-
-BrowserContext* BlocklistFactory::GetBrowserContextToUse(
-    BrowserContext* context) const {
-  // Redirected in incognito.
-  return ExtensionsBrowserClient::Get()->GetOriginalContext(context);
+  return std::make_unique<Blocklist>();
 }
 
 }  // namespace extensions

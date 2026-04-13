@@ -24,7 +24,6 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LAYOUT_LAYOUT_FRAME_H_
 
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
-#include "third_party/blink/renderer/core/layout/layout_frame_set.h"
 
 namespace blink {
 
@@ -34,8 +33,6 @@ class LayoutFrame final : public LayoutEmbeddedContent {
  public:
   explicit LayoutFrame(HTMLFrameElement*);
 
-  FrameEdgeInfo EdgeInfo() const;
-
   void ImageChanged(WrappedImagePtr, CanDeferInvalidation) override;
 
   const char* GetName() const override {
@@ -44,12 +41,10 @@ class LayoutFrame final : public LayoutEmbeddedContent {
   }
 
  private:
-  bool IsOfType(LayoutObjectType type) const override {
+  bool IsFrame() const final {
     NOT_DESTROYED();
-    return type == kLayoutObjectFrame || LayoutEmbeddedContent::IsOfType(type);
+    return true;
   }
-
-  void UpdateFromElement() override;
 };
 
 template <>

@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,17 +10,9 @@
 
 namespace content {
 
-namespace {
-
-constexpr char kComparisonErrorMessage[] =
-    "You are comparing optional WebExposedIsolationInfo objects using "
-    "operator==, use WebExposedIsolationInfo::AreCompatible() instead.";
-
-}  // namespace
-
 // static
 WebExposedIsolationInfo WebExposedIsolationInfo::CreateNonIsolated() {
-  return WebExposedIsolationInfo(absl::nullopt /* origin */,
+  return WebExposedIsolationInfo(std::nullopt /* origin */,
                                  false /* isolated_application */);
 }
 
@@ -40,7 +32,7 @@ bool WebExposedIsolationInfo::AreCompatible(const WebExposedIsolationInfo& a,
 }
 
 bool WebExposedIsolationInfo::AreCompatible(
-    const absl::optional<WebExposedIsolationInfo>& a,
+    const std::optional<WebExposedIsolationInfo>& a,
     const WebExposedIsolationInfo& b) {
   if (!a.has_value())
     return true;
@@ -49,20 +41,20 @@ bool WebExposedIsolationInfo::AreCompatible(
 
 bool WebExposedIsolationInfo::AreCompatible(
     const WebExposedIsolationInfo& a,
-    const absl::optional<WebExposedIsolationInfo>& b) {
+    const std::optional<WebExposedIsolationInfo>& b) {
   return AreCompatible(b, a);
 }
 
 bool WebExposedIsolationInfo::AreCompatible(
-    const absl::optional<WebExposedIsolationInfo>& a,
-    const absl::optional<WebExposedIsolationInfo>& b) {
+    const std::optional<WebExposedIsolationInfo>& a,
+    const std::optional<WebExposedIsolationInfo>& b) {
   if (!a.has_value() || !b.has_value())
     return true;
   return AreCompatible(a.value(), b.value());
 }
 
 WebExposedIsolationInfo::WebExposedIsolationInfo(
-    const absl::optional<url::Origin>& origin,
+    const std::optional<url::Origin>& origin,
     bool isolated_application)
     : origin_(origin), isolated_application_(isolated_application) {}
 
@@ -127,42 +119,6 @@ std::ostream& operator<<(std::ostream& out,
   }
   out << "}";
   return out;
-}
-
-bool operator==(const absl::optional<WebExposedIsolationInfo>& a,
-                const absl::optional<WebExposedIsolationInfo>& b) {
-  NOTREACHED() << kComparisonErrorMessage;
-  return false;
-}
-
-bool operator==(const WebExposedIsolationInfo& a,
-                const absl::optional<WebExposedIsolationInfo>& b) {
-  NOTREACHED() << kComparisonErrorMessage;
-  return false;
-}
-
-bool operator==(const absl::optional<WebExposedIsolationInfo>& a,
-                const WebExposedIsolationInfo& b) {
-  NOTREACHED() << kComparisonErrorMessage;
-  return false;
-}
-
-bool operator!=(const absl::optional<WebExposedIsolationInfo>& a,
-                const absl::optional<WebExposedIsolationInfo>& b) {
-  NOTREACHED() << kComparisonErrorMessage;
-  return false;
-}
-
-bool operator!=(const WebExposedIsolationInfo& a,
-                const absl::optional<WebExposedIsolationInfo>& b) {
-  NOTREACHED() << kComparisonErrorMessage;
-  return false;
-}
-
-bool operator!=(const absl::optional<WebExposedIsolationInfo>& a,
-                const WebExposedIsolationInfo& b) {
-  NOTREACHED() << kComparisonErrorMessage;
-  return false;
 }
 
 }  // namespace content

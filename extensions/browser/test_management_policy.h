@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -50,8 +50,7 @@ class TestManagementPolicyProvider : public ManagementPolicy::Provider {
                          std::u16string* error) const override;
 
   bool MustRemainDisabled(const Extension* extension,
-                          disable_reason::DisableReason* reason,
-                          std::u16string* error) const override;
+                          disable_reason::DisableReason* reason) const override;
 
   bool MustRemainInstalled(const Extension* extension,
                            std::u16string* error) const override;

@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,9 +9,7 @@ import android.net.Uri;
 import org.chromium.components.browser_ui.util.DownloadUtils;
 import org.chromium.components.download.DownloadDelegate;
 
-/**
- * Utility class that implements DownloadDelegate.
- */
+/** Utility class that implements DownloadDelegate. */
 public class DownloadDelegateImpl extends DownloadDelegate {
     public DownloadDelegateImpl() {}
 

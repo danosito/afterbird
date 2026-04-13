@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -38,8 +38,8 @@ class FontPrewarmerTabHelper
   explicit FontPrewarmerTabHelper(content::WebContents* web_contents);
 
   // Testing helpers:
-  static std::string GetSearchResultsPagePrimaryFontsPref();
-  static std::vector<std::string> GetPrimaryFontNames(Profile* profile);
+  static std::string GetSearchResultsPageFontsPref();
+  static std::vector<std::string> GetFontNames(Profile* profile);
 
   Profile* GetProfile();
 
@@ -54,7 +54,7 @@ class FontPrewarmerTabHelper
   void ReadyToCommitNavigation(
       content::NavigationHandle* navigation_handle) override;
 
-  absl::optional<int> expected_render_process_host_id_;
+  std::optional<int> expected_render_process_host_id_;
 
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };

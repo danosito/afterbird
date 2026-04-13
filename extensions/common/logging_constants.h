@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,8 +12,8 @@
 namespace extension_misc {
 
 // The minimum severity of a log or error in order to report it to the browser.
-constexpr logging::LogSeverity kMinimumSeverityToReportError =
-    logging::LOG_WARNING;
+inline constexpr logging::LogSeverity kMinimumSeverityToReportError =
+    logging::LOGGING_WARNING;
 
 }  // namespace extension_misc
 

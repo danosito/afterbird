@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,8 @@
 
 #include <memory>
 
-#include "base/bind.h"
 #include "base/containers/contains.h"
+#include "base/functional/bind.h"
 #include "base/memory/memory_pressure_listener.h"
 #include "base/memory/memory_pressure_monitor.h"
 #include "base/memory/ptr_util.h"
@@ -110,8 +110,7 @@ class DbusMemoryPressureEvaluatorLinuxTest : public testing::Test {
     method_call->SetSerial(123);
     method_call->SetReplySerial(456);
 
-    if (method_call->GetMember() ==
-        DbusMemoryPressureEvaluatorLinux::kMethodNameHasOwner) {
+    if (method_call->GetMember() == "NameHasOwner") {
       dbus::MessageReader reader(method_call);
       std::string service;
       CHECK(reader.PopString(&service));
@@ -122,8 +121,7 @@ class DbusMemoryPressureEvaluatorLinuxTest : public testing::Test {
       writer.AppendBool(base::Contains(running_services_, service));
 
       std::move(*response_callback).Run(response.get());
-    } else if (method_call->GetMember() ==
-               DbusMemoryPressureEvaluatorLinux::kMethodListActivatableNames) {
+    } else if (method_call->GetMember() == "ListActivatableNames") {
       std::unique_ptr<dbus::Response> response =
           dbus::Response::FromMethodCall(method_call);
       dbus::MessageWriter writer(response.get());

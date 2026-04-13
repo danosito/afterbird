@@ -2,8 +2,9 @@
 
 Afterbird is a continuation-focused fork of the Kiwi `src.next` codebase.
 The project identity in this repository is now Afterbird.
+Repository owner/maintainer: `danosito` (`https://github.com/danosito`).
 
-This repository is currently a tracked source subset, not a complete standalone Chromium checkout. It contains selected Chromium/Kiwi directories and project automation files, but it does not include the full Chromium root tree or full build toolchain definitions needed for turnkey local builds.
+This repository is currently a tracked source subset, not a complete standalone Chromium checkout. It contains selected Chromium/Kiwi directories and project automation files, and is now aligned to a Chromium 132 baseline (`132.0.6834.83`), but it does not include the full Chromium root tree or full build toolchain definitions needed for turnkey local builds.
 
 ## What This Repository Contains Today
 
@@ -33,26 +34,30 @@ Current branch model in this repository:
 
 - `afterbird`: main branch for this fork's ongoing work; it was bootstrapped from Kiwi history and is expected to evolve independently through periodic upstream sync/rebase work.
 - `kiwi`: legacy Kiwi integration branch in this fork; contains Kiwi-era files, workflows, and metadata.
-- `chromium`: Chromium tracking branch (upstream file sync baseline) used before Kiwi-specific integration/rebase steps. In some clones this may only exist as `origin/chromium`; create a local tracking branch with `git switch -c chromium --track origin/chromium`.
+- `chromium`: Chromium tracking branch (upstream file sync baseline). In some clones this may only exist as `origin/chromium`; create a local tracking branch with `git switch -c chromium --track origin/chromium`.
 
-Operationally, the historical workflow has been: update `chromium` -> rebase/integrate into `kiwi` -> carry fork-specific changes on top.
+Current intended upstream-sync flow:
+
+1. Sync/update `chromium` from upstream Chromium.
+2. Create a feature branch from `afterbird` and merge/rebase latest `origin/chromium` there.
+3. Resolve conflicts while preserving Afterbird governance/docs and project policy files.
+4. Re-port required Kiwi/Afterbird integrations on top before merging back into `afterbird` via PR.
+
+`kiwi` remains available as a legacy integration/reference branch, but it is not required as an intermediary for every Chromium sync.
 
 ## Known Versions In-Tree
 
-From files on `afterbird`/`kiwi`:
+From files on the current `afterbird` branch:
 
 - `VERSION`: `93.0.4577.21`
-- `CHROMIUM_VERSION`: `105.0.5195.24`
-- `KIWI_VERSION`: `105.0.5195.33`
-
-From remote-tracking `origin/chromium` branch:
-
 - `CHROMIUM_VERSION`: `132.0.6834.83`
+- `KIWI_VERSION`: `105.0.5195.33`
 
 Important caveat:
 
 - Numeric Git tags in this repo (for example `14310011181`, `15616141394`) are release/build identifiers, not guaranteed to match Chromium major versions.
-- The presence of newer release tags or a newer `chromium` branch does not mean `afterbird` currently contains the same engine baseline.
+- Future updates on `chromium` may diverge from `afterbird` until the next integration merge.
+- Direct Chromium merges can drop Kiwi-specific integrations; missing behavior must be identified and re-ported as explicit follow-up work.
 
 ## Build Status (Realistic)
 
@@ -60,9 +65,10 @@ Current status: no verified, self-contained local build path from this branch al
 
 Why:
 
-- `afterbird`/`kiwi` are missing full Chromium root files/directories expected in a standalone checkout (for example `BUILD.gn`, `DEPS`, `build/`, `tools/`).
+- `afterbird`/`kiwi` still do not represent a full Chromium checkout and are missing required directories/tooling for standalone builds (for example `build/`, `tools/`, full dependency payloads), even though root manifests like `BUILD.gn` and `DEPS` are now present.
 - Existing CI workflows reference private/legacy Kiwi infrastructure and secrets (`longbuild.find.kiwi`, `build.find.kiwi`, storage/release credentials).
 - `build_and_sign_release_apk.yml` expects `.build/android_arm/args.gn`, which is not present in the current tree.
+- Chromium-baseline updates may compile while silently omitting historical Kiwi-specific integrations until they are reintroduced.
 
 What is required to build reliably:
 
@@ -78,3 +84,10 @@ Until those are formalized, treat this repository as a source-tracking and patch
 - Architecture and revival roadmap: see `ARCHITECTURE.md`
 - Contributor/agent workflow rules: see `AGENTS.md`
 - Change history baseline: see `CHANGELOG.md`
+
+## License
+
+Top-level project license: BSD 3-Clause (see `LICENSE`).
+This repository also includes inherited Kiwi-layer provenance and imported
+Chromium/third-party components that may retain their own notices in file
+headers, history, and third-party metadata.

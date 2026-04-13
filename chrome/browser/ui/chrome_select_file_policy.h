@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,7 +31,7 @@ class ChromeSelectFilePolicy : public ui::SelectFilePolicy {
   static bool FileSelectDialogsAllowed();
 
  private:
-  raw_ptr<content::WebContents> source_contents_;
+  raw_ptr<content::WebContents, AcrossTasksDanglingUntriaged> source_contents_;
 };
 
 #endif  // CHROME_BROWSER_UI_CHROME_SELECT_FILE_POLICY_H_

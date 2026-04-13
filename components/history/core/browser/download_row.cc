@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright 2011 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -32,9 +32,8 @@ bool DownloadRow::operator==(const DownloadRow& rhs) const {
          id == rhs.id && guid == rhs.guid && opened == rhs.opened &&
          last_access_time == rhs.last_access_time &&
          transient == rhs.transient && by_ext_id == rhs.by_ext_id &&
-         by_ext_name == rhs.by_ext_name &&
-         download_slice_info == rhs.download_slice_info &&
-         reroute_info_serialized == rhs.reroute_info_serialized;
+         by_ext_name == rhs.by_ext_name && by_web_app_id == rhs.by_web_app_id &&
+         download_slice_info == rhs.download_slice_info;
 }
 
 }  // namespace history

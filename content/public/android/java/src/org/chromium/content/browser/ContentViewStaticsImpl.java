@@ -1,15 +1,14 @@
-// Copyright 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.content.browser;
 
-import org.chromium.base.annotations.NativeMethods;
+import org.jni_zero.NativeMethods;
+
 import org.chromium.net.ProxyChangeListener;
 
-/**
- * Implementations of {@link ContentViewStatics}.
- */
+/** Implementations of {@link ContentViewStatics}. */
 public class ContentViewStaticsImpl {
     /**
      * Suspends Webkit timers in all renderers.

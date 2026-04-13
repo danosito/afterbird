@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -38,9 +38,9 @@ std::vector<history::URLAndTitle> ChromeHistoryBackendClient::GetPinnedURLs() {
   // HistoryBackendClient is used to determine the set of bookmarked URLs. The
   // data is loaded on a separate thread and may not be done when this method is
   // called, therefore blocks until the bookmarks have finished loading.
-  std::vector<bookmarks::UrlAndTitle> url_and_titles;
   model_loader_->BlockTillLoaded();
-  model_loader_->history_bookmark_model()->GetBookmarks(&url_and_titles);
+  std::vector<bookmarks::UrlAndTitle> url_and_titles =
+      model_loader_->history_bookmark_model()->GetUniqueUrls();
 
   result.reserve(url_and_titles.size());
   for (const auto& url_and_title : url_and_titles) {

@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,7 +12,7 @@ namespace javascript_dialogs {
 
 class TabModalDialogView {
  public:
-  virtual ~TabModalDialogView() {}
+  virtual ~TabModalDialogView() = default;
 
   // Closes the dialog without sending a callback. This is useful when the
   // TabModalDialogManager needs to make this dialog go away so that it can

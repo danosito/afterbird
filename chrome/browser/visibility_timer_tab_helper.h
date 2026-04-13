@@ -1,12 +1,12 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_VISIBILITY_TIMER_TAB_HELPER_H_
 #define CHROME_BROWSER_VISIBILITY_TIMER_TAB_HELPER_H_
 
-#include "base/callback_forward.h"
 #include "base/containers/circular_deque.h"
+#include "base/functional/callback_forward.h"
 #include "base/timer/timer.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_contents_user_data.h"

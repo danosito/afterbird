@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -27,10 +27,10 @@ class NET_EXPORT SchemeHostPortMatcher {
   using RuleList = std::vector<std::unique_ptr<SchemeHostPortMatcherRule>>;
 
   // Note: This class is movable but not copiable.
-  SchemeHostPortMatcher() = default;
-  SchemeHostPortMatcher(SchemeHostPortMatcher&& rhs) = default;
-  SchemeHostPortMatcher& operator=(SchemeHostPortMatcher&& rhs) = default;
-  ~SchemeHostPortMatcher() = default;
+  SchemeHostPortMatcher();
+  SchemeHostPortMatcher(SchemeHostPortMatcher&& rhs);
+  SchemeHostPortMatcher& operator=(SchemeHostPortMatcher&& rhs);
+  ~SchemeHostPortMatcher();
 
   // The delimiter used by |ToString()|.
   constexpr static char kPrintRuleListDelimiter = ';';
@@ -73,6 +73,16 @@ class NET_EXPORT SchemeHostPortMatcher {
 
   // Removes all the rules.
   void Clear();
+
+#if !BUILDFLAG(CRONET_BUILD)
+  // Cronet disables tracing and doesn't provide an implementation of
+  // base::trace_event::EstimateMemoryUsage. Having this conditional is
+  // preferred over a fake implementation to avoid reporting fake metrics.
+
+  // Estimates dynamic memory usage.
+  // See base/trace_event/memory_usage_estimator.h for more info.
+  size_t EstimateMemoryUsage() const;
+#endif  // !BUILDFLAG(CRONET_BUILD)
 
  private:
   RuleList rules_;

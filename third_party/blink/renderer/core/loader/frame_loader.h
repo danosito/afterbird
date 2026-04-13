@@ -34,11 +34,13 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_LOADER_FRAME_LOADER_H_
 
 #include <memory>
+#include <optional>
 
-#include "base/callback_helpers.h"
+#include "base/functional/callback_helpers.h"
 #include "services/network/public/mojom/web_sandbox_flags.mojom-blink-forward.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
+#include "third_party/blink/public/mojom/loader/code_cache.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/loader/request_context_frame_type.mojom-blink-forward.h"
 #include "third_party/blink/public/mojom/page_state/page_state.mojom-blink-forward.h"
 #include "third_party/blink/public/platform/scheduler/web_scoped_virtual_time_pauser.h"
@@ -50,6 +52,7 @@
 #include "third_party/blink/renderer/core/frame/frame_types.h"
 #include "third_party/blink/renderer/core/loader/frame_loader_types.h"
 #include "third_party/blink/renderer/core/loader/history_item.h"
+#include "third_party/blink/renderer/core/loader/old_document_info_for_commit.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/loader/fetch/loader_freeze_mode.h"
 #include "third_party/blink/renderer/platform/wtf/forward.h"
@@ -59,20 +62,20 @@ namespace blink {
 
 class DocumentLoader;
 class FetchClientSettingsObject;
-class Frame;
 class LocalFrame;
 class LocalFrameClient;
 class PolicyContainer;
 class ProgressTracker;
 class ResourceRequest;
+class StorageKey;
 class TracedValue;
 struct FrameLoadRequest;
-struct UnloadEventTimingInfo;
 struct WebNavigationInfo;
 struct WebNavigationParams;
 
 CORE_EXPORT bool IsBackForwardLoadType(WebFrameLoadType);
 CORE_EXPORT bool IsReloadLoadType(WebFrameLoadType);
+CORE_EXPORT bool IsBackForwardOrRestore(WebFrameLoadType);
 
 class CORE_EXPORT FrameLoader final {
   DISALLOW_NEW();
@@ -83,7 +86,11 @@ class CORE_EXPORT FrameLoader final {
   FrameLoader& operator=(const FrameLoader&) = delete;
   ~FrameLoader();
 
-  void Init(std::unique_ptr<PolicyContainer> policy_container);
+  void Init(const DocumentToken& document_token,
+            std::unique_ptr<PolicyContainer> policy_container,
+            const StorageKey& storage_key,
+            ukm::SourceId document_ukm_source_id,
+            const KURL& creator_base_url);
 
   ResourceRequest ResourceRequestForReload(
       WebFrameLoadType,
@@ -141,9 +148,7 @@ class CORE_EXPORT FrameLoader final {
   void DidExplicitOpen();
 
   String UserAgent() const;
-  String FullUserAgent() const;
-  String ReducedUserAgent() const;
-  absl::optional<blink::UserAgentMetadata> UserAgentMetadata() const;
+  std::optional<blink::UserAgentMetadata> UserAgentMetadata() const;
 
   void DispatchDidClearWindowObjectInMainWorld();
   void DispatchDidClearDocumentOfWindowObject();
@@ -165,12 +170,6 @@ class CORE_EXPORT FrameLoader final {
       const FetchClientSettingsObject* fetch_client_settings_object,
       LocalDOMWindow* window_for_logging,
       mojom::RequestContextFrameType) const;
-  void ReportLegacyTLSVersion(const KURL& url,
-                              bool is_subresource,
-                              bool is_ad_resource);
-
-  Frame* Opener();
-  void SetOpener(LocalFrame*);
 
   void Detach();
 
@@ -181,8 +180,9 @@ class CORE_EXPORT FrameLoader final {
   void ProcessScrollForSameDocumentNavigation(
       const KURL&,
       WebFrameLoadType,
-      absl::optional<HistoryItem::ViewState>,
-      mojom::blink::ScrollRestorationType);
+      std::optional<HistoryItem::ViewState>,
+      mojom::blink::ScrollRestorationType,
+      mojom::blink::ScrollBehavior scroll_behavior);
 
   // This will attempt to detach the current document. It will dispatch unload
   // events and abort XHR requests. Returns true if the frame is ready to
@@ -205,6 +205,7 @@ class CORE_EXPORT FrameLoader final {
   void SaveScrollState();
   void RestoreScrollPositionAndViewState();
 
+  bool IsCommittingNavigation() const { return committing_navigation_; }
   bool HasProvisionalNavigation() const {
     return committing_navigation_ || client_navigation_.get();
   }
@@ -255,34 +256,11 @@ class CORE_EXPORT FrameLoader final {
 
   void WriteIntoTrace(perfetto::TracedValue context) const;
 
-  mojo::PendingRemote<blink::mojom::CodeCacheHost> CreateWorkerCodeCacheHost();
-
-  // Contains information related to the previous document in the frame, to be
-  // given to the next document that is going to commit in this FrameLoader.
-  // Note that the "previous document" might not necessarily use the same
-  // FrameLoader as this one, e.g. in case of local RenderFrame swap.
-  struct OldDocumentInfoForCommit : GarbageCollected<OldDocumentInfoForCommit> {
-    explicit OldDocumentInfoForCommit(
-        scoped_refptr<SecurityOrigin> new_document_origin);
-    void Trace(Visitor* visitor) const;
-    // The unload timing info of the previous document in the frame. The new
-    // document can access this information if it is a same-origin, to be
-    // exposed through the Navigation Timing API.
-    UnloadEventTimingInfo unload_timing_info;
-    // The HistoryItem of the previous document in the frame. Some of the state
-    // from the old document's HistoryItem will be copied to the new document
-    // e.g. history.state will be copied on same-URL navigations. See also
-    // https://github.com/whatwg/html/issues/6213.
-    Member<HistoryItem> history_item;
-  };
-
- private:
   bool AllowRequestForThisFrame(const FrameLoadRequest&);
 
-  WebFrameLoadType HandleInitialEmptyDocumentReplacementIfNeeded(
-      const KURL& url,
-      WebFrameLoadType);
+  mojo::PendingRemote<mojom::blink::CodeCacheHost> CreateWorkerCodeCacheHost();
 
+ private:
   bool ShouldPerformFragmentNavigation(bool is_form_submission,
                                        const String& http_method,
                                        WebFrameLoadType,
@@ -295,9 +273,11 @@ class CORE_EXPORT FrameLoader final {
   // Clears any information about client navigation, see client_navigation_.
   void ClearClientNavigation();
 
-  void RestoreScrollPositionAndViewState(WebFrameLoadType,
-                                         const HistoryItem::ViewState&,
-                                         mojom::blink::ScrollRestorationType);
+  void RestoreScrollPositionAndViewState(
+      WebFrameLoadType,
+      const HistoryItem::ViewState&,
+      mojom::blink::ScrollRestorationType,
+      mojom::blink::ScrollBehavior scroll_behavior);
 
   void DetachDocumentLoader(Member<DocumentLoader>&,
                             bool flush_microtask_queue = false);
@@ -311,14 +291,7 @@ class CORE_EXPORT FrameLoader final {
 
   LocalFrameClient* Client() const;
 
-  String ApplyUserAgentOverrideAndLog(const String& user_agent) const;
-
-  Member<LocalFrame> frame_;
-
-  Member<ProgressTracker> progress_tracker_;
-
-  // Document loader for frame loading.
-  Member<DocumentLoader> document_loader_;
+  String ApplyUserAgentOverride(const String& user_agent) const;
 
   // This struct holds information about a navigation, which is being
   // initiated by the client through the browser process, until the navigation
@@ -327,6 +300,13 @@ class CORE_EXPORT FrameLoader final {
     KURL url;
   };
   std::unique_ptr<ClientNavigationState> client_navigation_;
+
+  Member<LocalFrame> frame_;
+
+  Member<ProgressTracker> progress_tracker_;
+
+  // Document loader for frame loading.
+  Member<DocumentLoader> document_loader_;
 
   // The state is set to kInitialized when Init() completes, and kDetached
   // during teardown in Detach().
@@ -367,33 +347,6 @@ class CORE_EXPORT FrameLoader final {
   // The origins for which a legacy TLS version warning has been printed. The
   // size of this set is capped, after which no more warnings are printed.
   HashSet<String> tls_version_warning_origins_;
-
-  // Owns the OldDocumentInfoForCommit and exposes it through `info_`
-  // so that both the unloading old document and the committing new document
-  // can access and modify the value, without explicitly passing it between
-  // them on unload/commit time.
-  class ScopedOldDocumentInfoForCommitCapturer {
-    STACK_ALLOCATED();
-
-   public:
-    explicit ScopedOldDocumentInfoForCommitCapturer(
-        OldDocumentInfoForCommit* info)
-        : info_(info), previous_capturer_(current_capturer_) {
-      current_capturer_ = this;
-    }
-
-    ~ScopedOldDocumentInfoForCommitCapturer();
-
-    // The last OldDocumentInfoForCommit set for `info_` that is still in scope.
-    static OldDocumentInfoForCommit* CurrentInfo() {
-      return current_capturer_ ? current_capturer_->info_ : nullptr;
-    }
-
-   private:
-    OldDocumentInfoForCommit* info_;
-    ScopedOldDocumentInfoForCommitCapturer* previous_capturer_;
-    static ScopedOldDocumentInfoForCommitCapturer* current_capturer_;
-  };
 };
 
 }  // namespace blink

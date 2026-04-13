@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -110,7 +110,8 @@ class ExternalInstallManager : public ExtensionRegistryObserver {
   std::set<ExtensionId> shown_ids_;
 
   // The error that is currently showing an alert dialog/bubble.
-  raw_ptr<ExternalInstallError> currently_visible_install_alert_;
+  raw_ptr<ExternalInstallError, DanglingUntriaged>
+      currently_visible_install_alert_;
 
   base::ScopedObservation<ExtensionRegistry, ExtensionRegistryObserver>
       extension_registry_observation_{this};

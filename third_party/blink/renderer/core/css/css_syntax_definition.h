@@ -1,13 +1,15 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_SYNTAX_DEFINITION_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_CSS_CSS_SYNTAX_DEFINITION_H_
 
+#include <optional>
+
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_syntax_component.h"
-#include "third_party/blink/renderer/core/css/parser/css_parser_token_range.h"
+#include "third_party/blink/renderer/core/css/parser/css_parser_token_stream.h"
 #include "third_party/blink/renderer/platform/wtf/cross_thread_copier.h"
 
 namespace blink {
@@ -17,7 +19,9 @@ class CSSValue;
 
 class CORE_EXPORT CSSSyntaxDefinition {
  public:
-  const CSSValue* Parse(CSSParserTokenRange,
+  // https://drafts.csswg.org/css-values-5/#css-syntax
+  static std::optional<CSSSyntaxDefinition> Consume(CSSParserTokenStream&);
+  const CSSValue* Parse(StringView,
                         const CSSParserContext&,
                         bool is_animation_tainted) const;
 
@@ -37,10 +41,12 @@ class CORE_EXPORT CSSSyntaxDefinition {
   }
 
   CSSSyntaxDefinition IsolatedCopy() const;
+  String ToString() const;
 
  private:
   friend class CSSSyntaxStringParser;
   friend class CSSSyntaxStringParserTest;
+  friend class CSSSyntaxDefinitionTest;
 
   explicit CSSSyntaxDefinition(Vector<CSSSyntaxComponent>);
 
@@ -61,8 +67,9 @@ struct CrossThreadCopier<
   static Type Copy(const Type& value) {
     Type result;
     result.ReserveInitialCapacity(value.size());
-    for (const auto& element : value)
+    for (const auto& element : value) {
       result.push_back(element.IsolatedCopy());
+    }
     return result;
   }
 };

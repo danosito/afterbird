@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,8 +14,6 @@
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_list_observer.h"
 #include "chrome/browser/ui/browser_live_tab_context.h"
-#include "chrome/browser/ui/user_education/reopen_tab_in_product_help.h"
-#include "chrome/browser/ui/user_education/reopen_tab_in_product_help_factory.h"
 #include "components/sessions/core/tab_restore_service.h"
 #include "components/sessions/core/tab_restore_service_observer.h"
 
@@ -91,26 +89,24 @@ void BrowserTabRestorer::TabRestoreServiceLoaded(
     sessions::TabRestoreService* service) {
   RestoreTab(browser_);
   // This deletes us.
-  browser_->profile()->SetUserData(kBrowserTabRestorerKey, NULL);
+  browser_->profile()->SetUserData(kBrowserTabRestorerKey, nullptr);
 }
 
 void BrowserTabRestorer::OnBrowserRemoved(Browser* browser) {
   // This deletes us.
-  browser_->profile()->SetUserData(kBrowserTabRestorerKey, NULL);
+  browser_->profile()->SetUserData(kBrowserTabRestorerKey, nullptr);
 }
 
 }  // namespace
 
 void RestoreTab(Browser* browser) {
   base::RecordAction(base::UserMetricsAction("RestoreTab"));
-  auto* reopen_tab_iph =
-      ReopenTabInProductHelpFactory::GetForProfile(browser->profile());
-  reopen_tab_iph->TabReopened();
 
   sessions::TabRestoreService* service =
       TabRestoreServiceFactory::GetForProfile(browser->profile());
-  if (!service)
+  if (!service) {
     return;
+  }
 
   if (service->IsLoaded()) {
     service->RestoreMostRecentEntry(browser->live_tab_context());

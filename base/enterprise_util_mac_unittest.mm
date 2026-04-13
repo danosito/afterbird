@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,22 +8,11 @@
 
 namespace base {
 
-TEST(EnterpriseUtilMacTest, IsDeviceRegisteredWithManagementOldSmokeTest) {
-  MacDeviceManagementStateOld state = IsDeviceRegisteredWithManagementOld();
+TEST(EnterpriseUtilMacTest, IsDeviceRegisteredWithManagementSmokeTest) {
+  MacDeviceManagementState state = IsDeviceRegisteredWithManagement();
 
-  EXPECT_NE(MacDeviceManagementStateOld::kFailureAPIUnavailable, state);
-  EXPECT_NE(MacDeviceManagementStateOld::kFailureUnableToParseResult, state);
-}
-
-TEST(EnterpriseUtilMacTest, IsDeviceRegisteredWithManagementNewSmokeTest) {
-  MacDeviceManagementStateNew state = IsDeviceRegisteredWithManagementNew();
-
-  if (@available(macOS 10.13.4, *)) {
-    EXPECT_NE(MacDeviceManagementStateNew::kFailureAPIUnavailable, state);
-    EXPECT_NE(MacDeviceManagementStateNew::kFailureUnableToParseResult, state);
-  } else {
-    EXPECT_EQ(MacDeviceManagementStateNew::kFailureAPIUnavailable, state);
-  }
+  EXPECT_NE(MacDeviceManagementState::kFailureAPIUnavailable, state);
+  EXPECT_NE(MacDeviceManagementState::kFailureUnableToParseResult, state);
 }
 
 }  // namespace base

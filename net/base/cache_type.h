@@ -1,4 +1,4 @@
-// Copyright (c) 2009 The Chromium Authors. All rights reserved.
+// Copyright 2009 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,6 @@
 namespace net {
 
 // The types of caches that can be created.
-// Note: enum values used in some metrics, so add new values at end only,
-// and don't renumber old ones.
 enum CacheType {
   DISK_CACHE,                 // Disk is used as the backing storage.
   MEMORY_CACHE,               // Data is stored only in memory.

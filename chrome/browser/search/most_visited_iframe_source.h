@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,10 +8,8 @@
 #include "build/build_config.h"
 #include "content/public/browser/url_data_source.h"
 
-#if 0
 #if BUILDFLAG(IS_ANDROID)
 #error "Instant is only used on desktop";
-#endif
 #endif
 
 // Serves HTML for displaying suggestions for 3P remote NTPs using iframes

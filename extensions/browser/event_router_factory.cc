@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -38,15 +38,21 @@ EventRouterFactory::EventRouterFactory()
 EventRouterFactory::~EventRouterFactory() {
 }
 
-KeyedService* EventRouterFactory::BuildServiceInstanceFor(
+std::unique_ptr<KeyedService>
+EventRouterFactory::BuildServiceInstanceForBrowserContext(
     BrowserContext* context) const {
-  return new EventRouter(context, ExtensionPrefs::Get(context));
+  return std::make_unique<EventRouter>(context, ExtensionPrefs::Get(context));
 }
 
 BrowserContext* EventRouterFactory::GetBrowserContextToUse(
     BrowserContext* context) const {
   // Redirected in incognito.
-  return ExtensionsBrowserClient::Get()->GetOriginalContext(context);
+  return ExtensionsBrowserClient::Get()->GetContextRedirectedToOriginal(
+      context);
+}
+
+bool EventRouterFactory::ServiceIsNULLWhileTesting() const {
+  return true;
 }
 
 }  // namespace extensions

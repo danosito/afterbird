@@ -1,9 +1,11 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_HTTP_HTTP_VARY_DATA_H_
 #define NET_HTTP_HTTP_VARY_DATA_H_
+
+#include <string_view>
 
 #include "base/hash/md5.h"
 #include "net/base/net_export.h"
@@ -66,13 +68,9 @@ class NET_EXPORT_PRIVATE HttpVaryData {
                       const HttpResponseHeaders& cached_response_headers) const;
 
  private:
-  // Returns the corresponding request header value.
-  static std::string GetRequestValue(const HttpRequestInfo& request_info,
-                                     const std::string& request_header);
-
   // Append to the MD5 context for the given request header.
   static void AddField(const HttpRequestInfo& request_info,
-                       const std::string& request_header,
+                       std::string_view request_header,
                        base::MD5Context* context);
 
   // A digested version of the request headers corresponding to the Vary header.

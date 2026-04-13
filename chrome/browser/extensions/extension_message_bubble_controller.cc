@@ -1,4 +1,4 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -316,10 +316,8 @@ ExtensionIdList* ExtensionMessageBubbleController::GetOrCreateExtensionList() {
         all_extensions ? *all_extensions : registry->enabled_extensions();
     for (const scoped_refptr<const Extension>& extension :
          extensions_to_check) {
-#if 0
       if (delegate_->ShouldIncludeExtension(extension.get()))
         extension_list_.push_back(extension->id());
-#endif
     }
 
     initialized_ = true;

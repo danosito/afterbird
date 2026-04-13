@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,7 @@
 
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/ref_counted.h"
+#include "base/values.h"
 #include "chrome/test/base/testing_profile.h"
 #include "extensions/common/mojom/manifest.mojom-shared.h"
 
@@ -17,7 +18,6 @@ class ExtensionPrefValueMap;
 class PrefService;
 
 namespace base {
-class DictionaryValue;
 class SequencedTaskRunner;
 }
 
@@ -76,13 +76,13 @@ class TestExtensionPrefs {
 
   // Similar to AddExtension, but takes a dictionary with manifest values.
   scoped_refptr<Extension> AddExtensionWithManifest(
-      const base::DictionaryValue& manifest,
+      const base::Value::Dict& manifest,
       mojom::ManifestLocation location);
 
   // Similar to AddExtension, but takes a dictionary with manifest values
   // and extension flags.
   scoped_refptr<Extension> AddExtensionWithManifestAndFlags(
-      const base::DictionaryValue& manifest,
+      const base::Value::Dict& manifest,
       mojom::ManifestLocation location,
       int extra_flags);
 
@@ -103,7 +103,7 @@ class TestExtensionPrefs {
   ChromeAppSorting* app_sorting();
 
   static void AddDefaultManifestKeys(const std::string& name,
-                                     base::DictionaryValue* dict);
+                                     base::Value::Dict& dict);
 
  protected:
   class IncrementalClock;

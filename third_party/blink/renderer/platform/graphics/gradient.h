@@ -39,6 +39,7 @@
 #include "third_party/blink/renderer/platform/wtf/ref_counted.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
+#include "third_party/skia/include/effects/SkGradientShader.h"
 
 class SkMatrix;
 
@@ -115,20 +116,26 @@ class PLATFORM_EXPORT Gradient : public RefCounted<Gradient> {
   void ApplyToFlags(cc::PaintFlags&,
                     const SkMatrix& local_matrix,
                     const ImageDrawOptions& draw_options);
+  void SetColorInterpolationSpace(
+      Color::ColorSpace color_space_interpolation_space,
+      Color::HueInterpolationMethod hue_interpolation_method) {
+    color_space_interpolation_space_ = color_space_interpolation_space;
+    hue_interpolation_method_ = hue_interpolation_method;
+  }
 
   DarkModeFilter& EnsureDarkModeFilter();
 
  protected:
   Gradient(Type, GradientSpreadMethod, ColorInterpolation, DegenerateHandling);
 
-  using ColorBuffer = Vector<SkColor, 8>;
+  using ColorBuffer = Vector<SkColor4f, 8>;
   using OffsetBuffer = Vector<SkScalar, 8>;
   virtual sk_sp<PaintShader> CreateShader(const ColorBuffer&,
                                           const OffsetBuffer&,
                                           SkTileMode,
-                                          uint32_t flags,
+                                          SkGradientShader::Interpolation,
                                           const SkMatrix&,
-                                          SkColor) const = 0;
+                                          SkColor4f) const = 0;
 
   DegenerateHandling GetDegenerateHandling() const {
     return degenerate_handling_;
@@ -136,9 +143,11 @@ class PLATFORM_EXPORT Gradient : public RefCounted<Gradient> {
 
  private:
   sk_sp<PaintShader> CreateShaderInternal(const SkMatrix& local_matrix);
+  SkGradientShader::Interpolation ResolveSkInterpolation() const;
 
   void SortStopsIfNecessary() const;
   void FillSkiaStops(ColorBuffer&, OffsetBuffer&) const;
+  bool HasNonLegacyColor() const;
 
   const Type type_;
   const GradientSpreadMethod spread_method_;
@@ -151,7 +160,11 @@ class PLATFORM_EXPORT Gradient : public RefCounted<Gradient> {
   std::unique_ptr<DarkModeFilter> dark_mode_filter_;
 
   mutable sk_sp<PaintShader> cached_shader_;
-  mutable sk_sp<SkColorFilter> color_filter_;
+  mutable sk_sp<cc::ColorFilter> color_filter_;
+
+  Color::ColorSpace color_space_interpolation_space_ = Color::ColorSpace::kNone;
+  Color::HueInterpolationMethod hue_interpolation_method_ =
+      Color::HueInterpolationMethod::kShorter;
 };
 
 }  // namespace blink

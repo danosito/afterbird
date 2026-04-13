@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,7 +23,17 @@ class OzonePlatformTest : public InProcessBrowserTest {
   }
 };
 
-IN_PROC_BROWSER_TEST_F(OzonePlatformTest, ExitsGracefullyOnPlatormInitFailure) {
+// TODO(crbug.com/40901715) Flaky during teardown on linux ASan/LSan builder.
+#if BUILDFLAG(IS_LINUX) && \
+    (defined(ADDRESS_SANITIZER) || defined(LEAK_SANITIZER))
+#define MAYBE_ExitsGracefullyOnPlatormInitFailure \
+  DISABLED_ExitsGracefullyOnPlatormInitFailure
+#else
+#define MAYBE_ExitsGracefullyOnPlatormInitFailure \
+  ExitsGracefullyOnPlatormInitFailure
+#endif
+IN_PROC_BROWSER_TEST_F(OzonePlatformTest,
+                       MAYBE_ExitsGracefullyOnPlatormInitFailure) {
   // This should never be hit.  The browser is expected to exit before entering
   // the test body.
   ASSERT_TRUE(false);

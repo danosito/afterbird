@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -141,6 +141,9 @@ bool IfaddrsToNetworkInterfaceList(int policy,
   for (const ifaddrs* interface = interfaces; interface != nullptr;
        interface = interface->ifa_next) {
     // Skip loopback interfaces, and ones which are down.
+    if (!(IFF_UP & interface->ifa_flags)) {
+      continue;
+    }
     if (!(IFF_RUNNING & interface->ifa_flags))
       continue;
     if (IFF_LOOPBACK & interface->ifa_flags)

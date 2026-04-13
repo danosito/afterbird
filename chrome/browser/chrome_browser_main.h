@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,20 +10,15 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
-#include "base/threading/hang_watcher.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/buildflags.h"
 #include "chrome/browser/first_run/first_run.h"
+#include "chrome/browser/policy/messaging_layer/public/report_client.h"
 #include "chrome/browser/ui/startup/startup_browser_creator.h"
 #include "chrome/common/buildflags.h"
 #include "content/public/browser/browser_main_parts.h"
 #include "content/public/common/result_codes.h"
-
-#if BUILDFLAG(ENABLE_PROCESS_SINGLETON)
-#include "chrome/browser/chrome_process_singleton.h"
-#include "chrome/browser/process_singleton.h"
-#endif
 
 #if BUILDFLAG(ENABLE_DOWNGRADE_PROCESSING)
 #include "chrome/browser/downgrade/downgrade_manager.h"
@@ -32,7 +27,6 @@
 class BrowserProcessImpl;
 class ChromeBrowserMainExtraParts;
 class StartupData;
-class PrefService;
 class Profile;
 class StartupBrowserCreator;
 class ShutdownWatcherHelper;
@@ -41,10 +35,10 @@ class WebUsbDetector;
 namespace base {
 class CommandLine;
 class RunLoop;
-}
+}  // namespace base
 
-namespace tracing {
-class TraceEventSystemStatsMonitor;
+namespace content {
+class SyntheticTrialSyncer;
 }
 
 class ChromeBrowserMainParts : public content::BrowserMainParts {
@@ -70,7 +64,7 @@ class ChromeBrowserMainParts : public content::BrowserMainParts {
   // current browser instance or false if the remote process should handle it
   // (i.e., because the current process is shutting down).
   static bool ProcessSingletonNotificationCallback(
-      const base::CommandLine& command_line,
+      base::CommandLine command_line,
       const base::FilePath& current_directory);
 #endif  // BUILDFLAG(ENABLE_PROCESS_SINGLETON)
 
@@ -100,10 +94,12 @@ class ChromeBrowserMainParts : public content::BrowserMainParts {
 
   // Additional stages for ChromeBrowserMainExtraParts. These stages are called
   // in order from PreMainMessageLoopRun(). See implementation for details.
-  // TODO(crbug.com/1150326): Update the comment once the feature launches.
-  // `PostProfileInit()` might not be called in order, it is planned to be
-  // called for each new profile as part of that launch. See bug for context.
   virtual void PreProfileInit();
+  // `PostProfileInit()` is called for each regular profile that is created. The
+  // first call has `is_initial_profile`=true, and subsequent calls have
+  // `is_initial_profile`=false.
+  // It may be called during startup if a profile is loaded immediately, or
+  // later if the profile picker is shown.
   virtual void PostProfileInit(Profile* profile, bool is_initial_profile);
   virtual void PreBrowserStart();
   virtual void PostBrowserStart();
@@ -134,10 +130,6 @@ class ChromeBrowserMainParts : public content::BrowserMainParts {
 
   // Record time from process startup to present time in an UMA histogram.
   void RecordBrowserStartupTime();
-
-  // Reads origin trial policy data from local state and configures command line
-  // for child processes.
-  void SetupOriginTrialsCommandLine(PrefService* local_state);
 
   // Calling during PreEarlyInitialization() to complete the remaining tasks
   // after the local state is loaded. Return value is an exit status,
@@ -172,9 +164,6 @@ class ChromeBrowserMainParts : public content::BrowserMainParts {
   // it is destroyed last.
   std::unique_ptr<ShutdownWatcherHelper> shutdown_watcher_;
 
-  // HangWatcher based equivalent to |shutdown_watcher_|
-  absl::optional<base::WatchHangsInScope> watch_hangs_scope_;
-
   std::unique_ptr<WebUsbDetector> web_usb_detector_;
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -182,10 +171,11 @@ class ChromeBrowserMainParts : public content::BrowserMainParts {
   // Parts are deleted in the inverse order they are added.
   std::vector<std::unique_ptr<ChromeBrowserMainExtraParts>> chrome_extra_parts_;
 
-  // The system stats monitor used by chrome://tracing. This doesn't do anything
-  // until tracing of the |system_stats| category is enabled.
-  std::unique_ptr<tracing::TraceEventSystemStatsMonitor>
-      trace_event_system_stats_monitor_;
+  std::unique_ptr<content::SyntheticTrialSyncer> synthetic_trial_syncer_;
+
+  // ERP client instance, serving all reporting needs in the browser.
+  reporting::ReportQueueProvider::SmartPtr<reporting::ReportingClient>
+      reporting_client_{nullptr, base::OnTaskRunnerDeleter(nullptr)};
 
   // Members initialized after / released before main_message_loop_ ------------
 
@@ -195,12 +185,6 @@ class ChromeBrowserMainParts : public content::BrowserMainParts {
   // Browser creation happens on the Java side in Android.
   std::unique_ptr<StartupBrowserCreator> browser_creator_;
 #endif  // !BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(ENABLE_PROCESS_SINGLETON)
-  std::unique_ptr<ChromeProcessSingleton> process_singleton_;
-  ProcessSingleton::NotifyResult notify_result_ =
-      ProcessSingleton::PROCESS_NONE;
-#endif  // BUILDFLAG(ENABLE_PROCESS_SINGLETON)
 
 #if !BUILDFLAG(IS_ANDROID)
   // Members needed across shutdown methods.
@@ -225,6 +209,7 @@ class ChromeBrowserMainParts : public content::BrowserMainParts {
 
   // Observer that triggers `PostProfileInit()` when new user profiles are
   // created.
+  // Must be deleted before `browser_process_`.
   std::unique_ptr<ProfileInitManager> profile_init_manager_;
 };
 

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,24 +11,16 @@ import org.chromium.content_public.browser.NavigationHandle;
 import org.chromium.net.NetError;
 import org.chromium.ui.base.WindowAndroid;
 
-import org.chromium.components.embedder_support.util.UrlUtilities;
-
-/**
- * Monitor changes that indicate a theme color change may be needed from tab contents.
- */
+/** Monitor changes that indicate a theme color change may be needed from tab contents. */
 public class TabThemeColorHelper extends EmptyTabObserver {
-    private final Tab mTab;
-    private final Callback mUpdateCallback;
+    private final Callback<Integer> mUpdateCallback;
 
     TabThemeColorHelper(Tab tab, Callback<Integer> updateCallback) {
-        mTab = tab;
         mUpdateCallback = updateCallback;
         tab.addObserver(this);
     }
 
-    /**
-     * Notifies the listeners of the tab theme color change.
-     */
+    /** Notifies the listeners of the tab theme color change. */
     private void updateIfNeeded(Tab tab, boolean didWebContentsThemeColorChange) {
         int themeColor = tab.getThemeColor();
         if (didWebContentsThemeColorChange) themeColor = tab.getWebContents().getThemeColor();
@@ -45,12 +37,10 @@ public class TabThemeColorHelper extends EmptyTabObserver {
     @Override
     public void onUrlUpdated(Tab tab) {
         updateIfNeeded(tab, false);
-        if (tab != null && UrlUtilities.isNTPUrl(tab.getUrl().getSpec()))
-            updateIfNeeded(tab, true);
     }
 
     @Override
-    public void onDidFinishNavigation(Tab tab, NavigationHandle navigation) {
+    public void onDidFinishNavigationInPrimaryMainFrame(Tab tab, NavigationHandle navigation) {
         if (navigation.errorCode() != NetError.OK) updateIfNeeded(tab, true);
     }
 

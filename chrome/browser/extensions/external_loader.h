@@ -1,19 +1,14 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_EXTENSIONS_EXTERNAL_LOADER_H_
 #define CHROME_BROWSER_EXTENSIONS_EXTERNAL_LOADER_H_
 
-#include <memory>
-
 #include "base/files/file_path.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
-
-namespace base {
-class DictionaryValue;
-}
+#include "base/values.h"
 
 namespace extensions {
 class ExternalProviderImpl;
@@ -55,11 +50,9 @@ class ExternalLoader : public base::RefCountedThreadSafe<ExternalLoader> {
  protected:
   virtual ~ExternalLoader();
 
-  // Notifies the provider that the list of extensions has been loaded.
-  virtual void LoadFinished(std::unique_ptr<base::DictionaryValue> prefs);
+  virtual void LoadFinished(base::Value::Dict prefs);
 
-  // Notifies the provider that the list of extensions has been updated.
-  virtual void OnUpdated(std::unique_ptr<base::DictionaryValue> updated_prefs);
+  void OnUpdated(base::Value::Dict updated_prefs);
 
   // Returns true if this loader has an owner.
   // This is useful to know if calling LoadFinished/OnUpdated will propagate

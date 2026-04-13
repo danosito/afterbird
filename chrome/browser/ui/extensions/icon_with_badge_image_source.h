@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/image/canvas_image_source.h"
@@ -63,10 +63,10 @@ class IconWithBadgeImageSource : public gfx::CanvasImageSource {
     return paint_blocked_actions_decoration_;
   }
 
+ private:
   // gfx::CanvasImageSource:
   void Draw(gfx::Canvas* canvas) override;
 
- private:
   // Paints |badge_|, if any, on |canvas|.
   void PaintBadge(gfx::Canvas* canvas);
 
@@ -105,6 +105,8 @@ class IconWithBadgeImageSource : public gfx::CanvasImageSource {
 
   // Whether or not to paint a decoration to indicate that the extension has
   // had actions blocked.
+  // TODO(crbug.com/40857680): Remove once kExtensionsMenuAccessControl is
+  // rolled out.
   bool paint_blocked_actions_decoration_ = false;
 };
 

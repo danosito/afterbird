@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,14 +30,16 @@ ImageLoaderFactory::ImageLoaderFactory()
 ImageLoaderFactory::~ImageLoaderFactory() {
 }
 
-KeyedService* ImageLoaderFactory::BuildServiceInstanceFor(
+std::unique_ptr<KeyedService>
+ImageLoaderFactory::BuildServiceInstanceForBrowserContext(
     content::BrowserContext* context) const {
-  return new ImageLoader;
+  return std::make_unique<ImageLoader>();
 }
 
 content::BrowserContext* ImageLoaderFactory::GetBrowserContextToUse(
     content::BrowserContext* context) const {
-  return ExtensionsBrowserClient::Get()->GetOriginalContext(context);
+  return ExtensionsBrowserClient::Get()->GetContextRedirectedToOriginal(
+      context);
 }
 
 }  // namespace extensions

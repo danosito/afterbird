@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "base/base64.h"
-#include "base/bind.h"
+#include "base/functional/bind.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
 #include "extensions/browser/extension_action_manager.h"
@@ -18,7 +18,7 @@
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/state_store.h"
 #include "extensions/common/constants.h"
-#include "ui/base/layout.h"
+#include "extensions/common/extension_id.h"
 #include "ui/gfx/codec/png_codec.h"
 #include "ui/gfx/image/image.h"
 #include "ui/gfx/image/image_skia.h"
@@ -65,64 +65,59 @@ std::string SkColorToRawString(SkColor color) {
 }
 
 // Conversion function for reading/writing to storage.
-bool StringToSkBitmap(const std::string& str, SkBitmap* bitmap) {
-  // TODO(mpcomplete): Remove the base64 encode/decode step when
-  // http://crbug.com/140546 is fixed.
-  std::string raw_str;
-  if (!base::Base64Decode(str, &raw_str))
-    return false;
+SkBitmap StringToSkBitmap(const std::string& str) {
+  std::optional<std::vector<uint8_t>> decoded = base::Base64Decode(str);
+  if (!decoded) {
+    return SkBitmap();
+  }
 
-  bool success = gfx::PNGCodec::Decode(
-      reinterpret_cast<unsigned const char*>(raw_str.data()), raw_str.size(),
-      bitmap);
-  return success;
+  return gfx::PNGCodec::Decode(decoded.value());
 }
 
 // Conversion function for reading/writing to storage.
 std::string BitmapToString(const SkBitmap& bitmap) {
-  std::vector<unsigned char> data;
-  bool success = gfx::PNGCodec::EncodeBGRASkBitmap(bitmap, false, &data);
-  if (!success)
+  std::optional<std::vector<uint8_t>> data =
+      gfx::PNGCodec::EncodeBGRASkBitmap(bitmap, /*discard_transparency=*/false);
+  if (!data) {
     return std::string();
+  }
 
-  base::StringPiece raw_str(
-      reinterpret_cast<const char*>(&data[0]), data.size());
-  std::string base64_str;
-  base::Base64Encode(raw_str, &base64_str);
-  return base64_str;
+  return base::Base64Encode(data.value());
 }
 
 // Set |action|'s default values to those specified in |dict|.
-void SetDefaultsFromValue(const base::DictionaryValue* dict,
+void SetDefaultsFromValue(const base::Value::Dict& dict,
                           ExtensionAction* action) {
   const int kDefaultTabId = ExtensionAction::kDefaultTabId;
-  std::string str_value;
 
   // For each value, don't set it if it has been modified already.
-  if (dict->GetString(kPopupUrlStorageKey, &str_value) &&
-      !action->HasPopupUrl(kDefaultTabId)) {
-    action->SetPopupUrl(kDefaultTabId, GURL(str_value));
+  const std::string* popup_url = dict.FindString(kPopupUrlStorageKey);
+  if (popup_url && !action->HasPopupUrl(kDefaultTabId)) {
+    action->SetPopupUrl(kDefaultTabId, GURL(*popup_url));
   }
-  if (dict->GetString(kTitleStorageKey, &str_value) &&
-      !action->HasTitle(kDefaultTabId)) {
-    action->SetTitle(kDefaultTabId, str_value);
+  const std::string* title = dict.FindString(kTitleStorageKey);
+  if (title && !action->HasTitle(kDefaultTabId)) {
+    action->SetTitle(kDefaultTabId, *title);
   }
-  if (dict->GetString(kBadgeTextStorageKey, &str_value) &&
-      !action->HasBadgeText(kDefaultTabId)) {
-    action->SetBadgeText(kDefaultTabId, str_value);
+  const std::string* badge_text = dict.FindString(kBadgeTextStorageKey);
+  if (badge_text && !action->HasBadgeText(kDefaultTabId)) {
+    action->SetBadgeText(kDefaultTabId, *badge_text);
   }
-  if (dict->GetString(kBadgeBackgroundColorStorageKey, &str_value) &&
+  const std::string* badge_background_color =
+      dict.FindString(kBadgeBackgroundColorStorageKey);
+  if (badge_background_color &&
       !action->HasBadgeBackgroundColor(kDefaultTabId)) {
-    action->SetBadgeBackgroundColor(kDefaultTabId,
-                                    RawStringToSkColor(str_value));
+    action->SetBadgeBackgroundColor(
+        kDefaultTabId, RawStringToSkColor(*badge_background_color));
   }
-  if (dict->GetString(kBadgeTextColorStorageKey, &str_value) &&
-      !action->HasBadgeTextColor(kDefaultTabId)) {
-    action->SetBadgeTextColor(kDefaultTabId, RawStringToSkColor(str_value));
+  const std::string* badge_text_color =
+      dict.FindString(kBadgeTextColorStorageKey);
+  if (badge_text_color && !action->HasBadgeTextColor(kDefaultTabId)) {
+    action->SetBadgeTextColor(kDefaultTabId,
+                              RawStringToSkColor(*badge_text_color));
   }
 
-  absl::optional<int> appearance_storage =
-      dict->FindIntKey(kAppearanceStorageKey);
+  std::optional<int> appearance_storage = dict.FindInt(kAppearanceStorageKey);
   if (appearance_storage && !action->HasIsVisible(kDefaultTabId)) {
     switch (*appearance_storage) {
       case INVISIBLE:
@@ -135,60 +130,53 @@ void SetDefaultsFromValue(const base::DictionaryValue* dict,
     }
   }
 
-  const base::DictionaryValue* icon_value = NULL;
-  if (dict->GetDictionary(kIconStorageKey, &icon_value) &&
-      !action->HasIcon(kDefaultTabId)) {
+  const base::Value::Dict* icon_dict = dict.FindDict(kIconStorageKey);
+  if (icon_dict && !action->HasIcon(kDefaultTabId)) {
     gfx::ImageSkia icon;
-    SkBitmap bitmap;
-    for (base::DictionaryValue::Iterator iter(*icon_value); !iter.IsAtEnd();
-         iter.Advance()) {
+    for (const auto iter : *icon_dict) {
       int icon_size = 0;
-      if (base::StringToInt(iter.key(), &icon_size) &&
-          iter.value().is_string() &&
-          StringToSkBitmap(iter.value().GetString(), &bitmap)) {
-        CHECK(!bitmap.isNull());
-        float scale =
-            static_cast<float>(icon_size) / ExtensionAction::ActionIconSize();
-        icon.AddRepresentation(gfx::ImageSkiaRep(bitmap, scale));
+      if (base::StringToInt(iter.first, &icon_size) &&
+          iter.second.is_string()) {
+        SkBitmap bitmap = StringToSkBitmap(iter.second.GetString());
+        if (!bitmap.isNull()) {
+          float scale =
+              static_cast<float>(icon_size) / ExtensionAction::ActionIconSize();
+          icon.AddRepresentation(gfx::ImageSkiaRep(bitmap, scale));
+        }
       }
     }
     action->SetIcon(kDefaultTabId, gfx::Image(icon));
   }
 }
 
-// Store |action|'s default values in a DictionaryValue for use in storing to
+// Store |action|'s default values in a base::Value::Dict for use in storing to
 // disk.
-std::unique_ptr<base::DictionaryValue> DefaultsToValue(
-    ExtensionAction* action) {
+base::Value::Dict DefaultsToValue(ExtensionAction* action) {
   const int kDefaultTabId = ExtensionAction::kDefaultTabId;
-  std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue());
+  base::Value::Dict dict;
 
-  dict->SetStringKey(kPopupUrlStorageKey,
-                     action->GetPopupUrl(kDefaultTabId).spec());
-  dict->SetStringKey(kTitleStorageKey, action->GetTitle(kDefaultTabId));
-  dict->SetStringKey(kBadgeTextStorageKey,
-                     action->GetExplicitlySetBadgeText(kDefaultTabId));
-  dict->SetStringKey(
-      kBadgeBackgroundColorStorageKey,
-      SkColorToRawString(action->GetBadgeBackgroundColor(kDefaultTabId)));
-  dict->SetStringKey(
-      kBadgeTextColorStorageKey,
-      SkColorToRawString(action->GetBadgeTextColor(kDefaultTabId)));
-  dict->SetIntKey(kAppearanceStorageKey,
-                  action->GetIsVisible(kDefaultTabId) ? ACTIVE : INVISIBLE);
+  dict.Set(kPopupUrlStorageKey, action->GetPopupUrl(kDefaultTabId).spec());
+  dict.Set(kTitleStorageKey, action->GetTitle(kDefaultTabId));
+  dict.Set(kBadgeTextStorageKey,
+           action->GetExplicitlySetBadgeText(kDefaultTabId));
+  dict.Set(kBadgeBackgroundColorStorageKey,
+           SkColorToRawString(action->GetBadgeBackgroundColor(kDefaultTabId)));
+  dict.Set(kBadgeTextColorStorageKey,
+           SkColorToRawString(action->GetBadgeTextColor(kDefaultTabId)));
+  dict.Set(kAppearanceStorageKey,
+           action->GetIsVisible(kDefaultTabId) ? ACTIVE : INVISIBLE);
 
   gfx::ImageSkia icon =
       action->GetExplicitlySetIcon(kDefaultTabId).AsImageSkia();
   if (!icon.isNull()) {
-    std::unique_ptr<base::DictionaryValue> icon_value(
-        new base::DictionaryValue());
+    base::Value::Dict icon_value;
     std::vector<gfx::ImageSkiaRep> image_reps = icon.image_reps();
     for (const gfx::ImageSkiaRep& rep : image_reps) {
       int size = static_cast<int>(rep.scale() * icon.width());
       std::string size_string = base::NumberToString(size);
-      icon_value->SetStringKey(size_string, BitmapToString(rep.GetBitmap()));
+      icon_value.Set(size_string, BitmapToString(rep.GetBitmap()));
     }
-    dict->Set(kIconStorageKey, std::move(icon_value));
+    dict.Set(kIconStorageKey, std::move(icon_value));
   }
   return dict;
 }
@@ -198,8 +186,8 @@ std::unique_ptr<base::DictionaryValue> DefaultsToValue(
 ExtensionActionStorageManager::ExtensionActionStorageManager(
     content::BrowserContext* context)
     : browser_context_(context) {
-  extension_action_observation_.Observe(
-      ExtensionActionAPI::Get(browser_context_));
+  extension_action_dispatcher_observation_.Observe(
+      ExtensionActionDispatcher::Get(browser_context_));
   extension_registry_observation_.Observe(
       ExtensionRegistry::Get(browser_context_));
 
@@ -216,8 +204,9 @@ void ExtensionActionStorageManager::OnExtensionLoaded(
     const Extension* extension) {
   ExtensionAction* action = ExtensionActionManager::Get(browser_context_)
                                 ->GetExtensionAction(*extension);
-  if (!action || action->action_type() != ActionInfo::TYPE_BROWSER)
+  if (!action || action->action_type() != ActionInfo::Type::kBrowser) {
     return;
+  }
 
   StateStore* store = GetStateStore();
   if (store) {
@@ -237,30 +226,30 @@ void ExtensionActionStorageManager::OnExtensionActionUpdated(
   // settings can't be persisted across browser sessions.
   bool for_default_tab = !web_contents;
   if (browser_context_ == browser_context &&
-      extension_action->action_type() == ActionInfo::TYPE_BROWSER &&
+      extension_action->action_type() == ActionInfo::Type::kBrowser &&
       for_default_tab) {
     WriteToStorage(extension_action);
   }
 }
 
-void ExtensionActionStorageManager::OnExtensionActionAPIShuttingDown() {
-  extension_action_observation_.Reset();
+void ExtensionActionStorageManager::OnShuttingDown() {
+  extension_action_dispatcher_observation_.Reset();
 }
 
 void ExtensionActionStorageManager::WriteToStorage(
     ExtensionAction* extension_action) {
   StateStore* store = GetStateStore();
   if (store) {
-    std::unique_ptr<base::DictionaryValue> defaults =
-        DefaultsToValue(extension_action);
+    base::Value::Dict defaults = DefaultsToValue(extension_action);
     store->SetExtensionValue(extension_action->extension_id(),
-                             kBrowserActionStorageKey, std::move(defaults));
+                             kBrowserActionStorageKey,
+                             base::Value(std::move(defaults)));
   }
 }
 
 void ExtensionActionStorageManager::ReadFromStorage(
-    const std::string& extension_id,
-    std::unique_ptr<base::Value> value) {
+    const ExtensionId& extension_id,
+    std::optional<base::Value> value) {
   const Extension* extension = ExtensionRegistry::Get(browser_context_)->
       enabled_extensions().GetByID(extension_id);
   if (!extension)
@@ -268,18 +257,17 @@ void ExtensionActionStorageManager::ReadFromStorage(
 
   ExtensionAction* action = ExtensionActionManager::Get(browser_context_)
                                 ->GetExtensionAction(*extension);
-  if (!action || action->action_type() != ActionInfo::TYPE_BROWSER) {
+  if (!action || action->action_type() != ActionInfo::Type::kBrowser) {
     // This can happen if the extension is updated between startup and when the
     // storage read comes back, and the update removes the browser action.
     // http://crbug.com/349371
     return;
   }
 
-  const base::DictionaryValue* dict = NULL;
-  if (!value.get() || !value->GetAsDictionary(&dict))
+  if (!value || !value->is_dict())
     return;
 
-  SetDefaultsFromValue(dict, action);
+  SetDefaultsFromValue(value->GetDict(), action);
 }
 
 StateStore* ExtensionActionStorageManager::GetStateStore() {

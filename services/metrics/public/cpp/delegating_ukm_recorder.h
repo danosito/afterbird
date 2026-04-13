@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -46,6 +46,8 @@ class METRICS_EXPORT DelegatingUkmRecorder : public UkmRecorder {
   // The pointer is only used as a key.
   void RemoveDelegate(UkmRecorder* delegate);
 
+  bool HasMultipleDelegates();
+
  private:
   friend class AppSourceUrlRecorder;
   friend class internal::SourceUrlRecorderWebContentsObserver;
@@ -60,6 +62,9 @@ class METRICS_EXPORT DelegatingUkmRecorder : public UkmRecorder {
       SourceId source_id,
       const UkmSource::NavigationData& navigation_data) override;
   void AddEntry(mojom::UkmEntryPtr entry) override;
+  void RecordWebDXFeatures(SourceId source_id,
+                           const std::set<int32_t>& features,
+                           const size_t max_feature_value) override;
   void MarkSourceForDeletion(SourceId source_id) override;
 
   class Delegate final {
@@ -76,6 +81,9 @@ class METRICS_EXPORT DelegatingUkmRecorder : public UkmRecorder {
     void RecordNavigation(SourceId source_id,
                           const UkmSource::NavigationData& navigation_data);
     void AddEntry(mojom::UkmEntryPtr entry);
+    void RecordWebDXFeatures(SourceId source_id,
+                             const std::set<int32_t>& features,
+                             const size_t max_feature_value);
     void MarkSourceForDeletion(SourceId source_id);
 
    private:

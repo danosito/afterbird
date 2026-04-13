@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,6 +11,7 @@
 
 class MetricsReportingObserver;
 class PrefsAshObserver;
+class Profile;
 
 // Startup and shutdown code for Lacros. See ChromeBrowserMainParts for details.
 class ChromeBrowserMainPartsLacros : public ChromeBrowserMainPartsLinux {
@@ -25,8 +26,9 @@ class ChromeBrowserMainPartsLacros : public ChromeBrowserMainPartsLinux {
   // ChromeBrowserMainParts:
   int PreEarlyInitialization() override;
   int PreCreateThreads() override;
-  void PostCreateThreads() override;
   void PreProfileInit() override;
+  void PostProfileInit(Profile* profile, bool is_initial_profile) override;
+  void PostMainMessageLoopRun() override;
   void PostDestroyThreads() override;
 
  private:

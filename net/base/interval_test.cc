@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -269,8 +269,8 @@ TEST_F(IntervalTest, IntervalOfTypeWithNoOperatorMinus) {
   const Interval<std::pair<int, int>> d2({1, 2}, {4, 3});
   EXPECT_EQ("a", d1.min());
   EXPECT_EQ("b", d1.max());
-  EXPECT_EQ(std::make_pair(1, 2), d2.min());
-  EXPECT_EQ(std::make_pair(4, 3), d2.max());
+  EXPECT_EQ(std::pair(1, 2), d2.min());
+  EXPECT_EQ(std::pair(4, 3), d2.max());
 }
 
 }  // unnamed namespace

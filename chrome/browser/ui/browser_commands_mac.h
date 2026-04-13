@@ -1,4 +1,4 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,8 +9,12 @@ class Browser;
 
 namespace chrome {
 
-// Toggles the visibility of the toolbar in fullscreen mode.
-void ToggleFullscreenToolbar(Browser* browser);
+// Toggles the "Always Show Toolbar in Full Screen".
+void ToggleAlwaysShowToolbarInFullscreen(Browser* browser);
+
+// Sets the "Always Show Toolbar in Full Screen" in tests.
+void SetAlwaysShowToolbarInFullscreenForTesting(Browser* browser,
+                                                bool always_show);
 
 // Toggles the "Allow JavaScript from AppleEvents" setting.
 void ToggleJavaScriptFromAppleEventsAllowed(Browser* browser);

@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,7 @@ package org.chromium.base;
 
 import android.os.SystemClock;
 
-import org.chromium.base.annotations.CheckDiscard;
+import org.chromium.build.annotations.CheckDiscard;
 
 /**
  * Utilities related to timestamps, including the ability to use fake time for tests via
@@ -67,8 +67,11 @@ public class TimeUtils {
 
     interface FakeClock {
         long uptimeMillis();
+
         long elapsedRealtimeNanos();
+
         long currentThreadTimeMillis();
+
         long currentTimeMillis();
     }
 
@@ -76,11 +79,15 @@ public class TimeUtils {
 
     // Use these in favor of TimeUnit.convert() in order to avoid the overhead of a
     // static-get / static-invoke.
-    public static final long NANOSECONDS_PER_MICROSECOND = 1000;
-    public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     public static final long SECONDS_PER_MINUTE = 60;
     public static final long SECONDS_PER_HOUR = SECONDS_PER_MINUTE * 60;
     public static final long SECONDS_PER_DAY = SECONDS_PER_HOUR * 24;
+    public static final long MILLISECONDS_PER_MINUTE = SECONDS_PER_MINUTE * 1000;
+    public static final long MILLISECONDS_PER_DAY = SECONDS_PER_DAY * 1000;
+    public static final long MILLISECONDS_PER_YEAR = MILLISECONDS_PER_DAY * 365;
+
+    public static final long NANOSECONDS_PER_MICROSECOND = 1000;
+    public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
 
     // Used by FakeTimeTestRule. Visibility is restricted to ensure tests use the rule, which
     // restores the value to null in its clean-up logic.

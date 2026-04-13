@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -55,6 +55,8 @@ class OfflineItemModel : public DownloadUIModel,
   int PercentComplete() const override;
   bool WasUINotified() const override;
   void SetWasUINotified(bool should_notify) override;
+  bool WasActionedOn() const override;
+  void SetActionedOn(bool actioned_on) override;
   base::FilePath GetFileNameToReportUser() const override;
   base::FilePath GetTargetFilePath() const override;
   void OpenDownload() override;
@@ -93,7 +95,7 @@ class OfflineItemModel : public DownloadUIModel,
   // FilteredOfflineItemObserver::Observer overrides.
   void OnItemRemoved(const ContentId& id) override;
   void OnItemUpdated(const OfflineItem& item,
-                     const absl::optional<UpdateDelta>& update_delta) override;
+                     const std::optional<UpdateDelta>& update_delta) override;
 
   // DownloadUIModel implementation.
   std::string GetMimeType() const override;

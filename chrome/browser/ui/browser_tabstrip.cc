@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,11 +6,11 @@
 
 #include "base/command_line.h"
 #include "base/feature_list.h"
-#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/tab_contents/core_tab_helper.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/chrome_switches.h"
@@ -18,16 +18,18 @@
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_view_host.h"
 #include "content/public/browser/web_contents.h"
+#include "third_party/blink/public/mojom/window_features/window_features.mojom.h"
 #include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
 
 namespace chrome {
 
-void AddTabAt(Browser* browser,
-              const GURL& url,
-              int idx,
-              bool foreground,
-              absl::optional<tab_groups::TabGroupId> group) {
+content::WebContents* AddAndReturnTabAt(
+    Browser* browser,
+    const GURL& url,
+    int idx,
+    bool foreground,
+    std::optional<tab_groups::TabGroupId> group) {
   // Time new tab page creation time.  We keep track of the timing data in
   // WebContents, but we want to include the time it takes to create the
   // WebContents object too.
@@ -38,14 +40,25 @@ void AddTabAt(Browser* browser,
                                   : WindowOpenDisposition::NEW_BACKGROUND_TAB;
   params.tabstrip_index = idx;
   params.group = group;
+  params.pwa_navigation_capturing_force_off = true;
   Navigate(&params);
 
   if (!params.navigated_or_inserted_contents)
-    return;
+    return nullptr;
 
   CoreTabHelper* core_tab_helper =
       CoreTabHelper::FromWebContents(params.navigated_or_inserted_contents);
   core_tab_helper->set_new_tab_start_time(new_tab_start_time);
+
+  return params.navigated_or_inserted_contents;
+}
+
+void AddTabAt(Browser* browser,
+              const GURL& url,
+              int idx,
+              bool foreground,
+              std::optional<tab_groups::TabGroupId> group) {
+  /*void*/ AddAndReturnTabAt(browser, url, idx, foreground, std::move(group));
 }
 
 content::WebContents* AddSelectedTabWithURL(Browser* browser,
@@ -53,17 +66,19 @@ content::WebContents* AddSelectedTabWithURL(Browser* browser,
                                             ui::PageTransition transition) {
   NavigateParams params(browser, url, transition);
   params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  params.pwa_navigation_capturing_force_off = true;
   Navigate(&params);
   return params.navigated_or_inserted_contents;
 }
 
-void AddWebContents(Browser* browser,
-                    content::WebContents* source_contents,
-                    std::unique_ptr<content::WebContents> new_contents,
-                    const GURL& target_url,
-                    WindowOpenDisposition disposition,
-                    const gfx::Rect& initial_rect,
-                    NavigateParams::WindowAction window_action) {
+content::WebContents* AddWebContents(
+    Browser* browser,
+    content::WebContents* source_contents,
+    std::unique_ptr<content::WebContents> new_contents,
+    const GURL& target_url,
+    WindowOpenDisposition disposition,
+    const blink::mojom::WindowFeatures& window_features,
+    NavigateParams::WindowAction window_action) {
   // No code for this yet.
   DCHECK(disposition != WindowOpenDisposition::SAVE_TO_DISK);
   // Can't create a new contents for the current tab - invalid case.
@@ -73,7 +88,7 @@ void AddWebContents(Browser* browser,
   params.source_contents = source_contents;
   params.url = target_url;
   params.disposition = disposition;
-  params.window_bounds = initial_rect;
+  params.window_features = window_features;
   params.window_action = window_action;
   // At this point, we're already beyond the popup blocker. Even if the popup
   // was created without a user gesture, we have to set |user_gesture| to true,
@@ -83,6 +98,7 @@ void AddWebContents(Browser* browser,
   ConfigureTabGroupForNavigation(&params);
 
   Navigate(&params);
+  return params.navigated_or_inserted_contents;
 }
 
 void CloseWebContents(Browser* browser,
@@ -90,13 +106,14 @@ void CloseWebContents(Browser* browser,
                       bool add_to_history) {
   int index = browser->tab_strip_model()->GetIndexOfWebContents(contents);
   if (index == TabStripModel::kNoTab) {
-    NOTREACHED() << "CloseWebContents called for tab not in our strip";
+    DUMP_WILL_BE_NOTREACHED()
+        << "CloseWebContents called for tab not in our strip";
     return;
   }
 
   browser->tab_strip_model()->CloseWebContentsAt(
-      index, add_to_history ? TabStripModel::CLOSE_CREATE_HISTORICAL_TAB
-                            : TabStripModel::CLOSE_NONE);
+      index, add_to_history ? TabCloseTypes::CLOSE_CREATE_HISTORICAL_TAB
+                            : TabCloseTypes::CLOSE_NONE);
 }
 
 void ConfigureTabGroupForNavigation(NavigateParams* nav_params) {

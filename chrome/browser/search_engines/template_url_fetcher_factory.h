@@ -1,19 +1,19 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_SEARCH_ENGINES_TEMPLATE_URL_FETCHER_FACTORY_H_
 #define CHROME_BROWSER_SEARCH_ENGINES_TEMPLATE_URL_FETCHER_FACTORY_H_
 
-#include "base/memory/singleton.h"
-#include "components/keyed_service/content/browser_context_keyed_service_factory.h"
+#include "base/no_destructor.h"
+#include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 class Profile;
 class TemplateURLFetcher;
 
 // Singleton that owns all TemplateURLFetcher and associates them with
 // Profiles.
-class TemplateURLFetcherFactory : public BrowserContextKeyedServiceFactory {
+class TemplateURLFetcherFactory : public ProfileKeyedServiceFactory {
  public:
   static TemplateURLFetcher* GetForProfile(Profile* profile);
 
@@ -29,16 +29,14 @@ class TemplateURLFetcherFactory : public BrowserContextKeyedServiceFactory {
   static void ShutdownForProfile(Profile* profile);
 
  private:
-  friend struct base::DefaultSingletonTraits<TemplateURLFetcherFactory>;
+  friend base::NoDestructor<TemplateURLFetcherFactory>;
 
   TemplateURLFetcherFactory();
   ~TemplateURLFetcherFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  KeyedService* BuildServiceInstanceFor(
+  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
       content::BrowserContext* profile) const override;
-  content::BrowserContext* GetBrowserContextToUse(
-      content::BrowserContext* context) const override;
 };
 
 #endif  // CHROME_BROWSER_SEARCH_ENGINES_TEMPLATE_URL_FETCHER_FACTORY_H_

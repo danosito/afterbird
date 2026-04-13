@@ -1,12 +1,12 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/autocomplete/remote_suggestions_service_factory.h"
 
-#include "base/memory/singleton.h"
+#include "base/no_destructor.h"
+#include "chrome/browser/autocomplete/document_suggestions_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/omnibox/browser/remote_suggestions_service.h"
 #include "content/public/browser/storage_partition.h"
 
@@ -21,21 +21,33 @@ RemoteSuggestionsService* RemoteSuggestionsServiceFactory::GetForProfile(
 // static
 RemoteSuggestionsServiceFactory*
 RemoteSuggestionsServiceFactory::GetInstance() {
-  return base::Singleton<RemoteSuggestionsServiceFactory>::get();
+  static base::NoDestructor<RemoteSuggestionsServiceFactory> instance;
+  return instance.get();
 }
 
-KeyedService* RemoteSuggestionsServiceFactory::BuildServiceInstanceFor(
+std::unique_ptr<KeyedService>
+RemoteSuggestionsServiceFactory::BuildServiceInstanceForBrowserContext(
     content::BrowserContext* context) const {
   Profile* profile = Profile::FromBrowserContext(context);
-  return new RemoteSuggestionsService(
+  return std::make_unique<RemoteSuggestionsService>(
+      DocumentSuggestionsServiceFactory::GetForProfile(
+          profile, /*create_if_necessary=*/true),
       profile->GetDefaultStoragePartition()
           ->GetURLLoaderFactoryForBrowserProcess());
 }
 
 RemoteSuggestionsServiceFactory::RemoteSuggestionsServiceFactory()
-    : BrowserContextKeyedServiceFactory(
+    : ProfileKeyedServiceFactory(
           "RemoteSuggestionsService",
-          BrowserContextDependencyManager::GetInstance()) {
+          ProfileSelections::Builder()
+              // Service is needed in OTR profiles (Incognito and Guest).
+              .WithRegular(ProfileSelection::kOwnInstance)
+              .WithGuest(ProfileSelection::kOwnInstance)
+              // TODO(crbug.com/41488885): Check if this service is needed for
+              // Ash Internals.
+              .WithAshInternals(ProfileSelection::kOriginalOnly)
+              .Build()) {
+  DependsOn(DocumentSuggestionsServiceFactory::GetInstance());
 }
 
-RemoteSuggestionsServiceFactory::~RemoteSuggestionsServiceFactory() {}
+RemoteSuggestionsServiceFactory::~RemoteSuggestionsServiceFactory() = default;

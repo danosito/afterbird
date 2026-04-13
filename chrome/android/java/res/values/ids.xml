@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<!-- Copyright 2014 The Chromium Authors. All rights reserved.
-
-     Use of this source code is governed by a BSD-style license that can be
-     found in the LICENSE file.
+<!--
+Copyright 2014 The Chromium Authors
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
 -->
 
 <resources>
@@ -44,7 +44,6 @@
     <!-- Custom Tab Group -->
     <item type="id" name="contextmenu_open_in_new_chrome_tab" />
     <item type="id" name="contextmenu_open_in_chrome_incognito_tab" />
-    <item type="id" name="contextmenu_open_in_browser_id" />
 
     <!-- Link Group -->
     <item type="id" name="contextmenu_open_in_new_tab" />
@@ -53,8 +52,6 @@
     <item type="id" name="contextmenu_open_in_other_window" />
     <item type="id" name="contextmenu_open_in_new_window" />
     <item type="id" name="contextmenu_open_in_ephemeral_tab" />
-    <item type="id" name="contextmenu_copy_link_address" />
-    <item type="id" name="contextmenu_copy_link_text" />
     <item type="id" name="contextmenu_save_link_as" />
     <item type="id" name="contextmenu_share_link" />
     <item type="id" name="contextmenu_direct_share_link" />
@@ -92,9 +89,6 @@
     <!-- Menu item IDs for FullscreenActivities -->
     <item type="id" name="contextmenu_open_in_chrome" />
 
-    <!-- VR constants -->
-    <item type="id" name="vr_overlay_view" />
-
     <!-- Tags -->
     <item type="id" name="highlight_color" />
     <item type="id" name="context_menu_delegate" />
@@ -104,10 +98,10 @@
     <item type="id" name="ntp_feed_header_menu_item_activity" />
     <item type="id" name="ntp_feed_header_menu_item_interest" />
     <item type="id" name="ntp_feed_header_menu_item_reactions" />
-    <item type="id" name="ntp_feed_header_menu_item_autoplay" />
     <item type="id" name="ntp_feed_header_menu_item_learn" />
     <item type="id" name="ntp_feed_header_menu_item_toggle_switch" />
 
     <!-- Custom Tabs -->
     <item type="id" name="view_id_tag_key" />
+    <item type="id" name="custom_tabs_toolbar_tintable" />
 </resources>

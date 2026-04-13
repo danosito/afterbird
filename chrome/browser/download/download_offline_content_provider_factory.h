@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,7 +14,7 @@ class SimpleFactoryKey;
 
 namespace base {
 template <typename T>
-struct DefaultSingletonTraits;
+class NoDestructor;
 }  // namespace base
 
 // This class builds and associates DownloadOfflineContentProvider with their
@@ -34,8 +34,7 @@ class DownloadOfflineContentProviderFactory : public SimpleKeyedServiceFactory {
       const DownloadOfflineContentProviderFactory&) = delete;
 
  private:
-  friend struct base::DefaultSingletonTraits<
-      DownloadOfflineContentProviderFactory>;
+  friend base::NoDestructor<DownloadOfflineContentProviderFactory>;
 
   DownloadOfflineContentProviderFactory();
   ~DownloadOfflineContentProviderFactory() override;

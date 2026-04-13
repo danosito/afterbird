@@ -1,21 +1,22 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_EXTENSIONS_INSTALL_TRACKER_FACTORY_H_
 #define CHROME_BROWSER_EXTENSIONS_INSTALL_TRACKER_FACTORY_H_
 
-#include "components/keyed_service/content/browser_context_keyed_service_factory.h"
+#include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace base {
-template <typename T> struct DefaultSingletonTraits;
+template <typename T>
+class NoDestructor;
 }
 
 namespace extensions {
 
 class InstallTracker;
 
-class InstallTrackerFactory : public BrowserContextKeyedServiceFactory {
+class InstallTrackerFactory : public ProfileKeyedServiceFactory {
  public:
   InstallTrackerFactory(const InstallTrackerFactory&) = delete;
   InstallTrackerFactory& operator=(const InstallTrackerFactory&) = delete;
@@ -24,15 +25,13 @@ class InstallTrackerFactory : public BrowserContextKeyedServiceFactory {
   static InstallTrackerFactory* GetInstance();
 
  private:
-  friend struct base::DefaultSingletonTraits<InstallTrackerFactory>;
+  friend base::NoDestructor<InstallTrackerFactory>;
 
   InstallTrackerFactory();
   ~InstallTrackerFactory() override;
 
   // BrowserContextKeyedServiceFactory overrides:
-  KeyedService* BuildServiceInstanceFor(
-      content::BrowserContext* context) const override;
-  content::BrowserContext* GetBrowserContextToUse(
+  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
       content::BrowserContext* context) const override;
 };
 

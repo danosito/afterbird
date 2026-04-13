@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -48,7 +48,7 @@ class TestURLRequestInterceptor : public URLRequestInterceptor {
   }
 
  private:
-  mutable raw_ptr<URLRequestTestJob> job_ = nullptr;
+  mutable raw_ptr<URLRequestTestJob, DanglingUntriaged> job_ = nullptr;
 };
 
 TEST(URLRequestFilter, BasicMatching) {

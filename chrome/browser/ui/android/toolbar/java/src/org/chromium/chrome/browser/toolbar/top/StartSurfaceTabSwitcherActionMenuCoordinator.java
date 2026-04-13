@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,6 @@ import android.view.View.OnLongClickListener;
 
 import org.chromium.base.Callback;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
-
-import android.view.View.OnClickListener;
 
 /**
  * The coordinator responsible for showing the Tab Switcher Action Menu on the Start Surface.
@@ -22,9 +20,9 @@ public class StartSurfaceTabSwitcherActionMenuCoordinator extends TabSwitcherAct
      * @param onItemClicked The clicked listener handling clicks on TabSwitcherActionMenu.
      * @return a long click listener of the long press action of tab switcher button.
      */
-    public static OnLongClickListener createOnLongClickListener(Callback<Integer> onItemClicked, OnClickListener newTabClickHandler) {
+    public static OnLongClickListener createOnLongClickListener(Callback<Integer> onItemClicked) {
         return createOnLongClickListener(
-                new StartSurfaceTabSwitcherActionMenuCoordinator(), onItemClicked, newTabClickHandler);
+                new StartSurfaceTabSwitcherActionMenuCoordinator(), onItemClicked);
     }
 
     @Override

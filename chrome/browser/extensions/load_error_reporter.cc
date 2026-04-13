@@ -1,24 +1,22 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/load_error_reporter.h"
 
+#include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
 
-#include "base/bind.h"
-#include "base/callback_helpers.h"
 #include "base/files/file_path.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/observer_list.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/threading/thread_task_runner_handle.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/simple_message_box.h"
 #include "chrome/grit/generated_resources.h"
-#include "content/public/browser/notification_service.h"
-#include "extensions/browser/notification_types.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace extensions {
@@ -40,8 +38,8 @@ LoadErrorReporter* LoadErrorReporter::GetInstance() {
 
 LoadErrorReporter::LoadErrorReporter(bool enable_noisy_errors)
     : enable_noisy_errors_(enable_noisy_errors) {
-  if (base::ThreadTaskRunnerHandle::IsSet())
-    ui_task_runner_ = base::ThreadTaskRunnerHandle::Get();
+  if (base::SingleThreadTaskRunner::HasCurrentDefault())
+    ui_task_runner_ = base::SingleThreadTaskRunner::GetCurrentDefault();
 }
 
 LoadErrorReporter::~LoadErrorReporter() {}
@@ -75,7 +73,7 @@ void LoadErrorReporter::ReportError(const std::u16string& message,
 
   if (enable_noisy_errors_ && be_noisy) {
     chrome::ShowWarningMessageBox(
-        NULL,
+        nullptr,
         l10n_util::GetStringUTF16(IDS_EXTENSIONS_LOAD_ERROR_ALERT_HEADING),
         message);
   }

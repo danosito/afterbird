@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -48,7 +48,7 @@ enum class UnloadedExtensionReason;
 // want to see "what are the enabled extensions".
 class ExtensionRegistryObserver {
  public:
-  virtual ~ExtensionRegistryObserver() {}
+  virtual ~ExtensionRegistryObserver() = default;
 
   // Called after an extension is loaded. The extension will exclusively exist
   // in the enabled_extensions set of ExtensionRegistry.

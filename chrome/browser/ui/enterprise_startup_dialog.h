@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,9 +6,10 @@
 #define CHROME_BROWSER_UI_ENTERPRISE_STARTUP_DIALOG_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
-#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "base/functional/callback.h"
 
 namespace policy {
 
@@ -47,7 +48,7 @@ class EnterpriseStartupDialog {
   // re-opening it.
   virtual void DisplayErrorMessage(
       const std::u16string& error_message,
-      const absl::optional<std::u16string>& accept_button) = 0;
+      const std::optional<std::u16string>& accept_button) = 0;
   // Return true if dialog is being displayed.
   virtual bool IsShowing() = 0;
 

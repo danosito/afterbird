@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,7 @@
 
 #include <jni.h>
 
-#include "base/base_jni_headers/ApplicationStatus_jni.h"
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "base/lazy_instance.h"
 #include "base/metrics/user_metrics.h"
 #include "base/observer_list_threadsafe.h"
@@ -16,6 +15,9 @@
 #if BUILDFLAG(ENABLE_BASE_TRACING)
 #include "base/trace_event/application_state_proto_android.h"  // no-presubmit-check
 #endif  // BUILDFLAG(ENABLE_BASE_TRACING)
+
+// Must come after all headers that specialize FromJniType() / ToJniType().
+#include "base/tasks_jni/ApplicationStatus_jni.h"
 
 namespace base {
 namespace android {

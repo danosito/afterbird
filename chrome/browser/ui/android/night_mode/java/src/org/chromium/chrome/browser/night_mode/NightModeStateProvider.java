@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium Authors. All rights reserved.
+// Copyright 2019 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,9 +10,7 @@ import android.content.res.Configuration;
 
 import androidx.annotation.NonNull;
 
-/**
- * An interface that provides and notifies about night mode state.
- */
+/** An interface that provides and notifies about night mode state. */
 public interface NightModeStateProvider {
     /** Observes night mode state changes. */
     interface Observer {

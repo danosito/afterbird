@@ -1,6 +1,13 @@
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/342213636): Remove this and spanify to fix the errors.
+#pragma allow_unsafe_buffers
+#endif
+
+#include "content/browser/gpu/gpu_data_manager_impl_private.h"
 
 #include <stddef.h>
 
@@ -12,18 +19,18 @@
 #include "build/build_config.h"
 #include "build/chromecast_buildflags.h"
 #include "build/chromeos_buildflags.h"
-#include "content/browser/gpu/gpu_data_manager_impl_private.h"
-#include "content/browser/gpu/gpu_data_manager_testing_autogen.h"
-#include "content/browser/gpu/gpu_data_manager_testing_entry_enums_autogen.h"
 #include "content/public/browser/gpu_data_manager_observer.h"
 #include "content/public/common/content_switches.h"
 #include "gpu/command_buffer/service/gpu_switches.h"
+#include "gpu/config/gpu_domain_guilt.h"
 #include "gpu/config/gpu_feature_type.h"
 #include "gpu/config/gpu_finch_features.h"
 #include "gpu/config/gpu_info.h"
 #include "gpu/config/gpu_switches.h"
 #include "gpu/ipc/common/memory_stats.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/gl/gl_features.h"
+#include "ui/gl/gl_switches.h"
 #include "url/gurl.h"
 
 // TODO(crbug.com/1293538): The IS_CAST_AUDIO_ONLY check should not need to be
@@ -56,15 +63,31 @@ class TestObserver : public GpuDataManagerObserver {
 };
 
 static base::Time GetTimeForTesting() {
-  return base::Time::FromDoubleT(1000);
+  return base::Time::FromSecondsSinceUnixEpoch(1000);
 }
 
 static GURL GetDomain1ForTesting() {
   return GURL("http://foo.com/");
 }
 
+static GURL GetDomain1URL1ForTesting() {
+  return GURL("http://foo.com/url1");
+}
+
+static GURL GetDomain1URL2ForTesting() {
+  return GURL("http://foo.com/url2");
+}
+
 static GURL GetDomain2ForTesting() {
   return GURL("http://bar.com/");
+}
+
+static GURL GetDomain3ForTesting() {
+  return GURL("http://baz.com/");
+}
+
+static GURL GetDomain4ForTesting() {
+  return GURL("http://yabba.com/");
 }
 
 [[maybe_unused]] gpu::GpuFeatureInfo GetGpuFeatureInfoWithOneDisabled(
@@ -139,6 +162,10 @@ class GpuDataManagerImplPrivateTest : public testing::Test {
   base::test::SingleThreadTaskEnvironment task_environment_;
 };
 
+class GpuDataManagerImplPrivateTestP
+    : public GpuDataManagerImplPrivateTest,
+      public testing::WithParamInterface<gpu::DomainGuilt> {};
+
 // We use new method instead of GetInstance() method because we want
 // each test to be independent of each other.
 
@@ -155,7 +182,7 @@ TEST_F(GpuDataManagerImplPrivateTest, GpuInfoUpdate) {
   EXPECT_FALSE(observer.gpu_info_updated());
 
   gpu::GPUInfo gpu_info;
-  manager->UpdateGpuInfo(gpu_info, absl::nullopt);
+  manager->UpdateGpuInfo(gpu_info, std::nullopt);
   {
     base::RunLoop run_loop;
     run_loop.RunUntilIdle();
@@ -165,128 +192,318 @@ TEST_F(GpuDataManagerImplPrivateTest, GpuInfoUpdate) {
 
 base::Time GpuDataManagerImplPrivateTest::JustBeforeExpiration(
     const GpuDataManagerImplPrivate* manager) {
-  return GetTimeForTesting() +
-         base::Milliseconds(manager->GetBlockAllDomainsDurationInMs()) -
+  return GetTimeForTesting() + manager->GetDomainBlockingExpirationPeriod() -
          base::Milliseconds(3);
 }
 
 base::Time GpuDataManagerImplPrivateTest::JustAfterExpiration(
     const GpuDataManagerImplPrivate* manager) {
-  return GetTimeForTesting() +
-         base::Milliseconds(manager->GetBlockAllDomainsDurationInMs()) +
+  return GetTimeForTesting() + manager->GetDomainBlockingExpirationPeriod() +
          base::Milliseconds(3);
 }
 
-void GpuDataManagerImplPrivateTest::TestBlockingDomainFrom3DAPIs(
-    gpu::DomainGuilt guilt_level) {
+TEST_P(GpuDataManagerImplPrivateTestP, SingleContextLossDoesNotBlockDomain) {
   ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
 
-  manager->BlockDomainFrom3DAPIsAtTime(GetDomain1ForTesting(),
-                                      guilt_level,
-                                      GetTimeForTesting());
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting());
 
-  // This domain should be blocked no matter what.
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+            manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(),
+                                            GetTimeForTesting()));
+}
+
+TEST_P(GpuDataManagerImplPrivateTestP, TwoContextLossesBlockDomain) {
+  ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
+
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting());
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + base::Seconds(1));
+
   EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kBlocked,
             manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(),
                                             GetTimeForTesting()));
+}
+
+TEST_P(GpuDataManagerImplPrivateTestP,
+       TwoSimultaneousContextLossesDoNotBlockDomain) {
+  ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
+
+  std::set<GURL> urls;
+  urls.insert(GetDomain1URL1ForTesting());
+  urls.insert(GetDomain1URL2ForTesting());
+
+  manager->BlockDomainsFrom3DAPIsAtTime(urls, guilt_level, GetTimeForTesting());
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+            manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(),
+                                            GetTimeForTesting()));
+}
+
+TEST_P(GpuDataManagerImplPrivateTestP, DomainBlockExpires) {
+  ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
+
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting());
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + base::Seconds(1));
+
   EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kBlocked,
             manager->Are3DAPIsBlockedAtTime(
                 GetDomain1ForTesting(), JustBeforeExpiration(manager.get())));
-  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kBlocked,
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
             manager->Are3DAPIsBlockedAtTime(
                 GetDomain1ForTesting(), JustAfterExpiration(manager.get())));
 }
 
-void GpuDataManagerImplPrivateTest::TestUnblockingDomainFrom3DAPIs(
-    gpu::DomainGuilt guilt_level) {
+TEST_P(GpuDataManagerImplPrivateTestP, UnblockDomain) {
   ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
 
-  manager->BlockDomainFrom3DAPIsAtTime(GetDomain1ForTesting(),
-                                       guilt_level,
-                                       GetTimeForTesting());
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting());
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + base::Seconds(1));
 
-  // Unblocking the domain should work.
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kBlocked,
+            manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(),
+                                            GetTimeForTesting()));
   manager->UnblockDomainFrom3DAPIs(GetDomain1ForTesting());
   EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
             manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(),
                                             GetTimeForTesting()));
+}
+
+TEST_P(GpuDataManagerImplPrivateTestP, Domain1DoesNotBlockDomain2) {
+  ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
+
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting());
+  std::set<GURL> urls;
+  urls.insert(GetDomain1ForTesting());
+  urls.insert(GetDomain2ForTesting());
+  manager->BlockDomainsFrom3DAPIsAtTime(urls, guilt_level,
+                                        GetTimeForTesting() + base::Seconds(1));
+
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kBlocked,
+            manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(),
+                                            GetTimeForTesting()));
   EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+            manager->Are3DAPIsBlockedAtTime(GetDomain2ForTesting(),
+                                            GetTimeForTesting()));
+}
+
+TEST_P(GpuDataManagerImplPrivateTestP, UnblockingDomain1DoesNotUnblockDomain2) {
+  ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
+
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting());
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + base::Seconds(1));
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain2ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + base::Seconds(2));
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain2ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + base::Seconds(3));
+
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kBlocked,
+            manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(),
+                                            GetTimeForTesting()));
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kBlocked,
+            manager->Are3DAPIsBlockedAtTime(GetDomain2ForTesting(),
+                                            GetTimeForTesting()));
+  manager->UnblockDomainFrom3DAPIs(GetDomain1ForTesting());
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+            manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(),
+                                            GetTimeForTesting()));
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kBlocked,
+            manager->Are3DAPIsBlockedAtTime(GetDomain2ForTesting(),
+                                            GetTimeForTesting()));
+}
+
+TEST_P(GpuDataManagerImplPrivateTestP, SimultaneousContextLossDoesNotBlock) {
+  ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
+
+  std::set<GURL> urls;
+  urls.insert(GetDomain1ForTesting());
+  urls.insert(GetDomain2ForTesting());
+  urls.insert(GetDomain3ForTesting());
+
+  manager->BlockDomainsFrom3DAPIsAtTime(urls, guilt_level, GetTimeForTesting());
+
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(),
+                                      GetTimeForTesting() + base::Seconds(3)));
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain2ForTesting(),
+                                      GetTimeForTesting() + base::Seconds(3)));
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain3ForTesting(),
+                                      GetTimeForTesting() + base::Seconds(3)));
+}
+
+TEST_P(GpuDataManagerImplPrivateTestP, MultipleTDRsBlockAll) {
+  ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
+
+  // TDR = Timeout Detection and Recovery.
+  base::TimeDelta tdr_interval = base::Seconds(1);
+
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting());
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain2ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + tdr_interval);
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain3ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + 2 * tdr_interval);
+
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kAllDomainsBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(),
+                                      GetTimeForTesting() + 2 * tdr_interval));
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kAllDomainsBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain2ForTesting(),
+                                      GetTimeForTesting() + 2 * tdr_interval));
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kAllDomainsBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain3ForTesting(),
+                                      GetTimeForTesting() + 2 * tdr_interval));
+}
+
+TEST_P(GpuDataManagerImplPrivateTestP, MultipleTDRsExpire) {
+  ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
+
+  // TDR = Timeout Detection and Recovery.
+  base::TimeDelta tdr_interval = base::Seconds(1);
+
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting());
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain2ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + tdr_interval);
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain3ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + 2 * tdr_interval);
+
+  // Note that querying at given times has side effects, so query in
+  // order of increasing time.
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kAllDomainsBlocked,
             manager->Are3DAPIsBlockedAtTime(
                 GetDomain1ForTesting(), JustBeforeExpiration(manager.get())));
-  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
-            manager->Are3DAPIsBlockedAtTime(
-                GetDomain1ForTesting(), JustAfterExpiration(manager.get())));
-}
-
-TEST_F(GpuDataManagerImplPrivateTest, BlockGuiltyDomainFrom3DAPIs) {
-  TestBlockingDomainFrom3DAPIs(gpu::DomainGuilt::kKnown);
-}
-
-TEST_F(GpuDataManagerImplPrivateTest, BlockDomainOfUnknownGuiltFrom3DAPIs) {
-  TestBlockingDomainFrom3DAPIs(gpu::DomainGuilt::kUnknown);
-}
-
-TEST_F(GpuDataManagerImplPrivateTest, BlockAllDomainsFrom3DAPIs) {
-  ScopedGpuDataManagerImplPrivate manager;
-
-  manager->BlockDomainFrom3DAPIsAtTime(
-      GetDomain1ForTesting(), gpu::DomainGuilt::kUnknown, GetTimeForTesting());
-
-  // Blocking of other domains should expire.
   EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kAllDomainsBlocked,
             manager->Are3DAPIsBlockedAtTime(
                 GetDomain2ForTesting(), JustBeforeExpiration(manager.get())));
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kAllDomainsBlocked,
+            manager->Are3DAPIsBlockedAtTime(
+                GetDomain3ForTesting(), JustBeforeExpiration(manager.get())));
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+            manager->Are3DAPIsBlockedAtTime(
+                GetDomain1ForTesting(), JustAfterExpiration(manager.get())));
   EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
             manager->Are3DAPIsBlockedAtTime(
                 GetDomain2ForTesting(), JustAfterExpiration(manager.get())));
+  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+            manager->Are3DAPIsBlockedAtTime(
+                GetDomain3ForTesting(), JustAfterExpiration(manager.get())));
 }
 
-TEST_F(GpuDataManagerImplPrivateTest, UnblockGuiltyDomainFrom3DAPIs) {
-  TestUnblockingDomainFrom3DAPIs(gpu::DomainGuilt::kKnown);
-}
-
-TEST_F(GpuDataManagerImplPrivateTest, UnblockDomainOfUnknownGuiltFrom3DAPIs) {
-  TestUnblockingDomainFrom3DAPIs(gpu::DomainGuilt::kUnknown);
-}
-
-TEST_F(GpuDataManagerImplPrivateTest, UnblockOtherDomainFrom3DAPIs) {
+TEST_P(GpuDataManagerImplPrivateTestP, MultipleTDRsCanBeUnblocked) {
   ScopedGpuDataManagerImplPrivate manager;
+  gpu::DomainGuilt guilt_level = GetParam();
 
-  manager->BlockDomainFrom3DAPIsAtTime(
-      GetDomain1ForTesting(), gpu::DomainGuilt::kUnknown, GetTimeForTesting());
+  // TDR = Timeout Detection and Recovery.
+  base::TimeDelta tdr_interval = base::Seconds(1);
+
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain1ForTesting()}}, guilt_level,
+                                        GetTimeForTesting());
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain2ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + tdr_interval);
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain3ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + 2 * tdr_interval);
+  manager->BlockDomainsFrom3DAPIsAtTime({{GetDomain4ForTesting()}}, guilt_level,
+                                        GetTimeForTesting() + 3 * tdr_interval);
+
+  base::Time query_time = JustBeforeExpiration(manager.get());
+
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kAllDomainsBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(), query_time));
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kAllDomainsBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain4ForTesting(), query_time));
 
   manager->UnblockDomainFrom3DAPIs(GetDomain2ForTesting());
 
-  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
-            manager->Are3DAPIsBlockedAtTime(
-                GetDomain2ForTesting(), JustBeforeExpiration(manager.get())));
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kAllDomainsBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(), query_time));
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kAllDomainsBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain4ForTesting(), query_time));
 
-  // The original domain should still be blocked.
-  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kBlocked,
-            manager->Are3DAPIsBlockedAtTime(
-                GetDomain1ForTesting(), JustBeforeExpiration(manager.get())));
+  manager->UnblockDomainFrom3DAPIs(GetDomain3ForTesting());
+
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain1ForTesting(), query_time));
+  EXPECT_EQ(
+      GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
+      manager->Are3DAPIsBlockedAtTime(GetDomain4ForTesting(), query_time));
 }
 
-TEST_F(GpuDataManagerImplPrivateTest, UnblockThisDomainFrom3DAPIs) {
+INSTANTIATE_TEST_SUITE_P(GpuDataManagerImplPrivateTest,
+                         GpuDataManagerImplPrivateTestP,
+                         ::testing::Values(gpu::DomainGuilt::kKnown,
+                                           gpu::DomainGuilt::kUnknown));
+
+TEST_F(GpuDataManagerImplPrivateTest, GpuStartsWithGraphiteFeatureFlag) {
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kEnableSkiaGraphite);
+
   ScopedGpuDataManagerImplPrivate manager;
+  EXPECT_EQ(gpu::GpuMode::HARDWARE_GRAPHITE, manager->GetGpuMode());
+}
 
-  manager->BlockDomainFrom3DAPIsAtTime(
-      GetDomain1ForTesting(), gpu::DomainGuilt::kUnknown, GetTimeForTesting());
+// On Mac graphite should fallback to Swiftshader immediately. On other
+// platforms graphite should fallback to Ganesh/GL.
+TEST_F(GpuDataManagerImplPrivateTest, FallbackFromGraphite) {
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kEnableSkiaGraphite);
 
-  manager->UnblockDomainFrom3DAPIs(GetDomain1ForTesting());
+  ScopedGpuDataManagerImplPrivate manager;
+  EXPECT_EQ(gpu::GpuMode::HARDWARE_GRAPHITE, manager->GetGpuMode());
 
-  // This behavior is debatable. Perhaps the GPU reset caused by
-  // domain 1 should still cause other domains to be blocked.
-  EXPECT_EQ(GpuDataManagerImplPrivate::DomainBlockStatus::kNotBlocked,
-            manager->Are3DAPIsBlockedAtTime(
-                GetDomain2ForTesting(), JustBeforeExpiration(manager.get())));
+  manager->FallBackToNextGpuMode();
+  EXPECT_EQ(gpu::GpuMode::HARDWARE_GL, manager->GetGpuMode());
 }
 
 // Android and Chrome OS do not support software compositing, while Fuchsia does
 // not support falling back to software from Vulkan.
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(IS_IOS)
 #if !BUILDFLAG(IS_FUCHSIA)
-TEST_F(GpuDataManagerImplPrivateTest, FallbackToSwiftShader) {
+TEST_F(GpuDataManagerImplPrivateTest, NoDefaultFallbackToSwiftShader) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(features::kAllowSwiftShaderFallback);
+
+  ScopedGpuDataManagerImplPrivate manager;
+  EXPECT_EQ(gpu::GpuMode::HARDWARE_GL, manager->GetGpuMode());
+
+  manager->FallBackToNextGpuMode();
+  EXPECT_EQ(gpu::GpuMode::DISPLAY_COMPOSITOR, manager->GetGpuMode());
+}
+
+TEST_F(GpuDataManagerImplPrivateTest, ExplicitFallbackToSwiftShader) {
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kEnableUnsafeSwiftShader);
+
   ScopedGpuDataManagerImplPrivate manager;
   EXPECT_EQ(gpu::GpuMode::HARDWARE_GL, manager->GetGpuMode());
 
@@ -294,9 +511,13 @@ TEST_F(GpuDataManagerImplPrivateTest, FallbackToSwiftShader) {
   EXPECT_EQ(gpu::GpuMode::SWIFTSHADER, manager->GetGpuMode());
 }
 
-TEST_F(GpuDataManagerImplPrivateTest, FallbackWithSwiftShaderDisabled) {
+TEST_F(GpuDataManagerImplPrivateTest, FallbackWithSwiftShaderDisabledByFlags) {
+  // Make sure that we don't fall back to SwiftShader when it's disabled with
+  // --disable-software-rasterizer even if --allow-unsafe-swiftshader is used
   base::CommandLine::ForCurrentProcess()->AppendSwitch(
       switches::kDisableSoftwareRasterizer);
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kEnableUnsafeSwiftShader);
   ScopedGpuDataManagerImplPrivate manager;
   EXPECT_EQ(gpu::GpuMode::HARDWARE_GL, manager->GetGpuMode());
 
@@ -304,16 +525,56 @@ TEST_F(GpuDataManagerImplPrivateTest, FallbackWithSwiftShaderDisabled) {
   gpu::GpuMode expected_mode = gpu::GpuMode::DISPLAY_COMPOSITOR;
   EXPECT_EQ(expected_mode, manager->GetGpuMode());
 }
+
+TEST_F(GpuDataManagerImplPrivateTest,
+       FallbackWithSwiftShaderDisabledByFeatures) {
+  // Make sure that we don't fall back to SwiftShader when it's disabled with
+  // --disable-software-rasterizer even the AllowSwiftShaderFallback feature is
+  // present.
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kDisableSoftwareRasterizer);
+
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(features::kAllowSwiftShaderFallback);
+
+  ScopedGpuDataManagerImplPrivate manager;
+  EXPECT_EQ(gpu::GpuMode::HARDWARE_GL, manager->GetGpuMode());
+
+  manager->FallBackToNextGpuMode();
+  gpu::GpuMode expected_mode = gpu::GpuMode::DISPLAY_COMPOSITOR;
+  EXPECT_EQ(expected_mode, manager->GetGpuMode());
+}
+
+TEST_F(GpuDataManagerImplPrivateTest,
+       FallbackFromGraphiteWithSwiftShaderDisabled) {
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kEnableSkiaGraphite);
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kDisableSoftwareRasterizer);
+
+  ScopedGpuDataManagerImplPrivate manager;
+  EXPECT_EQ(gpu::GpuMode::HARDWARE_GRAPHITE, manager->GetGpuMode());
+
+  manager->FallBackToNextGpuMode();
+  manager->FallBackToNextGpuMode();
+
+  gpu::GpuMode expected_mode = gpu::GpuMode::DISPLAY_COMPOSITOR;
+  EXPECT_EQ(expected_mode, manager->GetGpuMode());
+}
 #endif  // !BUILDFLAG(IS_FUCHSIA)
 
 #if !defined(CAST_AUDIO_ONLY)
 TEST_F(GpuDataManagerImplPrivateTest, GpuStartsWithGpuDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(features::kAllowSwiftShaderFallback);
+
   base::CommandLine::ForCurrentProcess()->AppendSwitch(switches::kDisableGpu);
   ScopedGpuDataManagerImplPrivate manager;
-  EXPECT_EQ(gpu::GpuMode::SWIFTSHADER, manager->GetGpuMode());
+  EXPECT_EQ(gpu::GpuMode::DISPLAY_COMPOSITOR, manager->GetGpuMode());
 }
 #endif  // !defined(CAST_AUDIO_ONLY)
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH) &&
+        // !BUILDFLAG(IS_IOS)
 
 // Chromecast audio-only builds should not launch the GPU process.
 #if defined(CAST_AUDIO_ONLY)
@@ -324,43 +585,9 @@ TEST_F(GpuDataManagerImplPrivateTest, ChromecastStartsWithGpuDisabled) {
 }
 #endif  // defined(CAST_AUDIO_ONLY)
 
-#if BUILDFLAG(IS_MAC)
-TEST_F(GpuDataManagerImplPrivateTest, FallbackFromMetalToGL) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(features::kMetal);
-  ScopedGpuDataManagerImplPrivate manager;
-  EXPECT_EQ(gpu::GpuMode::HARDWARE_METAL, manager->GetGpuMode());
-
-  manager->FallBackToNextGpuMode();
-  EXPECT_EQ(gpu::GpuMode::HARDWARE_GL, manager->GetGpuMode());
-}
-
-TEST_F(GpuDataManagerImplPrivateTest, FallbackFromMetalWithGLDisabled) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(features::kMetal);
-  ScopedGpuDataManagerImplPrivate manager;
-  EXPECT_EQ(gpu::GpuMode::HARDWARE_METAL, manager->GetGpuMode());
-
-  // Simulate GPU process initialization completing with GL unavailable.
-  gpu::GpuFeatureInfo gpu_feature_info = GetGpuFeatureInfoWithOneDisabled(
-      gpu::GpuFeatureType::GPU_FEATURE_TYPE_ACCELERATED_GL);
-  manager->UpdateGpuFeatureInfo(gpu_feature_info, absl::nullopt);
-
-  manager->FallBackToNextGpuMode();
-  EXPECT_EQ(gpu::GpuMode::SWIFTSHADER, manager->GetGpuMode());
-}
-#endif  // BUILDFLAG(IS_MAC)
-
 #if BUILDFLAG(ENABLE_VULKAN)
-// TODO(crbug.com/1155622): enable tests when Vulkan is supported on LaCrOS.
+// TODO(crbug.com/40735511): enable tests when Vulkan is supported on LaCrOS.
 #if !BUILDFLAG(IS_CHROMEOS_LACROS)
-TEST_F(GpuDataManagerImplPrivateTest, GpuStartsWithUseVulkanFlag) {
-  base::CommandLine::ForCurrentProcess()->AppendSwitchASCII(
-      switches::kUseVulkan, switches::kVulkanImplementationNameNative);
-  ScopedGpuDataManagerImplPrivate manager;
-  EXPECT_EQ(gpu::GpuMode::HARDWARE_VULKAN, manager->GetGpuMode());
-}
-
 TEST_F(GpuDataManagerImplPrivateTest, GpuStartsWithVulkanFeatureFlag) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(features::kVulkan);
@@ -383,42 +610,51 @@ TEST_F(GpuDataManagerImplPrivateTest, FallbackFromVulkanToGL) {
 
 TEST_F(GpuDataManagerImplPrivateTest, VulkanInitializationFails) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(features::kVulkan);
+  feature_list.InitWithFeatures({features::kVulkan},
+#if BUILDFLAG(ENABLE_SWIFTSHADER)
+                                {features::kAllowSwiftShaderFallback});
+#else
+                                {});
+#endif  // BUILDFLAG(ENABLE_SWIFTSHADER)
+
   ScopedGpuDataManagerImplPrivate manager;
   EXPECT_EQ(gpu::GpuMode::HARDWARE_VULKAN, manager->GetGpuMode());
 
   // Simulate GPU process initialization completing with Vulkan unavailable.
   gpu::GpuFeatureInfo gpu_feature_info = GetGpuFeatureInfoWithOneDisabled(
       gpu::GpuFeatureType::GPU_FEATURE_TYPE_VULKAN);
-  manager->UpdateGpuFeatureInfo(gpu_feature_info, absl::nullopt);
+  manager->UpdateGpuFeatureInfo(gpu_feature_info, std::nullopt);
 
   // GpuDataManager should update its mode to be GL.
   EXPECT_EQ(gpu::GpuMode::HARDWARE_GL, manager->GetGpuMode());
 
-  // The first fallback should go to SwiftShader on platforms where fallback to
-  // software is allowed.
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+  // The first fallback should go to the display compositor on platforms where
+  // fallback to software is allowed.
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(IS_IOS)
   manager->FallBackToNextGpuMode();
-  EXPECT_EQ(gpu::GpuMode::SWIFTSHADER, manager->GetGpuMode());
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+  EXPECT_EQ(gpu::GpuMode::DISPLAY_COMPOSITOR, manager->GetGpuMode());
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH) &&
+        // !BUILDFLAG(IS_IOS)
 }
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH) && !BUILDFLAG(IS_IOS)
 TEST_F(GpuDataManagerImplPrivateTest, FallbackFromVulkanWithGLDisabled) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(features::kVulkan);
+  feature_list.InitWithFeatures({features::kVulkan},
+                                {features::kAllowSwiftShaderFallback});
   ScopedGpuDataManagerImplPrivate manager;
   EXPECT_EQ(gpu::GpuMode::HARDWARE_VULKAN, manager->GetGpuMode());
 
   // Simulate GPU process initialization completing with GL unavailable.
   gpu::GpuFeatureInfo gpu_feature_info = GetGpuFeatureInfoWithOneDisabled(
       gpu::GpuFeatureType::GPU_FEATURE_TYPE_ACCELERATED_GL);
-  manager->UpdateGpuFeatureInfo(gpu_feature_info, absl::nullopt);
+  manager->UpdateGpuFeatureInfo(gpu_feature_info, std::nullopt);
 
   manager->FallBackToNextGpuMode();
-  EXPECT_EQ(gpu::GpuMode::SWIFTSHADER, manager->GetGpuMode());
+  EXPECT_EQ(gpu::GpuMode::DISPLAY_COMPOSITOR, manager->GetGpuMode());
 }
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH)
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS_ASH) &&
+        // !BUILDFLAG(IS_IOS)
 #endif  // !BUILDFLAG(IS_FUCHSIA)
 #endif  // !IS_CHROMEOS_LACROS
 #endif  // BUILDFLAG(ENABLE_VULKAN)

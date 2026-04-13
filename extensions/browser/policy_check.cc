@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,7 +14,7 @@ PolicyCheck::PolicyCheck(content::BrowserContext* context,
                          scoped_refptr<const Extension> extension)
     : PreloadCheck(extension), context_(context) {}
 
-PolicyCheck::~PolicyCheck() {}
+PolicyCheck::~PolicyCheck() = default;
 
 void PolicyCheck::Start(ResultCallback callback) {
   Errors errors;

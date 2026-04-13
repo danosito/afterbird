@@ -1,15 +1,18 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.base;
 
-import org.chromium.base.annotations.JNINamespace;
-import org.chromium.base.annotations.NativeMethods;
+import androidx.annotation.VisibleForTesting;
+
+import org.jni_zero.JNINamespace;
+import org.jni_zero.JniType;
+import org.jni_zero.NativeMethods;
 
 /**
- * This class provides an interface to the native class for writing
- * important data files without risking data loss.
+ * This class provides an interface to the native class for writing important data files without
+ * risking data loss.
  */
 @JNINamespace("base::android")
 public class ImportantFileWriterAndroid {
@@ -27,8 +30,11 @@ public class ImportantFileWriterAndroid {
         return ImportantFileWriterAndroidJni.get().writeFileAtomically(fileName, data);
     }
 
+    @VisibleForTesting
     @NativeMethods
-    interface Natives {
-        boolean writeFileAtomically(String fileName, byte[] data);
+    public interface Natives {
+        boolean writeFileAtomically(
+                @JniType("std::string") String fileName,
+                @JniType("jni_zero::ByteArrayView") byte[] data);
     }
 }

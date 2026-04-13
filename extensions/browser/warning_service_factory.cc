@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -35,15 +35,17 @@ WarningServiceFactory::WarningServiceFactory()
 WarningServiceFactory::~WarningServiceFactory() {
 }
 
-KeyedService* WarningServiceFactory::BuildServiceInstanceFor(
+std::unique_ptr<KeyedService>
+WarningServiceFactory::BuildServiceInstanceForBrowserContext(
     BrowserContext* context) const {
-  return new WarningService(context);
+  return std::make_unique<WarningService>(context);
 }
 
 BrowserContext* WarningServiceFactory::GetBrowserContextToUse(
     BrowserContext* context) const {
   // Redirected in incognito.
-  return ExtensionsBrowserClient::Get()->GetOriginalContext(context);
+  return ExtensionsBrowserClient::Get()->GetContextRedirectedToOriginal(
+      context);
 }
 
 }  // namespace extensions

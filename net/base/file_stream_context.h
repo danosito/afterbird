@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -51,6 +51,7 @@ namespace net {
 
 class IOBuffer;
 
+// Implementation for a FileStream. See file_stream.h for documentation.
 #if BUILDFLAG(IS_WIN)
 class FileStream::Context : public base::MessagePumpForIO::IOHandler {
 #elif BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
@@ -76,6 +77,10 @@ class FileStream::Context {
   int Read(IOBuffer* buf, int buf_len, CompletionOnceCallback callback);
 
   int Write(IOBuffer* buf, int buf_len, CompletionOnceCallback callback);
+
+#if BUILDFLAG(IS_WIN)
+  int ConnectNamedPipe(CompletionOnceCallback callback);
+#endif
 
   bool async_in_progress() const { return async_in_progress_; }
 

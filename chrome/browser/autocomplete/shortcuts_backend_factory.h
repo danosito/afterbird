@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,8 @@
 #define CHROME_BROWSER_AUTOCOMPLETE_SHORTCUTS_BACKEND_FACTORY_H_
 
 #include "base/memory/ref_counted.h"
-#include "base/memory/singleton.h"
-#include "components/keyed_service/content/refcounted_browser_context_keyed_service_factory.h"
+#include "base/no_destructor.h"
+#include "chrome/browser/profiles/refcounted_profile_keyed_service_factory.h"
 
 class Profile;
 
@@ -15,8 +15,7 @@ class ShortcutsBackend;
 
 // Singleton that owns all instances of ShortcutsBackend and associates them
 // with Profiles.
-class ShortcutsBackendFactory
-    : public RefcountedBrowserContextKeyedServiceFactory {
+class ShortcutsBackendFactory : public RefcountedProfileKeyedServiceFactory {
  public:
   static scoped_refptr<ShortcutsBackend> GetForProfile(Profile* profile);
 
@@ -35,7 +34,7 @@ class ShortcutsBackendFactory
       content::BrowserContext* profile);
 
  private:
-  friend struct base::DefaultSingletonTraits<ShortcutsBackendFactory>;
+  friend base::NoDestructor<ShortcutsBackendFactory>;
 
   ShortcutsBackendFactory();
   ~ShortcutsBackendFactory() override;

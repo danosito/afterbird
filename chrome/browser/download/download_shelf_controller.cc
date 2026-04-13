@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -34,7 +34,7 @@ DownloadShelfController::~DownloadShelfController() = default;
 void DownloadShelfController::OnItemsAdded(
     const OfflineContentProvider::OfflineItemList& items) {
   for (const auto& item : items)
-    OnItemUpdated(item, absl::nullopt);
+    OnItemUpdated(item, std::nullopt);
 }
 
 void DownloadShelfController::OnItemRemoved(const ContentId& id) {
@@ -47,7 +47,7 @@ void DownloadShelfController::OnItemRemoved(const ContentId& id) {
 
 void DownloadShelfController::OnItemUpdated(
     const OfflineItem& item,
-    const absl::optional<UpdateDelta>& update_delta) {
+    const std::optional<UpdateDelta>& update_delta) {
   if (profile_->IsOffTheRecord() != item.is_off_the_record)
     return;
 

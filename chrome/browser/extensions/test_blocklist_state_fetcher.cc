@@ -1,11 +1,10 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/test_blocklist_state_fetcher.h"
 
 #include "base/containers/contains.h"
-#include "base/threading/thread_task_runner_handle.h"
 #include "components/safe_browsing/core/browser/db/v4_test_util.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -41,7 +40,6 @@ class DummySharedURLLoaderFactory : public network::SharedURLLoaderFactory {
   // network::PendingSharedURLLoaderFactory implementation
   std::unique_ptr<network::PendingSharedURLLoaderFactory> Clone() override {
     NOTREACHED();
-    return nullptr;
   }
 
  private:
@@ -79,14 +77,16 @@ bool TestBlocklistStateFetcher::HandleFetcher(const std::string& id) {
     }
   }
 
-  if (!url_loader)
+  if (!url_loader) {
     return false;
+  }
 
   ClientCRXListInfoResponse response;
-  if (base::Contains(verdicts_, id))
+  if (base::Contains(verdicts_, id)) {
     response.set_verdict(verdicts_[id]);
-  else
+  } else {
     response.set_verdict(ClientCRXListInfoResponse::NOT_IN_BLOCKLIST);
+  }
 
   std::string response_str;
   response.SerializeToString(&response_str);

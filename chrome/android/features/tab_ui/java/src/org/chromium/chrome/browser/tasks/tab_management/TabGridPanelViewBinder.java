@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -28,6 +28,7 @@ import static org.chromium.chrome.browser.tasks.tab_management.TabGridPanelPrope
 import static org.chromium.chrome.browser.tasks.tab_management.TabGridPanelProperties.TITLE_TEXT_ON_FOCUS_LISTENER;
 import static org.chromium.chrome.browser.tasks.tab_management.TabGridPanelProperties.TITLE_TEXT_WATCHER;
 import static org.chromium.chrome.browser.tasks.tab_management.TabGridPanelProperties.UNGROUP_BAR_STATUS;
+import static org.chromium.chrome.browser.tasks.tab_management.TabGridPanelProperties.VISIBILITY_LISTENER;
 
 import android.view.View;
 import android.widget.FrameLayout;
@@ -38,9 +39,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
-
-import org.chromium.base.ContextUtils;
-import android.content.res.Resources;
 
 /**
  * ViewBinder for TabGridDialog.
@@ -94,6 +92,8 @@ class TabGridPanelViewBinder {
             } else {
                 viewHolder.dialogView.hideDialog();
             }
+        } else if (VISIBILITY_LISTENER == propertyKey) {
+            viewHolder.dialogView.setVisibilityListener(model.get(VISIBILITY_LISTENER));
         } else if (ANIMATION_SOURCE_VIEW == propertyKey) {
             viewHolder.dialogView.setupDialogAnimation(model.get(ANIMATION_SOURCE_VIEW));
         } else if (UNGROUP_BAR_STATUS == propertyKey) {
@@ -126,13 +126,6 @@ class TabGridPanelViewBinder {
             }
         } else if (INITIAL_SCROLL_INDEX == propertyKey) {
             int index = (Integer) model.get(INITIAL_SCROLL_INDEX);
-            if (ContextUtils.getAppSharedPreferences().getString("active_tabswitcher", "default").equals("classic")) {
-                int space = (int) Math.ceil(75 * Resources.getSystem().getDisplayMetrics().density);
-                if (index == 0)
-                    space = 0;
-                ((LinearLayoutManager) viewHolder.contentView.getLayoutManager())
-                         .scrollToPositionWithOffset(index, space);
-            } else
             ((LinearLayoutManager) viewHolder.contentView.getLayoutManager())
                     .scrollToPositionWithOffset(index, 0);
         } else if (IS_MAIN_CONTENT_VISIBLE == propertyKey) {

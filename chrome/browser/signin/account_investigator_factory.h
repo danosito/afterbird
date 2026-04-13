@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,7 +11,7 @@ class AccountInvestigator;
 
 namespace base {
 template <typename T>
-struct DefaultSingletonTraits;
+class NoDestructor;
 }  // namespace base
 
 // Factory for BrowserKeyedService AccountInvestigator.
@@ -26,13 +26,13 @@ class AccountInvestigatorFactory : public ProfileKeyedServiceFactory {
       delete;
 
  private:
-  friend struct base::DefaultSingletonTraits<AccountInvestigatorFactory>;
+  friend base::NoDestructor<AccountInvestigatorFactory>;
 
   AccountInvestigatorFactory();
   ~AccountInvestigatorFactory() override;
 
   // BrowserContextKeyedServiceFactory:
-  KeyedService* BuildServiceInstanceFor(
+  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
       content::BrowserContext* context) const override;
   void RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable* registry) override;

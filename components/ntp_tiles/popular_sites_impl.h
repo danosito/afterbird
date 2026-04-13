@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "components/ntp_tiles/popular_sites.h"
@@ -19,7 +19,7 @@
 namespace network {
 class SimpleURLLoader;
 class SharedURLLoaderFactory;
-}
+}  // namespace network
 
 namespace user_prefs {
 class PrefRegistrySyncable;
@@ -52,12 +52,11 @@ class PopularSitesImpl : public PopularSites {
   // PopularSites implementation.
   bool MaybeStartFetch(bool force_download, FinishedCallback callback) override;
   const std::map<SectionType, SitesVector>& sections() const override;
-  GURL GetLastURLFetched() const override;
   GURL GetURLToFetch() override;
   std::string GetDirectoryToFetch() override;
   std::string GetCountryToFetch() override;
   std::string GetVersionToFetch() override;
-  const base::ListValue* GetCachedJson() override;
+  const base::Value::List& GetCachedJson() override;
 
   // Register preferences used by this class.
   static void RegisterProfilePrefs(

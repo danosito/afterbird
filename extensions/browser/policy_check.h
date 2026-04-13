@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -35,7 +35,7 @@ class PolicyCheck : public PreloadCheck {
   std::u16string GetErrorMessage() const override;
 
  private:
-  raw_ptr<content::BrowserContext> context_;
+  raw_ptr<content::BrowserContext, AcrossTasksDanglingUntriaged> context_;
   std::u16string error_;
 };
 

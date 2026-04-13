@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -43,8 +43,6 @@ ProxyOverriddenBubbleDelegate::~ProxyOverriddenBubbleDelegate() {}
 
 bool ProxyOverriddenBubbleDelegate::ShouldIncludeExtension(
     const Extension* extension) {
-  if (true)
-    return false;
   if (!extension_id_.empty() && extension_id_ != extension->id())
     return false;  // Only one extension can be controlling the proxy at a time.
 

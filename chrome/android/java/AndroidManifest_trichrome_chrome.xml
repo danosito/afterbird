@@ -1,6 +1,6 @@
 {% extends "chrome/android/java/AndroidManifest.xml" %}
 
-## Copyright 2018 The Chromium Authors. All rights reserved.
+## Copyright 2018 The Chromium Authors
 ## Use of this source code is governed by a BSD-style license that can be
 ## found in the LICENSE file.
 
@@ -10,7 +10,6 @@
 {{ super() }}
 android:multiArch="true"
 android:extractNativeLibs="false"
-{{use32bitAbi|default('')}}
 {% endblock %}
 
 {% block extra_keyset_definitions %}

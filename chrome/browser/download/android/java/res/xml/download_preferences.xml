@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright 2017 The Chromium Authors. All rights reserved.
-     Use of this source code is governed by a BSD-style license that can be
-     found in the LICENSE file. -->
+<!--
+Copyright 2017 The Chromium Authors
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+-->
 
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <org.chromium.chrome.browser.download.settings.DownloadLocationPreference
@@ -11,19 +13,13 @@
         android:negativeButtonText="@null"  />
 
     <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
-        android:key="download_later_prompt_enabled"
-        android:title="@string/download_later_prompt_enabled_title"
-        android:summaryOn="@string/text_on"
-        android:summaryOff="@string/text_off" />
-
-    <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
         android:key="location_prompt_enabled"
         android:title="@string/download_location_prompt_enabled_title"
         android:summaryOn="@string/text_on"
         android:summaryOff="@string/text_off" />
 
-    <org.chromium.components.browser_ui.settings.ChromeBaseCheckBoxPreference
-        android:key="enable_external_download_manager"
-        android:summary="@string/download_preferences_enable_external_download_manager_summary"
-        android:title="@string/download_preferences_enable_external_download_manager_title" />
+    <org.chromium.components.browser_ui.settings.ChromeSwitchPreference
+        android:key="auto_open_pdf_enabled"
+        android:title="@string/auto_open_pdf_enabled_title"
+        android:summaryOff="@string/text_off"/>
 </PreferenceScreen>

@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,21 +11,17 @@ import android.util.AttributeSet;
 import android.view.TouchDelegate;
 import android.view.View;
 import android.widget.FrameLayout;
+
 import org.chromium.base.TraceEvent;
 
-/**
- * A location bar implementation specific for smaller/phone screens.
- */
+/** A location bar implementation specific for smaller/phone screens. */
 class LocationBarPhone extends LocationBarLayout {
     private static final int ACTION_BUTTON_TOUCH_OVERFLOW_LEFT = 15;
 
-    private View mFirstVisibleFocusedView;
     private View mUrlBar;
     private View mStatusView;
 
-    /**
-     * Constructor used to inflate from XML.
-     */
+    /** Constructor used to inflate from XML. */
     public LocationBarPhone(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
@@ -57,8 +53,11 @@ class LocationBarPhone extends LocationBarLayout {
             if (mUrlBar.getLeft() < mUrlActionContainer.getLeft()) {
                 canvas.clipRect(0, 0, (int) mUrlActionContainer.getX(), getBottom());
             } else {
-                canvas.clipRect(mUrlActionContainer.getX() + mUrlActionContainer.getWidth(), 0,
-                        getWidth(), getBottom());
+                canvas.clipRect(
+                        mUrlActionContainer.getX() + mUrlActionContainer.getWidth(),
+                        0,
+                        getWidth(),
+                        getBottom());
             }
             needsCanvasRestore = true;
         }
@@ -67,21 +66,6 @@ class LocationBarPhone extends LocationBarLayout {
             canvas.restore();
         }
         return retVal;
-    }
-
-    @Override
-    public void setShowIconsWhenUrlFocused(boolean showIcon) {
-        super.setShowIconsWhenUrlFocused(showIcon);
-        mFirstVisibleFocusedView = showIcon ? mStatusView : mUrlBar;
-    }
-
-    /* package */ void setFirstVisibleFocusedView(boolean toStatusView) {
-        mFirstVisibleFocusedView = toStatusView ? mStatusView : mUrlBar;
-        // It's possible that the fade animators hid the new first visible focused view if it was
-        // to the start of the previous first visible focused view. This happens while
-        // transitioning between incognito in some start surface scenarios.
-        mFirstVisibleFocusedView.setAlpha(1f);
-        mFirstVisibleFocusedView.setVisibility(View.VISIBLE);
     }
 
     @Override
@@ -99,22 +83,21 @@ class LocationBarPhone extends LocationBarLayout {
     }
 
     /**
-     * Returns the first child view that would be visible when location bar is focused. The first
-     * visible, focused view should be either url bar or status icon.
-     */
-    // TODO(crbug.com/1194642): Remove the idea of firstVisibleFocusedView.
-    /* package */ View getFirstVisibleFocusedView() {
-        return mFirstVisibleFocusedView;
-    }
-
-    /**
      * Returns {@link FrameLayout.LayoutParams} of the LocationBar view.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#getLayoutParams()
      */
     public FrameLayout.LayoutParams getFrameLayoutParams() {
         return (FrameLayout.LayoutParams) getLayoutParams();
+    }
+
+    int getOffsetOfFirstVisibleFocusedView() {
+        if (mLocationBarDataProvider.isIncognito() && mStatusView.getVisibility() != View.GONE) {
+            return mStatusView.getMeasuredWidth();
+        }
+
+        return 0;
     }
 }

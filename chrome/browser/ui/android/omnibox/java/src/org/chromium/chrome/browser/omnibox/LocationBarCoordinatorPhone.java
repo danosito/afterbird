@@ -1,22 +1,18 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.omnibox;
 
 import android.animation.Animator;
-import android.animation.ObjectAnimator;
 import android.view.View;
 import android.widget.FrameLayout;
 
 import org.chromium.chrome.browser.omnibox.status.StatusCoordinator;
-import org.chromium.ui.interpolators.BakedBezierInterpolator;
 
 import java.util.List;
 
-/**
- * A supplement to {@link LocationBarCoordinator} with methods specific to smaller devices.
- */
+/** A supplement to {@link LocationBarCoordinator} with methods specific to smaller devices. */
 public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCoordinator {
     private LocationBarPhone mLocationBarPhone;
     private StatusCoordinator mStatusCoordinator;
@@ -39,41 +35,26 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
      * icon.
      */
     public int getOffsetOfFirstVisibleFocusedView() {
-        int visibleWidth = 0;
-        for (int i = 0; i < mLocationBarPhone.getChildCount(); i++) {
-            View child = mLocationBarPhone.getChildAt(i);
-            if (child == mLocationBarPhone.getFirstVisibleFocusedView()) break;
-            if (child.getVisibility() == View.GONE) continue;
-            visibleWidth += child.getMeasuredWidth();
-        }
-        return visibleWidth;
+        return mLocationBarPhone.getOffsetOfFirstVisibleFocusedView();
     }
 
     /**
-     * Populates fade animators of status icon for location bar focus change animation.
+     * Populates fade animator of status icon for location bar focus change animation.
      *
      * @param animators The target list to add animators to.
      * @param startDelayMs Start delay of fade animation in milliseconds.
      * @param durationMs Duration of fade animation in milliseconds.
      * @param targetAlpha Target alpha value.
      */
-    public void populateFadeAnimations(
+    public void populateFadeAnimation(
             List<Animator> animators, long startDelayMs, long durationMs, float targetAlpha) {
-        for (int i = 0; i < mLocationBarPhone.getChildCount(); i++) {
-            View child = mLocationBarPhone.getChildAt(i);
-            if (child == mLocationBarPhone.getFirstVisibleFocusedView()) break;
-            Animator animator = ObjectAnimator.ofFloat(child, View.ALPHA, targetAlpha);
-            animator.setStartDelay(startDelayMs);
-            animator.setDuration(durationMs);
-            animator.setInterpolator(BakedBezierInterpolator.TRANSFORM_CURVE);
-            animators.add(animator);
-        }
+        mStatusCoordinator.populateFadeAnimation(animators, startDelayMs, durationMs, targetAlpha);
     }
 
     /**
      * Returns {@link FrameLayout.LayoutParams} of the LocationBar view.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#getLayoutParams()
      */
@@ -84,7 +65,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * The opacity of the view.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#getAlpha()
      */
@@ -95,7 +76,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Bottom position of this view relative to its parent.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#getBottom()
      * @return The bottom of this view, in pixels.
@@ -107,7 +88,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Returns the resolved layout direction for this view.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#getLayoutDirection()
      * @return {@link View#LAYOUT_DIRECTION_LTR}, or {@link View#LAYOUT_DIRECTION_RTL}.
@@ -119,7 +100,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Returns the end padding of this view.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#getPaddingEnd()
      * @return The end padding in pixels.
@@ -131,7 +112,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Returns the start padding of this view.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#getPaddingStart()
      * @return The start padding in pixels.
@@ -143,7 +124,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Top position of this view relative to its parent.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#getTop()
      * @return The top of this view, in pixels.
@@ -155,7 +136,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * The vertical location of this view relative to its top position, in pixels.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#getTranslationY()
      */
@@ -166,7 +147,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Returns the visibility status for this view.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#getVisibility()
      */
@@ -175,10 +156,9 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     }
 
     /**
-     * Returns true if this view has focus itself, or is the ancestor of the view that has
-     * focus.
+     * Returns true if this view has focus itself, or is the ancestor of the view that has focus.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#hasFocus()
      */
@@ -189,7 +169,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Invalidate the whole view.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#invalidate()
      */
@@ -200,7 +180,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Sets the opacity of the view.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#setAlpha(float)
      */
@@ -211,7 +191,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Sets the padding.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#setPadding(int, int, int, int)
      */
@@ -222,7 +202,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Sets the horizontal location of this view relative to its left position.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#setTranslationX(float)
      */
@@ -233,7 +213,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Sets the vertical location of this view relative to its top position.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see View#setTranslationY(float)
      */
@@ -244,7 +224,7 @@ public class LocationBarCoordinatorPhone implements LocationBarCoordinator.SubCo
     /**
      * Returns the LocationBar view for use in drawing.
      *
-     * <p>TODO(1133482): Hide this View interaction if possible.
+     * <p>TODO(crbug.com/40151029): Hide this View interaction if possible.
      *
      * @see ViewGroup#drawChild(Canvas, View, long)
      */

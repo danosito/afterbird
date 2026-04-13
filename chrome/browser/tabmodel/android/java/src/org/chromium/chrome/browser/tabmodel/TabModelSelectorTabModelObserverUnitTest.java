@@ -1,4 +1,4 @@
-// Copyright 2016 The Chromium Authors. All rights reserved.
+// Copyright 2016 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,17 +26,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-/**
- * Tests for the TabModelSelectorTabModelObserver.
- */
+/** Tests for the TabModelSelectorTabModelObserver. */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 public class TabModelSelectorTabModelObserverUnitTest {
-    @Mock
-    private TabModelSelector mSelector;
+    @Mock private TabModelSelector mSelector;
 
-    @Mock
-    private TabModel mTabModel;
+    @Mock private TabModel mTabModel;
 
     private List<TabModel> mTabModels = new ArrayList<>();
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include "base/bind.h"
-#include "base/callback_helpers.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/location.h"
 #include "base/rand_util.h"
 #include "base/run_loop.h"
@@ -49,8 +49,9 @@ class PrioritizedTaskRunnerTest : public testing::Test {
   std::vector<std::string> TaskOrder() {
     std::vector<std::string> out;
     for (const std::string& name : callback_names_) {
-      if (base::StartsWith(name, "Task", base::CompareCase::SENSITIVE))
+      if (name.starts_with("Task")) {
         out.push_back(name);
+      }
     }
     return out;
   }
@@ -58,8 +59,9 @@ class PrioritizedTaskRunnerTest : public testing::Test {
   std::vector<std::string> ReplyOrder() {
     std::vector<std::string> out;
     for (const std::string& name : callback_names_) {
-      if (base::StartsWith(name, "Reply", base::CompareCase::SENSITIVE))
+      if (name.starts_with("Reply")) {
         out.push_back(name);
+      }
     }
     return out;
   }

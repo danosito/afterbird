@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -35,14 +35,14 @@ std::vector<CustomLinksManager::Link> CustomLinksStore::RetrieveLinks() {
   std::vector<CustomLinksManager::Link> links;
 
   const base::Value::List& stored_links =
-      prefs_->GetValueList(prefs::kCustomLinksList);
+      prefs_->GetList(prefs::kCustomLinksList);
 
   for (const base::Value& link : stored_links) {
     const std::string* url_string =
         link.GetDict().FindString(kDictionaryKeyUrl);
     const std::string* title_string =
         link.GetDict().FindString(kDictionaryKeyTitle);
-    const absl::optional<bool> mv_value =
+    const std::optional<bool> mv_value =
         link.GetDict().FindBool(kDictionaryKeyIsMostVisited);
 
     GURL url = GURL(url_string ? *url_string : std::string());

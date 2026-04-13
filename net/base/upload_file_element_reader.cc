@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,11 +6,10 @@
 
 #include <memory>
 
-#include "base/bind.h"
 #include "base/files/file_util.h"
+#include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/task/task_runner.h"
-#include "base/task/task_runner_util.h"
 #include "net/base/file_stream.h"
 #include "net/base/io_buffer.h"
 #include "net/base/net_errors.h"
@@ -155,7 +154,6 @@ int UploadFileElementReader::DoLoop(int result) {
     switch (state) {
       case State::IDLE:
         NOTREACHED();
-        break;
       case State::OPEN:
         // Ignore previous result here. It's typically OK, but if Init()
         // interrupted the previous operation, it may be an error.

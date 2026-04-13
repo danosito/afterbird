@@ -1,13 +1,13 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_HISTORY_WEB_HISTORY_SERVICE_FACTORY_H_
 #define CHROME_BROWSER_HISTORY_WEB_HISTORY_SERVICE_FACTORY_H_
 
-#include "base/memory/singleton.h"
+#include "base/no_destructor.h"
 #include "chrome/browser/profiles/profile.h"
-#include "components/keyed_service/content/browser_context_keyed_service_factory.h"
+#include "chrome/browser/profiles/profile_keyed_service_factory.h"
 
 namespace history {
 class WebHistoryService;
@@ -15,7 +15,7 @@ class WebHistoryService;
 
 // Used for creating and fetching a per-profile instance of the
 // WebHistoryService.
-class WebHistoryServiceFactory : public BrowserContextKeyedServiceFactory {
+class WebHistoryServiceFactory : public ProfileKeyedServiceFactory {
  public:
   // Get the singleton instance of the factory.
   static WebHistoryServiceFactory* GetInstance();
@@ -28,11 +28,11 @@ class WebHistoryServiceFactory : public BrowserContextKeyedServiceFactory {
 
  protected:
   // Overridden from BrowserContextKeyedServiceFactory.
-  KeyedService* BuildServiceInstanceFor(
+  std::unique_ptr<KeyedService> BuildServiceInstanceForBrowserContext(
       content::BrowserContext* context) const override;
 
  private:
-  friend struct base::DefaultSingletonTraits<WebHistoryServiceFactory>;
+  friend base::NoDestructor<WebHistoryServiceFactory>;
 
   WebHistoryServiceFactory();
   ~WebHistoryServiceFactory() override;

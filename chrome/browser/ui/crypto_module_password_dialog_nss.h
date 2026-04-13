@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,8 +7,7 @@
 
 #include <vector>
 
-#include "base/callback_forward.h"
-#include "base/memory/ref_counted.h"
+#include "base/functional/callback_forward.h"
 #include "chrome/browser/ui/crypto_module_password_dialog.h"
 #include "crypto/scoped_nss_types.h"
 #include "net/base/host_port_pair.h"

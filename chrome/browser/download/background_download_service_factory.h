@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,7 +13,7 @@ class SimpleFactoryKey;
 
 namespace base {
 template <typename T>
-struct DefaultSingletonTraits;
+class NoDestructor;
 }  // namespace base
 
 namespace download {
@@ -36,7 +36,7 @@ class BackgroundDownloadServiceFactory : public SimpleKeyedServiceFactory {
       const BackgroundDownloadServiceFactory&) = delete;
 
  private:
-  friend struct base::DefaultSingletonTraits<BackgroundDownloadServiceFactory>;
+  friend base::NoDestructor<BackgroundDownloadServiceFactory>;
 
   BackgroundDownloadServiceFactory();
   ~BackgroundDownloadServiceFactory() override;

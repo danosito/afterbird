@@ -1,10 +1,11 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/base/backoff_entry_serializer.h"
 
 #include <algorithm>
+#include <ostream>
 #include <utility>
 
 #include "base/notreached.h"
@@ -15,7 +16,7 @@
 
 namespace {
 // This max defines how many times we are willing to call
-// |BackoffEntry::InformOfRequest| in |DeserializeFromValue|.
+// |BackoffEntry::InformOfRequest| in |DeserializeFromList|.
 //
 // This value is meant to large enough that the computed backoff duration can
 // still be saturated. Given that the duration is an int64 and assuming 1.01 as
@@ -34,8 +35,9 @@ bool BackoffDurationSafeToSerialize(const base::TimeDelta& duration) {
 
 namespace net {
 
-base::Value BackoffEntrySerializer::SerializeToValue(const BackoffEntry& entry,
-                                                     base::Time time_now) {
+base::Value::List BackoffEntrySerializer::SerializeToList(
+    const BackoffEntry& entry,
+    base::Time time_now) {
   base::Value::List serialized;
   serialized.Append(SerializationFormatVersion::kVersion2);
 
@@ -68,30 +70,26 @@ base::Value BackoffEntrySerializer::SerializeToValue(const BackoffEntry& entry,
   serialized.Append(
       base::NumberToString(absolute_release_time.ToInternalValue()));
 
-  return base::Value(std::move(serialized));
+  return serialized;
 }
 
-std::unique_ptr<BackoffEntry> BackoffEntrySerializer::DeserializeFromValue(
-    const base::Value& serialized,
+std::unique_ptr<BackoffEntry> BackoffEntrySerializer::DeserializeFromList(
+    const base::Value::List& serialized,
     const BackoffEntry::Policy* policy,
     const base::TickClock* tick_clock,
     base::Time time_now) {
-  if (!serialized.is_list())
-    return nullptr;
-  const base::Value::List& list = serialized.GetList();
-
-  if (list.size() != 4)
+  if (serialized.size() != 4)
     return nullptr;
 
-  if (!list[0].is_int())
+  if (!serialized[0].is_int())
     return nullptr;
-  int version_number = list[0].GetInt();
+  int version_number = serialized[0].GetInt();
   if (version_number != kVersion1 && version_number != kVersion2)
     return nullptr;
 
-  if (!list[1].is_int())
+  if (!serialized[1].is_int())
     return nullptr;
-  int failure_count = list[1].GetInt();
+  int failure_count = serialized[1].GetInt();
   if (failure_count < 0) {
     return nullptr;
   }
@@ -100,17 +98,17 @@ std::unique_ptr<BackoffEntry> BackoffEntrySerializer::DeserializeFromValue(
   base::TimeDelta original_backoff_duration;
   switch (version_number) {
     case kVersion1: {
-      if (!list[2].is_double())
+      if (!serialized[2].is_double())
         return nullptr;
-      double original_backoff_duration_double = list[2].GetDouble();
+      double original_backoff_duration_double = serialized[2].GetDouble();
       original_backoff_duration =
           base::Seconds(original_backoff_duration_double);
       break;
     }
     case kVersion2: {
-      if (!list[2].is_string())
+      if (!serialized[2].is_string())
         return nullptr;
-      std::string original_backoff_duration_string = list[2].GetString();
+      std::string original_backoff_duration_string = serialized[2].GetString();
       int64_t original_backoff_duration_us;
       if (!base::StringToInt64(original_backoff_duration_string,
                                &original_backoff_duration_us)) {
@@ -124,12 +122,11 @@ std::unique_ptr<BackoffEntry> BackoffEntrySerializer::DeserializeFromValue(
       NOTREACHED() << "Unexpected version_number: " << version_number;
   }
 
-  if (!list[3].is_string())
+  if (!serialized[3].is_string())
     return nullptr;
-  std::string absolute_release_time_string = list[3].GetString();
 
   int64_t absolute_release_time_us;
-  if (!base::StringToInt64(absolute_release_time_string,
+  if (!base::StringToInt64(serialized[3].GetString(),
                            &absolute_release_time_us)) {
     return nullptr;
   }

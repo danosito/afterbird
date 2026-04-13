@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,8 +13,12 @@ import java.lang.annotation.RetentionPolicy;
  * Simple enum for the types of toolbar bitmap captures. Treat this list as append only and keep it
  * in sync with ToolbarCaptureType in enums.xml.
  **/
-@IntDef({ToolbarCaptureType.UNKNOWN, ToolbarCaptureType.TOP, ToolbarCaptureType.BOTTOM,
-        ToolbarCaptureType.NUM_ENTRIES})
+@IntDef({
+    ToolbarCaptureType.UNKNOWN,
+    ToolbarCaptureType.TOP,
+    ToolbarCaptureType.BOTTOM,
+    ToolbarCaptureType.NUM_ENTRIES
+})
 @Retention(RetentionPolicy.SOURCE)
 public @interface ToolbarCaptureType {
     int UNKNOWN = 0;

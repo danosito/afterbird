@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,16 +10,13 @@
 #include "base/metrics/histogram_macros.h"
 #include "chrome/browser/download/android/download_controller.h"
 #include "chrome/browser/download/android/jni_headers/DownloadDialogBridge_jni.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/common/pref_names.h"
 #include "components/download/public/common/download_features.h"
+#include "components/prefs/android/pref_service_android.h"
 #include "components/prefs/pref_service.h"
 #include "ui/android/window_android.h"
-
-#include "components/download/public/common/download_item.h"
-
-// Default minimum file size in kilobyte to trigger download later feature.
-const int64_t kDownloadLaterDefaultMinFileSizeKb = 204800;
 
 // -----------------------------------------------------------------------------
 // DownloadDialogResult
@@ -51,9 +48,8 @@ void DownloadDialogBridge::ShowDialog(
     net::NetworkChangeNotifier::ConnectionType connection_type,
     DownloadLocationDialogType dialog_type,
     const base::FilePath& suggested_path,
-    bool is_incognito,
-    DialogCallback dialog_callback,
-    download::DownloadItem* download) {
+    Profile* profile,
+    DialogCallback dialog_callback) {
   if (!native_window)
     return;
 
@@ -61,13 +57,9 @@ void DownloadDialogBridge::ShowDialog(
 
   dialog_callback_ = std::move(dialog_callback);
 
-  // This shouldn't happen, but if it does, cancel download.
+  // This shouldn't happen.
   if (dialog_type == DownloadLocationDialogType::NO_DIALOG) {
     NOTREACHED();
-    DownloadDialogResult dialog_result;
-    dialog_result.location_result = DownloadLocationDialogResult::USER_CANCELED;
-    CompleteSelection(std::move(dialog_result));
-    return;
   }
 
   // If dialog is showing, run the callback to continue without confirmation.
@@ -82,10 +74,6 @@ void DownloadDialogBridge::ShowDialog(
 
   is_dialog_showing_ = true;
 
-  std::string url_to_download = "";
-  if (download && !(download->GetURL().is_empty()))
-      url_to_download = download->GetURL().spec();
-
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_DownloadDialogBridge_showDialog(
       env, java_obj_, native_window->GetJavaObject(),
@@ -93,31 +81,17 @@ void DownloadDialogBridge::ShowDialog(
       static_cast<int>(dialog_type),
       base::android::ConvertUTF8ToJavaString(env,
                                              suggested_path.AsUTF8Unsafe()),
-      false /*supports_later_dialog*/, is_incognito,
-      base::android::ConvertUTF8ToJavaString(env,
-                                             url_to_download)
-  );
+      profile->GetJavaObject());
 }
 
 void DownloadDialogBridge::OnComplete(
     JNIEnv* env,
     const base::android::JavaParamRef<jobject>& obj,
-    const base::android::JavaParamRef<jstring>& returned_path,
-    jboolean on_wifi,
-    jlong start_time) {
+    const base::android::JavaParamRef<jstring>& returned_path) {
   DownloadDialogResult dialog_result;
   dialog_result.location_result = DownloadLocationDialogResult::USER_CONFIRMED;
   dialog_result.file_path = base::FilePath(
       base::android::ConvertJavaStringToUTF8(env, returned_path));
-
-  if (on_wifi) {
-    dialog_result.download_schedule =
-        download::DownloadSchedule(true /*only_on_wifi*/, absl::nullopt);
-  }
-  if (start_time > 0) {
-    dialog_result.download_schedule = download::DownloadSchedule(
-        false /*only_on_wifi*/, base::Time::FromJavaTime(start_time));
-  }
 
   CompleteSelection(std::move(dialog_result));
   is_dialog_showing_ = false;
@@ -145,56 +119,14 @@ void DownloadDialogBridge::CompleteSelection(DownloadDialogResult result) {
 }
 
 // static
-base::android::ScopedJavaLocalRef<jstring>
-JNI_DownloadDialogBridge_GetDownloadDefaultDirectory(JNIEnv* env) {
-  PrefService* pref_service =
-      ProfileManager::GetActiveUserProfile()->GetOriginalProfile()->GetPrefs();
-
-  return base::android::ConvertUTF8ToJavaString(
-      env, pref_service->GetString(prefs::kDownloadDefaultDirectory));
-}
-
-// static
 void JNI_DownloadDialogBridge_SetDownloadAndSaveFileDefaultDirectory(
     JNIEnv* env,
+    const base::android::JavaParamRef<jobject>& jpref_service,
     const base::android::JavaParamRef<jstring>& directory) {
   PrefService* pref_service =
-      ProfileManager::GetActiveUserProfile()->GetOriginalProfile()->GetPrefs();
+      PrefServiceAndroid::FromPrefServiceAndroid(jpref_service);
 
   base::FilePath path(base::android::ConvertJavaStringToUTF8(env, directory));
   pref_service->SetFilePath(prefs::kDownloadDefaultDirectory, path);
   pref_service->SetFilePath(prefs::kSaveFileDefaultDirectory, path);
-}
-
-// static
-jlong JNI_DownloadDialogBridge_GetDownloadLaterMinFileSize(JNIEnv* env) {
-  return DownloadDialogBridge::GetDownloadLaterMinFileSize();
-}
-
-// static
-jboolean JNI_DownloadDialogBridge_ShouldShowDateTimePicker(JNIEnv* env) {
-  return DownloadDialogBridge::ShouldShowDateTimePicker();
-}
-
-jboolean JNI_DownloadDialogBridge_IsLocationDialogManaged(JNIEnv* env) {
-  PrefService* pref_service =
-      ProfileManager::GetActiveUserProfile()->GetOriginalProfile()->GetPrefs();
-
-  return pref_service->IsManagedPreference(prefs::kPromptForDownload);
-}
-
-// static
-long DownloadDialogBridge::GetDownloadLaterMinFileSize() {
-  return base::GetFieldTrialParamByFeatureAsInt(
-      download::features::kDownloadLater,
-      download::features::kDownloadLaterMinFileSizeKb,
-      kDownloadLaterDefaultMinFileSizeKb);
-}
-
-// static
-bool DownloadDialogBridge::ShouldShowDateTimePicker() {
-  return base::GetFieldTrialParamByFeatureAsBool(
-      download::features::kDownloadLater,
-      download::features::kDownloadLaterShowDateTimePicker,
-      /*default_value=*/true);
 }

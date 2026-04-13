@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,7 @@
 
 #include "testing/gtest/include/gtest/gtest.h"
 
-// Note: `base::AllowCheckIsTestToBeCalled` is being called in
+// Note: `base::AllowCheckIsTestForTesting` is being called in
 // `base/test/launcher/unit_test_launcher.cc` before this test is run.
 //
 // Thus, `CHECK_IS_TEST()` will succeed.

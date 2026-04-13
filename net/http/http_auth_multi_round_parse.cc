@@ -1,11 +1,12 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/http/http_auth_multi_round_parse.h"
 
+#include <string_view>
+
 #include "base/base64.h"
-#include "base/strings/string_piece.h"
 #include "base/strings/string_util.h"
 #include "net/http/http_auth_challenge_tokenizer.h"
 
@@ -27,7 +28,7 @@ HttpAuth::AuthorizationResult ParseFirstRoundChallenge(
   if (!SchemeIsValid(scheme, challenge))
     return HttpAuth::AUTHORIZATION_RESULT_INVALID;
 
-  std::string encoded_auth_token = challenge->base64_param();
+  std::string_view encoded_auth_token = challenge->base64_param();
   if (!encoded_auth_token.empty()) {
     return HttpAuth::AUTHORIZATION_RESULT_INVALID;
   }

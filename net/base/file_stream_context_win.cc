@@ -1,21 +1,21 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "net/base/file_stream_context.h"
 
 #include <windows.h>
+
 #include <utility>
 
-#include "base/bind.h"
 #include "base/files/file_path.h"
+#include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/message_loop/message_pump_for_io.h"
 #include "base/task/current_thread.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/task_runner.h"
-#include "base/threading/thread_task_runner_handle.h"
 #include "net/base/io_buffer.h"
 #include "net/base/net_errors.h"
 
@@ -73,7 +73,7 @@ int FileStream::Context::Read(IOBuffer* buf,
       base::BindOnce(&FileStream::Context::ReadAsync, base::Unretained(this),
                      file_.GetPlatformFile(), base::WrapRefCounted(buf),
                      buf_len, &io_context_.overlapped,
-                     base::ThreadTaskRunnerHandle::Get()));
+                     base::SingleThreadTaskRunner::GetCurrentDefault()));
   return ERR_IO_PENDING;
 }
 
@@ -100,6 +100,26 @@ int FileStream::Context::Write(IOBuffer* buf,
   return ERR_IO_PENDING;
 }
 
+int FileStream::Context::ConnectNamedPipe(CompletionOnceCallback callback) {
+  DCHECK(!async_in_progress_);
+
+  result_ = 0;
+  // Always returns zero when making an asynchronous call.
+  ::ConnectNamedPipe(file_.GetPlatformFile(), &io_context_.overlapped);
+  const auto error = ::GetLastError();
+  if (error == ERROR_PIPE_CONNECTED) {
+    return OK;  // The client has already connected; operation complete.
+  }
+  if (error == ERROR_IO_PENDING) {
+    IOCompletionIsPending(std::move(callback), /*buf=*/nullptr);
+    return ERR_IO_PENDING;  // Wait for an I/O completion packet.
+  }
+  // ERROR_INVALID_FUNCTION means that `file_` isn't a handle to a named pipe,
+  // but to an actual file. This is a programming error.
+  CHECK_NE(error, static_cast<DWORD>(ERROR_INVALID_FUNCTION));
+  return static_cast<int>(MapSystemError(error));
+}
+
 FileStream::Context::IOResult FileStream::Context::SeekFileImpl(
     int64_t offset) {
   LARGE_INTEGER result;
@@ -109,10 +129,10 @@ FileStream::Context::IOResult FileStream::Context::SeekFileImpl(
 }
 
 void FileStream::Context::OnFileOpened() {
-  HRESULT hr = base::CurrentIOThread::Get()->RegisterIOHandler(
-      file_.GetPlatformFile(), this);
-  if (!SUCCEEDED(hr))
+  if (!base::CurrentIOThread::Get()->RegisterIOHandler(file_.GetPlatformFile(),
+                                                       this)) {
     file_.Close();
+  }
 }
 
 void FileStream::Context::IOCompletionIsPending(CompletionOnceCallback callback,

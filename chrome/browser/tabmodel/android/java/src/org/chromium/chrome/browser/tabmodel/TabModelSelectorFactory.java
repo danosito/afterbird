@@ -1,26 +1,32 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package org.chromium.chrome.browser.tabmodel;
 
-import android.app.Activity;
+import android.content.Context;
 
+import org.chromium.base.supplier.OneshotSupplier;
+import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.chrome.browser.tabmodel.NextTabPolicy.NextTabPolicySupplier;
+import org.chromium.ui.modaldialog.ModalDialogManager;
 
-/**
- * A factory interface for building a {@link TabModelSelector} instance.
- */
+/** A factory interface for building a {@link TabModelSelector} instance. */
 public interface TabModelSelectorFactory {
     /**
      * Builds a {@link TabModelSelector}.
      *
-     * @param activity An {@link Activity} instance.
+     * @param context An {@link Context} instance.
+     * @param modalDialogManager The {@link ModalDialogManager}.
+     * @param profileProviderSupplier Provides the Profiles used in this selector.
      * @param tabCreatorManager A {@link TabCreatorManager} instance.
      * @param nextTabPolicySupplier A {@link NextTabPolicySupplier} instance.
-     * @param selectorIndex The index of the {@link TabModelSelector}.
      * @return A new {@link TabModelSelector} instance.
      */
-    TabModelSelector buildSelector(Activity activity, TabCreatorManager tabCreatorManager,
-            NextTabPolicySupplier nextTabPolicySupplier, int selectorIndex);
+    TabModelSelector buildSelector(
+            Context context,
+            ModalDialogManager modalDialogManager,
+            OneshotSupplier<ProfileProvider> profileProviderSupplier,
+            TabCreatorManager tabCreatorManager,
+            NextTabPolicySupplier nextTabPolicySupplier);
 }

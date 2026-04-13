@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,7 +20,6 @@
 class ChromeDownloadManagerDelegate;
 class DownloadHistory;
 class DownloadUIController;
-class ExtensionDownloadsEventRouter;
 class Profile;
 
 namespace content {
@@ -48,11 +47,13 @@ class DownloadCoreServiceImpl : public DownloadCoreService {
   extensions::ExtensionDownloadsEventRouter* GetExtensionEventRouter() override;
 #endif
   bool HasCreatedDownloadManager() override;
-  int NonMaliciousDownloadCount() const override;
-  void CancelDownloads() override;
+  int BlockingShutdownCount() const override;
+  void CancelDownloads(
+      DownloadCoreService::CancelDownloadsTrigger trigger) override;
   void SetDownloadManagerDelegateForTesting(
       std::unique_ptr<ChromeDownloadManagerDelegate> delegate) override;
   bool IsDownloadUiEnabled() override;
+  DownloadUIController* GetDownloadUIController() override;
   void SetDownloadHistoryForTesting(
       std::unique_ptr<DownloadHistory> download_history) override;
 

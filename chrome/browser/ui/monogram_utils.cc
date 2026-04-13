@@ -1,4 +1,4 @@
-// Copyright 2022 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -48,7 +48,7 @@ void DrawFallbackIconLetter(gfx::Canvas* canvas,
   font_weight = gfx::Font::Weight::SEMIBOLD;
 #endif
 
-  // TODO(crbug.com/853780): Adjust the text color according to the background
+  // TODO(crbug.com/41395192): Adjust the text color according to the background
   // color.
   canvas->DrawStringRectWithFlags(
       monogram,

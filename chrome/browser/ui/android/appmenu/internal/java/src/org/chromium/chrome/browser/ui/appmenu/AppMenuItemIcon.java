@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,9 +10,7 @@ import android.widget.Checkable;
 
 import org.chromium.ui.widget.ChromeImageView;
 
-/**
- * An AppCompatImageView that supports the checkable state.
- */
+/** An AppCompatImageView that supports the checkable state. */
 class AppMenuItemIcon extends ChromeImageView implements Checkable {
     private static final int[] CHECKED_STATE_SET = new int[] {android.R.attr.state_checked};
     private boolean mCheckedState;

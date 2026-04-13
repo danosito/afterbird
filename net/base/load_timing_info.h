@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,11 +26,13 @@ namespace net {
 //
 // The general order for events is:
 // request_start
+// service_worker_router_evaluation_start
+// service_worker_cache_lookup_start
 // service_worker_start_time
 // proxy_start
 // proxy_end
-// dns_start
-// dns_end
+// domain_lookup_start
+// domain_lookup_end
 // connect_start
 // ssl_start
 // ssl_end
@@ -78,8 +80,8 @@ struct NET_EXPORT LoadTimingInfo {
     // Corresponds to |domainLookupStart| and |domainLookupEnd| in
     // ResourceTiming (http://www.w3.org/TR/resource-timing/) for Web-surfacing
     // requests.
-    base::TimeTicks dns_start;
-    base::TimeTicks dns_end;
+    base::TimeTicks domain_lookup_start;
+    base::TimeTicks domain_lookup_end;
 
     // The time spent establishing the connection. Connect time includes proxy
     // connect times (though not proxy_resolve or DNS lookup times), time spent
@@ -138,7 +140,17 @@ struct NET_EXPORT LoadTimingInfo {
 
   // Corresponds to |fetchStart| in ResourceTiming
   // (http://www.w3.org/TR/resource-timing/) for Web-surfacing requests.
+  // Note that this field is not used in ResourceTiming as |requestStart|, which
+  // has the same name but exposes a different field.
   base::TimeTicks request_start;
+
+  // The time immediately before ServiceWorker static routing API starts
+  // matching a request with the registered router rules.
+  base::TimeTicks service_worker_router_evaluation_start;
+
+  // The time immediately before ServiceWorker static routing API starts
+  // looking up the cache storage when "cache" is specified as its source.
+  base::TimeTicks service_worker_cache_lookup_start;
 
   // The time immediately before starting ServiceWorker. If the response is not
   // provided by the ServiceWorker, kept empty.

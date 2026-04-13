@@ -1,27 +1,27 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/download/download_file_picker.h"
 
-#include "base/bind.h"
-#include "base/threading/thread_task_runner_handle.h"
+#include "base/files/file_path.h"
+#include "base/functional/bind.h"
+#include "base/task/single_thread_task_runner.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/platform_util.h"
 #include "chrome/browser/ui/chrome_select_file_policy.h"
+#include "components/download/public/common/base_file.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/download_item_utils.h"
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/web_contents.h"
+#include "ui/shell_dialogs/selected_file_info.h"
 
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS) || BUILDFLAG(IS_WIN)
 #include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "ui/aura/window.h"
-#elif BUILDFLAG(IS_CHROMEOS_ASH)
-#include "chrome/browser/ash/policy/dlp/dlp_files_controller.h"
-#include "chrome/browser/profiles/profile.h"
 #endif
 
 using download::DownloadItem;
@@ -41,10 +41,12 @@ DownloadFilePicker::DownloadFilePicker(download::DownloadItem* item,
   DCHECK(item);
   item->AddObserver(this);
   WebContents* web_contents = content::DownloadItemUtils::GetWebContents(item);
-  if (!web_contents || !web_contents->GetNativeView()) {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+  // Extension download may not have associated webcontents.
+  if (item->GetDownloadSource() != download::DownloadSource::EXTENSION_API &&
+      (!web_contents || !web_contents->GetNativeView())) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&DownloadFilePicker::FileSelectionCanceled,
-                                  base::Unretained(this), nullptr));
+                                  base::Unretained(this)));
     return;
   }
 
@@ -53,9 +55,9 @@ DownloadFilePicker::DownloadFilePicker(download::DownloadItem* item,
   // |select_file_dialog_| could be null in Linux. See CreateSelectFileDialog()
   // in shell_dialog_linux.cc.
   if (!select_file_dialog_.get()) {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&DownloadFilePicker::FileSelectionCanceled,
-                                  base::Unretained(this), nullptr));
+                                  base::Unretained(this)));
     return;
   }
 
@@ -73,15 +75,15 @@ DownloadFilePicker::DownloadFilePicker(download::DownloadItem* item,
       ui::SelectFileDialog::FileTypeInfo::NATIVE_PATH;
   gfx::NativeWindow owning_window =
       web_contents ? platform_util::GetTopLevel(web_contents->GetNativeView())
-                   : gfx::kNullNativeWindow;
+                   : gfx::NativeWindow();
 
   // If select_file_dialog_ issued by extension API,
   // (e.g. chrome.downloads.download), the |owning_window| host
   // could be null, then it will cause the select file dialog is not modal
-  // dialog in Linux. See SelectFileImpl() in select_file_dialog_linux_gtk.cc.
-  // Here we make owning_window host to browser current active window
-  // if it is null. https://crbug.com/1301898
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
+  // dialog in Linux (See SelectFileImpl() in select_file_dialog_linux_gtk.cc).
+  // and windows.Here we make owning_window host to browser current active
+  // window if it is null. https://crbug.com/1301898
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS) || BUILDFLAG(IS_WIN)
   if (!owning_window || !owning_window->GetHost()) {
     owning_window = BrowserList::GetInstance()
                         ->GetLastActive()
@@ -90,54 +92,47 @@ DownloadFilePicker::DownloadFilePicker(download::DownloadItem* item,
   }
 #endif
 
+  GURL caller = download::BaseFile::GetEffectiveAuthorityURL(
+      download_item_->GetURL(), download_item_->GetReferrerUrl());
+  // Blob URLs are not set as referrer of downloads of them. If the download url
+  // itself has no authority part, their is no authority url. For dlp we want to
+  // use the blob's origin in that case.
+  auto* render_frame_host =
+      content::DownloadItemUtils::GetRenderFrameHost(download_item_);
+  if (!caller.is_valid() && render_frame_host &&
+      render_frame_host->GetLastCommittedURL().SchemeIsBlob()) {
+    caller = render_frame_host->GetLastCommittedOrigin().GetURL();
+  }
+
   select_file_dialog_->SelectFile(
       ui::SelectFileDialog::SELECT_SAVEAS_FILE, std::u16string(),
       suggested_path_, &file_type_info, 0, base::FilePath::StringType(),
-      owning_window, NULL);
+      owning_window, &caller);
 }
 
 DownloadFilePicker::~DownloadFilePicker() {
-  if (select_file_dialog_)
+  if (select_file_dialog_) {
     select_file_dialog_->ListenerDestroyed();
+  }
 
-  if (download_item_)
+  if (download_item_) {
     download_item_->RemoveObserver(this);
+  }
 }
 
-void DownloadFilePicker::OnFileSelected(const base::FilePath& path) {
-  base::FilePath selected_path(path);
-#if BUILDFLAG(IS_CHROMEOS_ASH)
-  auto* web_contents =
-      download_item_
-          ? content::DownloadItemUtils::GetWebContents(download_item_)
-          : nullptr;
-  if (web_contents && !path.empty()) {
-    DCHECK(download_item_);
-    auto restricted_urls =
-        policy::DlpFilesController::IsFilesTransferRestricted(
-            Profile::FromBrowserContext(web_contents->GetBrowserContext()),
-            {download_item_->GetURL()}, selected_path.value());
-    if (!restricted_urls.empty())
-      selected_path.clear();
-  }
-#endif  // BUILDFLAG(IS_CHROMEOS_ASH)
+void DownloadFilePicker::FileSelected(const ui::SelectedFileInfo& file,
+                                      int index) {
   std::move(file_selected_callback_)
-      .Run(selected_path.empty() ? DownloadConfirmationResult::CANCELED
-                                 : DownloadConfirmationResult::CONFIRMED,
-           selected_path);
+      .Run(DownloadConfirmationResult::CONFIRMED, file);
+
   delete this;
 }
 
-void DownloadFilePicker::FileSelected(const base::FilePath& path,
-                                      int index,
-                                      void* params) {
-  OnFileSelected(path);
-  // Deletes |this|
-}
+void DownloadFilePicker::FileSelectionCanceled() {
+  std::move(file_selected_callback_)
+      .Run(DownloadConfirmationResult::CANCELED, ui::SelectedFileInfo());
 
-void DownloadFilePicker::FileSelectionCanceled(void* params) {
-  OnFileSelected(base::FilePath());
-  // Deletes |this|
+  delete this;
 }
 
 // static

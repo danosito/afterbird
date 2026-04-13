@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,6 +15,9 @@ class ContentSettingsPattern;
 
 // A provider that supplies HostContentSettingsMap with a list of auto-granted
 // permissions from the underlying WebUIAllowlist.
+//
+// PartitionKey is ignored by this provider because the content settings should
+// apply across partitions.
 class WebUIAllowlistProvider : public content_settings::ObservableProvider {
  public:
   explicit WebUIAllowlistProvider(scoped_refptr<WebUIAllowlist> allowlist);
@@ -31,15 +34,25 @@ class WebUIAllowlistProvider : public content_settings::ObservableProvider {
   // The following methods are thread-safe.
   std::unique_ptr<content_settings::RuleIterator> GetRuleIterator(
       ContentSettingsType content_type,
-      bool incognito) const override;
+      bool incognito,
+      const content_settings::PartitionKey& partition_key) const override;
+  std::unique_ptr<content_settings::Rule> GetRule(
+      const GURL& primary_url,
+      const GURL& secondary_url,
+      ContentSettingsType content_type,
+      bool off_the_record,
+      const content_settings::PartitionKey& partition_key) const override;
   void ShutdownOnUIThread() override;
   bool SetWebsiteSetting(
       const ContentSettingsPattern& primary_pattern,
       const ContentSettingsPattern& secondary_pattern,
       ContentSettingsType content_type,
       base::Value&& value,
-      const content_settings::ContentSettingConstraints& constraints) override;
-  void ClearAllContentSettingsRules(ContentSettingsType content_type) override;
+      const content_settings::ContentSettingConstraints& constraints,
+      const content_settings::PartitionKey& partition_key) override;
+  void ClearAllContentSettingsRules(
+      ContentSettingsType content_type,
+      const content_settings::PartitionKey& partition_key) override;
 
  private:
   const scoped_refptr<WebUIAllowlist> allowlist_;

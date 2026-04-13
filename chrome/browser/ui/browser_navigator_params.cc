@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,7 +21,7 @@ using content::GlobalRequestID;
 using content::NavigationController;
 using content::WebContents;
 
-#if 0
+#if BUILDFLAG(IS_ANDROID)
 NavigateParams::NavigateParams(std::unique_ptr<WebContents> contents_to_insert)
     : contents_to_insert(std::move(contents_to_insert)) {}
 #else
@@ -81,11 +81,6 @@ void NavigateParams::FillNavigateParamsFromOpenURLParams(
   this->blob_url_loader_factory = params.blob_url_loader_factory;
   this->href_translate = params.href_translate;
   this->impression = params.impression;
-  // `disposition` is eventually coerced out of OFF_THE_RECORD, so we maintain
-  // this field separately.
-  if (params.disposition == WindowOpenDisposition::OFF_THE_RECORD) {
-    this->privacy_sensitivity = PrivacySensitivity::CROSS_OTR;
-  }
 
   // Implementation notes:
   //   The following NavigateParams don't have an equivalent in OpenURLParams:

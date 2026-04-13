@@ -1,10 +1,10 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include <utility>
 
-#include "base/bind.h"
+#include "base/functional/bind.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
@@ -93,8 +93,8 @@ class SessionHistoryTest : public ContentBrowserTest {
   // Navigate session history using history.go(distance).
   void JavascriptGo(const std::string& distance) {
     TestNavigationObserver observer(shell()->web_contents());
-    EXPECT_TRUE(ExecuteScript(ToRenderFrameHost(shell()->web_contents()),
-                              "history.go('" + distance + "')"));
+    EXPECT_TRUE(ExecJs(ToRenderFrameHost(shell()->web_contents()),
+                       "history.go('" + distance + "')"));
     observer.Wait();
   }
 
@@ -341,8 +341,7 @@ IN_PROC_BROWSER_TEST_F(SessionHistoryTest, CrossFrameFormBackForward) {
   // set to "form". If not, the page will be reloaded from scratch, setting the
   // title to "bot1" again.
   GoBack();
-  EXPECT_EQ(IsSameSiteBackForwardCacheEnabled() ? "form" : "bot1",
-            GetTabTitle());
+  EXPECT_EQ(IsBackForwardCacheEnabled() ? "form" : "bot1", GetTabTitle());
   EXPECT_EQ(frames, GetTabURL());
 
   // Submit the form in the "fbot" iframe again . This submits to /echotitle
@@ -398,16 +397,7 @@ IN_PROC_BROWSER_TEST_F(SessionHistoryTest, FragmentBackForward) {
 // back/forward list (such as trigger our start/stop loading events).  This
 // means the test will hang if it attempts to navigate too far forward or back,
 // since we'll be waiting forever for a load stop event.
-//
-// TODO(brettw) bug 50648: fix flakyness. This test seems like it was failing
-// about 1/4 of the time on Vista by failing to execute JavascriptGo (see bug).
-// TODO(crbug.com/1280512): Flaky on Linux and Lacros.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)
-#define MAYBE_JavascriptHistory DISABLED_JavascriptHistory
-#else
-#define MAYBE_JavascriptHistory JavascriptHistory
-#endif
-IN_PROC_BROWSER_TEST_F(SessionHistoryTest, MAYBE_JavascriptHistory) {
+IN_PROC_BROWSER_TEST_F(SessionHistoryTest, JavascriptHistory) {
   ASSERT_FALSE(CanGoBack());
 
   ASSERT_NO_FATAL_FAILURE(NavigateAndCheckTitle("bot1.html", "bot1"));
@@ -468,8 +458,7 @@ IN_PROC_BROWSER_TEST_F(SessionHistoryTest, MAYBE_JavascriptHistory) {
   // types.  For example, load about:network in a tab, then a real page, then
   // try to go back and forward with JavaScript.  Bug 1136715.
   // (Hard to test right now, because pages like about:network cause the
-  // TabProxy to hang.  This is because they do not appear to use the
-  // NotificationService.)
+  // TabProxy to hang.)
 }
 
 IN_PROC_BROWSER_TEST_F(SessionHistoryTest, LocationReplace) {

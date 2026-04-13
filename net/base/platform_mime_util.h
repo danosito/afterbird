@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 #define NET_BASE_PLATFORM_MIME_UTIL_H_
 
 #include <string>
+#include <string_view>
 #include <unordered_set>
 
 #include "base/files/file_path.h"
@@ -19,7 +20,7 @@ class PlatformMimeUtil {
   // |mime_type| to the set |extensions|.  Returns at least the value returned
   // by GetPreferredExtensionForMimeType.
   void GetPlatformExtensionsForMimeType(
-      const std::string& mime_type,
+      std::string_view mime_type,
       std::unordered_set<base::FilePath::StringType>* extensions) const;
 
  protected:
@@ -27,7 +28,7 @@ class PlatformMimeUtil {
   // mime type. Returns true if the file type is registered in the system. The
   // extension is returned without a prefixed dot, ex "html".
   bool GetPlatformPreferredExtensionForMimeType(
-      const std::string& mime_type,
+      std::string_view mime_type,
       base::FilePath::StringType* extension) const;
 
   // Gets the mime type (if any) that is associated with the file extension.

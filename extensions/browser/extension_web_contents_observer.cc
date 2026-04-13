@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,10 +10,8 @@
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
-#include "content/public/browser/site_instance.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/url_constants.h"
-#include "extensions/browser/content_script_tracker.h"
 #include "extensions/browser/extension_api_frame_id_map.h"
 #include "extensions/browser/extension_frame_host.h"
 #include "extensions/browser/extension_prefs.h"
@@ -23,10 +21,11 @@
 #include "extensions/browser/kiosk/kiosk_delegate.h"
 #include "extensions/browser/process_manager.h"
 #include "extensions/browser/renderer_startup_helper.h"
+#include "extensions/browser/script_injection_tracker.h"
 #include "extensions/browser/view_type_utils.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_messages.h"
+#include "extensions/common/extension_id.h"
 #include "extensions/common/mojom/view_type.mojom.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/mojom/autoplay/autoplay.mojom.h"
@@ -44,8 +43,9 @@ ExtensionWebContentsObserver* ExtensionWebContentsObserver::GetForWebContents(
 // static
 void ExtensionWebContentsObserver::BindLocalFrameHost(
     mojo::PendingAssociatedReceiver<mojom::LocalFrameHost> receiver,
-    content::RenderFrameHost* rfh) {
-  auto* web_contents = content::WebContents::FromRenderFrameHost(rfh);
+    content::RenderFrameHost* render_frame_host) {
+  auto* web_contents =
+      content::WebContents::FromRenderFrameHost(render_frame_host);
   if (!web_contents)
     return;
   auto* observer = GetForWebContents(web_contents);
@@ -54,7 +54,7 @@ void ExtensionWebContentsObserver::BindLocalFrameHost(
   auto* efh = observer->extension_frame_host_.get();
   if (!efh)
     return;
-  efh->BindLocalFrameHost(std::move(receiver), rfh);
+  efh->BindLocalFrameHost(std::move(receiver), render_frame_host);
 }
 
 std::unique_ptr<ExtensionFrameHost>
@@ -83,15 +83,19 @@ void ExtensionWebContentsObserver::Initialize() {
 
   extension_frame_host_ = CreateExtensionFrameHost(web_contents());
 
-  web_contents()->ForEachRenderFrameHost(base::BindRepeating(
-      [](ExtensionWebContentsObserver* observer,
-         content::RenderFrameHost* render_frame_host) {
-        // We only initialize the frame if the renderer counterpart is live;
-        // otherwise we wait for the RenderFrameCreated notification.
-        if (render_frame_host->IsRenderFrameLive())
-          observer->InitializeRenderFrame(render_frame_host);
-      },
-      this));
+  content::RenderFrameHost* main_frame = web_contents()->GetPrimaryMainFrame();
+  // We only initialize the frame if the renderer counterpart is live;
+  // otherwise we wait for the RenderFrameCreated notification.
+  if (main_frame->IsRenderFrameLive()) {
+    InitializeRenderFrame(main_frame);
+  }
+
+  // At the point of initialization, the *only* frame that can exist is the
+  // main frame.
+  web_contents()->ForEachRenderFrameHost(
+      [main_frame](content::RenderFrameHost* render_frame_host) {
+        CHECK_EQ(render_frame_host, main_frame);
+      });
 
   // It would be ideal if SessionTabHelper was created before this object,
   // because then we could start observing it here instead of needing to be
@@ -137,8 +141,8 @@ void ExtensionWebContentsObserver::InitializeRenderFrame(
   security_policy->GrantRequestOrigin(process_id, frame_extension->origin());
 
   // Notify the render frame of the view type.
-  GetLocalFrame(render_frame_host)
-      ->NotifyRenderViewType(GetViewType(web_contents()));
+  GetLocalFrameChecked(render_frame_host)
+      .NotifyRenderViewType(GetViewType(web_contents()));
 
   ProcessManager::Get(browser_context_)
       ->RegisterRenderFrameHost(web_contents(), render_frame_host,
@@ -155,7 +159,6 @@ void ExtensionWebContentsObserver::RenderFrameCreated(
     content::RenderFrameHost* render_frame_host) {
   DCHECK(initialized_);
   InitializeRenderFrame(render_frame_host);
-  ContentScriptTracker::RenderFrameCreated(PassKey(), render_frame_host);
 
   const Extension* extension = GetExtensionFromFrame(render_frame_host, false);
   if (!extension)
@@ -199,12 +202,11 @@ void ExtensionWebContentsObserver::RenderFrameDeleted(
   ProcessManager::Get(browser_context_)
       ->UnregisterRenderFrameHost(render_frame_host);
   ExtensionApiFrameIdMap::Get()->OnRenderFrameDeleted(render_frame_host);
-  ContentScriptTracker::RenderFrameDeleted(PassKey(), render_frame_host);
 }
 
 void ExtensionWebContentsObserver::ReadyToCommitNavigation(
     content::NavigationHandle* navigation_handle) {
-  ContentScriptTracker::ReadyToCommitNavigation(PassKey(), navigation_handle);
+  ScriptInjectionTracker::ReadyToCommitNavigation(PassKey(), navigation_handle);
 
   // We don't force autoplay to allow while prerendering.
   if (navigation_handle->GetRenderFrameHost()->GetLifecycleState() ==
@@ -219,12 +221,12 @@ void ExtensionWebContentsObserver::ReadyToCommitNavigation(
   content::RenderFrameHost* parent_or_outerdoc =
       navigation_handle->GetParentFrameOrOuterDocument();
 
-  content::RenderFrameHost* outermost_main_rfh =
+  content::RenderFrameHost* outermost_main_render_frame_host =
       parent_or_outerdoc ? parent_or_outerdoc->GetOutermostMainFrame()
                          : navigation_handle->GetRenderFrameHost();
 
   const Extension* const extension =
-      GetExtensionFromFrame(outermost_main_rfh, false);
+      GetExtensionFromFrame(outermost_main_render_frame_host, false);
   KioskDelegate* const kiosk_delegate =
       ExtensionsBrowserClient::Get()->GetKioskDelegate();
   DCHECK(kiosk_delegate);
@@ -270,7 +272,7 @@ void ExtensionWebContentsObserver::DidFinishNavigation(
                                 frame_extension);
   }
 
-  ContentScriptTracker::DidFinishNavigation(PassKey(), navigation_handle);
+  ScriptInjectionTracker::DidFinishNavigation(PassKey(), navigation_handle);
 }
 
 void ExtensionWebContentsObserver::MediaPictureInPictureChanged(
@@ -321,21 +323,11 @@ void ExtensionWebContentsObserver::PepperInstanceDeleted() {
   }
 }
 
-std::string ExtensionWebContentsObserver::GetExtensionIdFromFrame(
-    content::RenderFrameHost* render_frame_host) const {
-  DCHECK(initialized_);
-  const GURL& site = render_frame_host->GetSiteInstance()->GetSiteURL();
-  if (!site.SchemeIs(kExtensionScheme))
-    return std::string();
-
-  return site.host();
-}
-
 const Extension* ExtensionWebContentsObserver::GetExtensionFromFrame(
     content::RenderFrameHost* render_frame_host,
     bool verify_url) const {
   DCHECK(initialized_);
-  std::string extension_id = GetExtensionIdFromFrame(render_frame_host);
+  ExtensionId extension_id = util::GetExtensionIdFromFrame(render_frame_host);
   if (extension_id.empty())
     return nullptr;
 
@@ -352,7 +344,8 @@ const Extension* ExtensionWebContentsObserver::GetExtensionFromFrame(
     // This check is needed to eliminate origins that are not within a
     // hosted-app's web extent, and sandboxed extension frames with an opaque
     // origin.
-    // TODO(1139108) See if extension check is still needed after bug is fixed.
+    // TODO(crbug.com/40725839) See if extension check is still needed after bug
+    // is fixed.
     auto* extension_for_origin = ExtensionRegistry::Get(browser_context)
                                      ->enabled_extensions()
                                      .GetExtensionOrAppByURL(origin.GetURL());
@@ -371,6 +364,14 @@ mojom::LocalFrame* ExtensionWebContentsObserver::GetLocalFrame(
   if (!render_frame_host->IsRenderFrameLive())
     return nullptr;
 
+  // Do not return a LocalFrame object for frames that do not immediately belong
+  // to this WebContents. For example frames belonging to inner WebContents will
+  // have their own ExtensionWebContentsObserver.
+  if (content::WebContents::FromRenderFrameHost(render_frame_host) !=
+      web_contents()) {
+    return nullptr;
+  }
+
   mojo::AssociatedRemote<mojom::LocalFrame>& remote =
       local_frame_map_[render_frame_host];
   if (!remote.is_bound()) {
@@ -380,15 +381,20 @@ mojom::LocalFrame* ExtensionWebContentsObserver::GetLocalFrame(
   return remote.get();
 }
 
-void ExtensionWebContentsObserver::OnWindowIdChanged(const SessionID& id) {
-  web_contents()->ForEachRenderFrameHost(base::BindRepeating(
-      [](int32_t window_id, ExtensionWebContentsObserver* observer,
-         content::RenderFrameHost* rfh) {
-        auto* local_frame = observer->GetLocalFrame(rfh);
+mojom::LocalFrame& ExtensionWebContentsObserver::GetLocalFrameChecked(
+    content::RenderFrameHost* render_frame_host) {
+  auto* local_frame = GetLocalFrame(render_frame_host);
+  CHECK(local_frame);
+  return *local_frame;
+}
+
+void ExtensionWebContentsObserver::OnWindowIdChanged(SessionID id) {
+  web_contents()->ForEachRenderFrameHost(
+      [&id, this](content::RenderFrameHost* render_frame_host) {
+        auto* local_frame = GetLocalFrame(render_frame_host);
         if (local_frame)
-          local_frame->UpdateBrowserWindowId(window_id);
-      },
-      id.id(), base::Unretained(this)));
+          local_frame->UpdateBrowserWindowId(id.id());
+      });
 }
 
 }  // namespace extensions

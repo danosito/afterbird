@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,13 +10,10 @@
 #include <string>
 #include <vector>
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "base/time/time.h"
+#include "base/values.h"
 #include "extensions/common/extension_id.h"
-
-namespace base {
-class DictionaryValue;
-}
 
 namespace network {
 class SimpleURLLoader;
@@ -50,11 +47,11 @@ struct InstallSignature {
   InstallSignature(const InstallSignature& other);
   ~InstallSignature();
 
-  // Helper methods for serialization to/from a base::DictionaryValue.
-  void ToValue(base::DictionaryValue* value) const;
+  // Helper methods for serialization to/from a base::Value::Dict.
+  [[nodiscard]] base::Value::Dict ToDict() const;
 
-  static std::unique_ptr<InstallSignature> FromValue(
-      const base::DictionaryValue& value);
+  static std::unique_ptr<InstallSignature> FromDict(
+      const base::Value::Dict& dict);
 };
 
 // Objects of this class encapsulate an operation to get a signature proving

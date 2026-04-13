@@ -1,8 +1,8 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {assert} from 'chrome://resources/js/assert_ts.js';
+import {assert} from 'chrome://resources/js/assert.js';
 
 
 /**
@@ -23,11 +23,11 @@ export enum Dialog {
   OPTIONS = 'options',
 }
 
-export type PageState = {
-  page: Page,
-  extensionId?: string,
-  subpage?: Dialog,
-};
+export interface PageState {
+  page: Page;
+  extensionId?: string;
+  subpage?: Dialog;
+}
 
 type Listener = (pageState: PageState) => void;
 
@@ -51,7 +51,7 @@ const CANONICAL_PATH_REGEX: RegExp = /(^\/)([\/-\w]+)(\/$)/;
 export class NavigationHelper {
   private nextListenerId_: number = 1;
   private listeners_: Map<number, Listener> = new Map();
-  private previousPage_: PageState;
+  private previousPage_?: PageState;
 
   constructor() {
     this.processRoute_();

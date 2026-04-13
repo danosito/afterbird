@@ -1,11 +1,17 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifdef UNSAFE_BUFFERS_BUILD
+// TODO(crbug.com/40284755): Remove this and spanify to fix the errors.
+#pragma allow_unsafe_buffers
+#endif
+
 #include "net/base/network_interfaces_win.h"
 
-#include <iphlpapi.h>
 #include <objbase.h>
+
+#include <iphlpapi.h>
 
 #include <ostream>
 #include <string>
@@ -52,6 +58,14 @@ bool FillAdapterAddress(IP_ADAPTER_ADDRESSES* adapter_address,
   adapter_address->FirstUnicastAddress->SuffixOrigin = IpSuffixOriginOther;
   adapter_address->FirstUnicastAddress->PreferredLifetime = 100;
   adapter_address->FirstUnicastAddress->ValidLifetime = 1000;
+
+  DCHECK(sizeof(adapter_address->PhysicalAddress) > 5);
+  // Generate 06:05:04:03:02:01
+  adapter_address->PhysicalAddressLength = 6;
+  for (unsigned long i = 0; i < adapter_address->PhysicalAddressLength; i++) {
+    adapter_address->PhysicalAddress[i] =
+        adapter_address->PhysicalAddressLength - i;
+  }
 
   socklen_t sock_len = sizeof(sockaddr_storage);
 
@@ -188,6 +202,54 @@ TEST(NetworkInterfacesTest, NetworkListTrimmingWindows) {
   results.clear();
 }
 
+TEST(NetworkInterfacesTest, NetworkListExtractMacAddress) {
+  IPAddress ipv6_local_address(kIPv6LocalAddr);
+  IPAddress ipv6_address(kIPv6Addr);
+  IPAddress ipv6_prefix(kIPv6AddrPrefix);
+
+  NetworkInterfaceList results;
+  sockaddr_storage addresses[2];
+  IP_ADAPTER_ADDRESSES adapter_address = {};
+  IP_ADAPTER_UNICAST_ADDRESS address = {};
+  IP_ADAPTER_PREFIX adapter_prefix = {};
+  adapter_address.FirstUnicastAddress = &address;
+  adapter_address.FirstPrefix = &adapter_prefix;
+
+  ASSERT_TRUE(FillAdapterAddress(&adapter_address, kIfnameEm1, ipv6_address,
+                                 ipv6_prefix, addresses));
+
+  Eui48MacAddress expected_mac_address = {0x6, 0x5, 0x4, 0x3, 0x2, 0x1};
+
+  EXPECT_TRUE(internal::GetNetworkListImpl(
+      &results, INCLUDE_HOST_SCOPE_VIRTUAL_INTERFACES, &adapter_address));
+  ASSERT_EQ(results.size(), 1ul);
+  ASSERT_EQ(results[0].mac_address, expected_mac_address);
+}
+
+TEST(NetworkInterfacesTest, NetworkListExtractMacAddressInvalidLength) {
+  IPAddress ipv6_local_address(kIPv6LocalAddr);
+  IPAddress ipv6_address(kIPv6Addr);
+  IPAddress ipv6_prefix(kIPv6AddrPrefix);
+
+  NetworkInterfaceList results;
+  sockaddr_storage addresses[2];
+  IP_ADAPTER_ADDRESSES adapter_address = {};
+  IP_ADAPTER_UNICAST_ADDRESS address = {};
+  IP_ADAPTER_PREFIX adapter_prefix = {};
+  adapter_address.FirstUnicastAddress = &address;
+  adapter_address.FirstPrefix = &adapter_prefix;
+
+  ASSERT_TRUE(FillAdapterAddress(&adapter_address, kIfnameEm1, ipv6_address,
+                                 ipv6_prefix, addresses));
+  // Not EUI-48 Mac address, so it is not extracted.
+  adapter_address.PhysicalAddressLength = 8;
+
+  EXPECT_TRUE(internal::GetNetworkListImpl(
+      &results, INCLUDE_HOST_SCOPE_VIRTUAL_INTERFACES, &adapter_address));
+  ASSERT_EQ(results.size(), 1ul);
+  EXPECT_FALSE(results[0].mac_address.has_value());
+}
+
 bool read_int_or_bool(DWORD data_size, PVOID data) {
   switch (data_size) {
     case 1:
@@ -196,7 +258,6 @@ bool read_int_or_bool(DWORD data_size, PVOID data) {
       return !!*reinterpret_cast<uint32_t*>(data);
     default:
       LOG(FATAL) << "That is not a type I know!";
-      return false;
   }
 }
 
@@ -263,8 +324,14 @@ void TryChangeWifiOptions(int options) {
   EXPECT_EQ(previous_options, GetWifiOptions());
 }
 
+// Test fails on Win Arm64 bots. TODO(crbug.com/40260910): Fix on bot.
+#if BUILDFLAG(IS_WIN) && defined(ARCH_CPU_ARM64)
+#define MAYBE_SetWifiOptions DISABLED_SetWifiOptions
+#else
+#define MAYBE_SetWifiOptions SetWifiOptions
+#endif
 // Test SetWifiOptions().
-TEST(NetworkInterfacesTest, SetWifiOptions) {
+TEST(NetworkInterfacesTest, MAYBE_SetWifiOptions) {
   TryChangeWifiOptions(0);
   TryChangeWifiOptions(WIFI_OPTIONS_DISABLE_SCAN);
   TryChangeWifiOptions(WIFI_OPTIONS_MEDIA_STREAMING_MODE);

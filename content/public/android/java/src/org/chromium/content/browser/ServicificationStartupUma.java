@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,9 +17,12 @@ import java.lang.annotation.RetentionPolicy;
  */
 public class ServicificationStartupUma {
     // This enum is used to back UMA histograms, and should therefore be treated as append-only.
-    @IntDef({ServicificationStartup.CHROME_COLD, ServicificationStartup.CHROME_HALF_WARM,
-            ServicificationStartup.MINIMAL_BROWSER_COLD,
-            ServicificationStartup.MINIMAL_BROWSER_WARM})
+    @IntDef({
+        ServicificationStartup.CHROME_COLD,
+        ServicificationStartup.CHROME_HALF_WARM,
+        ServicificationStartup.MINIMAL_BROWSER_COLD,
+        ServicificationStartup.MINIMAL_BROWSER_WARM
+    })
     @Retention(RetentionPolicy.SOURCE)
     public @interface ServicificationStartup {
         // Cold start of Chrome as a full browser.
@@ -40,17 +43,15 @@ public class ServicificationStartupUma {
 
     private static final ServicificationStartupUma sInstance = new ServicificationStartupUma();
 
-    /**
-     * Returns the singleton instance.
-     */
+    /** Returns the singleton instance. */
     public static ServicificationStartupUma getInstance() {
         return sInstance;
     }
 
-    /**
-     * Returns the startup mode.
-     */
-    public static int getStartupMode(boolean isFullBrowserStarted, boolean isMinimalBrowserStarted,
+    /** Returns the startup mode. */
+    public static int getStartupMode(
+            boolean isFullBrowserStarted,
+            boolean isMinimalBrowserStarted,
             boolean startMinimalBrowser) {
         if (isFullBrowserStarted) {
             return -1;

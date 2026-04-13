@@ -1,4 +1,4 @@
-// Copyright 2020 The Chromium Authors. All rights reserved.
+// Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -39,7 +39,7 @@ void FocusTabAfterNavigationHelper::ReadyToCommitNavigation(
 bool FocusTabAfterNavigationHelper::ShouldFocusTabContents(
     content::NavigationHandle* navigation) {
   // Don't focus content in an inactive window or tab.
-  Browser* browser = chrome::FindBrowserWithWebContents(web_contents());
+  Browser* browser = chrome::FindBrowserWithTab(web_contents());
   if (!browser)
     return false;
   if (!browser->window()->IsActive())

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,7 +11,9 @@
 #include <jni.h>
 
 #include "base/android/jni_string.h"
-#include "base/base_jni_headers/IntStringCallback_jni.h"
+
+// Must come after all headers that specialize FromJniType() / ToJniType().
+#include "base/base_jni/IntStringCallback_jni.h"
 
 namespace base {
 namespace android {
@@ -19,7 +21,7 @@ namespace android {
 void RunIntStringCallbackAndroid(const JavaRef<jobject>& callback,
                                  int int_arg,
                                  const std::string& str_arg) {
-  JNIEnv* env = AttachCurrentThread();
+  JNIEnv* env = jni_zero::AttachCurrentThread();
   Java_IntStringCallback_onResult(env, callback, int_arg,
                                   ConvertUTF8ToJavaString(env, str_arg));
 }

@@ -1,4 +1,4 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,15 +9,13 @@ import android.net.Uri;
 
 import androidx.core.content.FileProvider;
 
-import org.chromium.base.ContentUriUtils;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.FileProviderUtils;
 
 import java.io.File;
 
-/**
- * Utilities for translating a file into content URI.
- */
-public class FileProviderHelper implements ContentUriUtils.FileProviderUtil {
+/** Utilities for translating a file into content URI. */
+public class FileProviderHelper implements FileProviderUtils.FileProviderUtil {
     // Keep this variable in sync with the value defined in file_paths.xml.
     private static final String API_AUTHORITY_SUFFIX = ".FileProvider";
 

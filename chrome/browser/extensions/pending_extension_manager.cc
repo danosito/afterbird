@@ -1,16 +1,15 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/extensions/pending_extension_manager.h"
-
-#include <algorithm>
 
 #include "base/containers/contains.h"
 #include "base/containers/flat_set.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/ranges/algorithm.h"
 #include "base/version.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/preinstalled_web_apps.h"
@@ -58,7 +57,13 @@ const PendingExtensionInfo* PendingExtensionManager::GetById(
 }
 
 bool PendingExtensionManager::Remove(const std::string& id) {
-  return pending_extensions_.erase(id) > 0;
+  const bool removed = pending_extensions_.erase(id) > 0;
+  if (removed) {
+    for (Observer& observer : observers_) {
+      observer.OnExtensionRemoved(id);
+    }
+  }
+  return removed;
 }
 
 bool PendingExtensionManager::IsIdPending(const std::string& id) const {
@@ -70,16 +75,16 @@ bool PendingExtensionManager::HasPendingExtensions() const {
 }
 
 bool PendingExtensionManager::HasPendingExtensionFromSync() const {
-  return std::any_of(
-      pending_extensions_.begin(), pending_extensions_.end(),
+  return base::ranges::any_of(
+      pending_extensions_,
       [](const std::pair<const std::string, PendingExtensionInfo>& it) {
         return it.second.is_from_sync();
       });
 }
 
 bool PendingExtensionManager::HasHighPriorityPendingExtension() const {
-  return std::any_of(
-      pending_extensions_.begin(), pending_extensions_.end(),
+  return base::ranges::any_of(
+      pending_extensions_,
       [](const std::pair<const std::string, PendingExtensionInfo>& it) {
         return it.second.install_source() ==
                    ManifestLocation::kExternalPolicyDownload ||
@@ -107,18 +112,14 @@ bool PendingExtensionManager::AddFromSync(
   // it is listed as a syncable app (because its values need to be synced) it
   // should already be installed on every instance.
   if (id == extensions::kWebStoreAppId) {
-    NOTREACHED();
     return false;
   }
 
-  if (base::FeatureList::IsEnabled(
-          features::kBlockMigratedDefaultChromeAppSync)) {
-    EnsureMigratedDefaultChromeAppIdsCachePopulated();
-    if (migrating_default_chrome_app_ids_cache_->contains(id)) {
-      base::UmaHistogramBoolean(
-          "Extensions.SyncBlockedByDefaultWebAppMigration", true);
-      return false;
-    }
+  EnsureMigratedDefaultChromeAppIdsCachePopulated();
+  if (migrating_default_chrome_app_ids_cache_->contains(id)) {
+    base::UmaHistogramBoolean("Extensions.SyncBlockedByDefaultWebAppMigration",
+                              true);
+    return false;
   }
 
   static const bool kIsFromSync = true;
@@ -217,7 +218,7 @@ bool PendingExtensionManager::AddFromExternalFile(
   // installed, but this method assumes that the caller already
   // made sure it is not installed.  Make all AddFrom*() methods
   // consistent.
-  const GURL& kUpdateUrl = GURL::EmptyGURL();
+  const GURL& kUpdateUrl = GURL();
   static const bool kIsFromSync = false;
   static const bool kRemoteInstall = false;
 
@@ -253,6 +254,14 @@ std::list<std::string> PendingExtensionManager::GetPendingIdsForUpdateCheck()
   }
 
   return result;
+}
+
+void PendingExtensionManager::AddObserver(Observer* observer) {
+  observers_.AddObserver(observer);
+}
+
+void PendingExtensionManager::RemoveObserver(Observer* observer) {
+  observers_.RemoveObserver(observer);
 }
 
 bool PendingExtensionManager::AddExtensionImpl(
@@ -300,7 +309,7 @@ bool PendingExtensionManager::AddExtensionImpl(
 
     it->second = std::move(info);
   } else {
-    pending_extensions_.emplace(id, std::move(info));
+    AddToMap(id, std::move(info));
   }
 
   return true;
@@ -326,7 +335,15 @@ void PendingExtensionManager::
 void PendingExtensionManager::AddForTesting(
     PendingExtensionInfo pending_extension_info) {
   std::string id = pending_extension_info.id();
-  pending_extensions_.emplace(id, std::move(pending_extension_info));
+  AddToMap(id, std::move(pending_extension_info));
+}
+
+void PendingExtensionManager::AddToMap(const std::string& id,
+                                       PendingExtensionInfo info) {
+  pending_extensions_.emplace(id, std::move(info));
+  for (Observer& observer : observers_) {
+    observer.OnExtensionAdded(id);
+  }
 }
 
 }  // namespace extensions

@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2018 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,8 +14,8 @@ import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
  * received.
  */
 public class TabSwitcherButtonViewBinder
-        implements PropertyModelChangeProcessor
-                           .ViewBinder<PropertyModel, TabSwitcherButtonView, PropertyKey> {
+        implements PropertyModelChangeProcessor.ViewBinder<
+                PropertyModel, TabSwitcherButtonView, PropertyKey> {
     /**
      * Build a binder that handles interaction between the model and the views that make up the
      * tab switcher.

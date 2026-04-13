@@ -4,6 +4,10 @@
 
 This file defines how contributors and coding agents should work in this repository.
 
+## Repository Ownership
+
+- Repository owner/maintainer: `danosito` (`https://github.com/danosito`).
+
 ## Branching Rules
 
 - Start all work from `afterbird` unless the task is explicitly Chromium-sync (`chromium`) or Kiwi-integration (`kiwi`).
@@ -14,8 +18,13 @@ This file defines how contributors and coding agents should work in this reposit
 ## Branch Responsibilities
 
 - `chromium`: upstream file tracking and version bump imports only; commit subjects should use `[Chromium] ...`.
-- `kiwi`: Kiwi integration/rebase branch; keep history focused on integration and conflict resolution.
-- `afterbird`: main development and governance branch for this fork; feature/docs/policy updates land here via PR.
+- `kiwi`: legacy Kiwi integration/reference branch; keep history focused on integration experiments and conflict resolution.
+- `afterbird`: main development and governance branch for this fork; feature/docs/policy updates and Chromium integration PRs land here.
+
+## Current Integration Flow
+
+- For Chromium baseline updates, branch from `afterbird`, merge/rebase latest `origin/chromium`, resolve conflicts, and open a PR back to `afterbird`.
+- Treat Kiwi-specific behavior as explicit re-port work after Chromium merges; document dropped integrations in PR risk/follow-up notes.
 
 ## QA And Cross-Review
 

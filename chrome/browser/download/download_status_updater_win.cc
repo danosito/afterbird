@@ -1,13 +1,16 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "chrome/browser/download/download_status_updater.h"
 
 #include <objbase.h>
+
 #include <shobjidl.h>
-#include <string>
+
 #include <wrl/client.h>
+
+#include <string>
 
 #include "base/logging.h"
 #include "chrome/browser/ui/browser.h"
@@ -35,7 +38,7 @@ void UpdateTaskbarProgressBar(int download_count,
   }
 
   // Iterate through all the browser windows, and draw the progress bar.
-  for (auto* browser : *BrowserList::GetInstance()) {
+  for (Browser* browser : *BrowserList::GetInstance()) {
     BrowserWindow* window = browser->window();
     if (!window)
       continue;

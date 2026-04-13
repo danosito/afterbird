@@ -1,11 +1,11 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2017 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_FONT_PREF_CHANGE_NOTIFIER_H_
 #define CHROME_BROWSER_FONT_PREF_CHANGE_NOTIFIER_H_
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "components/keyed_service/core/keyed_service.h"
@@ -74,7 +74,7 @@ class FontPrefChangeNotifier : public PrefObserver, public KeyedService {
 
   // PrefObserver implementation.
   void OnPreferenceChanged(PrefService* service,
-                           const std::string& pref_name) override;
+                           std::string_view pref_name) override;
 
   raw_ptr<PrefService> pref_service_;  // Non-owning.
 

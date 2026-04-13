@@ -1,17 +1,17 @@
-// Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2014 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CHROME_BROWSER_EXTENSIONS_CHROME_URL_REQUEST_UTIL_H_
 #define CHROME_BROWSER_EXTENSIONS_CHROME_URL_REQUEST_UTIL_H_
 
-#include <string>
-
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
 #include "services/network/public/mojom/url_loader.mojom-forward.h"
 #include "ui/base/page_transition_types.h"
+
+class GURL;
 
 namespace base {
 class FilePath;
@@ -46,6 +46,7 @@ bool AllowCrossRendererResourceLoad(
     const Extension* extension,
     const ExtensionSet& extensions,
     const ProcessMap& process_map,
+    const GURL& upstream_url,
     bool* allowed);
 
 // Return the |request|'s resource path relative to the Chromium resources path
