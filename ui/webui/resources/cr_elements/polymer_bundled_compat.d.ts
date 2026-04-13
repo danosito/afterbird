@@ -20,7 +20,7 @@ export function beforeNextRender(
 ): void;
 
 export class PolymerElement extends HTMLElement {
-  root: any;
+  root: ParentNode;
   connectedCallback(): void;
   disconnectedCallback(): void;
   ready(): void;
