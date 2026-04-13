@@ -31,6 +31,7 @@ These are maintained as a selected subset of Chromium/Kiwi files relevant to the
 - `KIWI_VERSION`: Kiwi baseline metadata.
 - `VERSION`: legacy app version metadata.
 - `README.md`, `CHANGELOG.md`, `AGENTS.md`: repository governance and contributor guidance.
+- Governance owner/maintainer: `danosito` (`https://github.com/danosito`).
 
 ### 3) Automation Layer
 

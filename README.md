@@ -2,6 +2,7 @@
 
 Afterbird is a continuation-focused fork of the Kiwi `src.next` codebase.
 The project identity in this repository is now Afterbird.
+Repository owner/maintainer: `danosito` (`https://github.com/danosito`).
 
 This repository is currently a tracked source subset, not a complete standalone Chromium checkout. It contains selected Chromium/Kiwi directories and project automation files, and is now aligned to a Chromium 132 baseline (`132.0.6834.83`), but it does not include the full Chromium root tree or full build toolchain definitions needed for turnkey local builds.
 
@@ -83,3 +84,9 @@ Until those are formalized, treat this repository as a source-tracking and patch
 - Architecture and revival roadmap: see `ARCHITECTURE.md`
 - Contributor/agent workflow rules: see `AGENTS.md`
 - Change history baseline: see `CHANGELOG.md`
+
+## License
+
+Top-level project license: BSD 3-Clause (see `LICENSE`).
+Imported Chromium and third-party components may retain their own notices in
+file headers and third-party metadata.

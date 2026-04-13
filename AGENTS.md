@@ -4,6 +4,10 @@
 
 This file defines how contributors and coding agents should work in this repository.
 
+## Repository Ownership
+
+- Repository owner/maintainer: `danosito` (`https://github.com/danosito`).
+
 ## Branching Rules
 
 - Start all work from `afterbird` unless the task is explicitly Chromium-sync (`chromium`) or Kiwi-integration (`kiwi`).

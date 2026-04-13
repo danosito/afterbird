@@ -1,5 +1,9 @@
 # OWNERS_STATUS = build/OWNERS.status
 
+# Afterbird repository owner/maintainer:
+# https://github.com/danosito
+danosito@users.noreply.github.com
+
 # Chrome ATLs. Please reach out before adding new top-level directories.
 # Note: this list is not for rubber-stamping mechanical changes that span the
 # code base. Please reach out to owners of top-level directories instead.
