@@ -81,3 +81,4 @@ All notable changes to this repository are documented in this file.
 - Removed legacy `sheet_tab_toolbar.xml` from `chrome/android` to avoid duplicate resource definitions with `//chrome/browser/ui/android/toolbar:java_resources`.
 - Removed legacy `accessibility_preferences.xml` from `chrome/android` to avoid duplicate resource definitions with `//components/browser_ui/accessibility/android:java_resources`.
 - Dropped conflicting PNG entries (`ic_chrome`, `ic_pause_white_24dp`, `ic_play_arrow_white_24dp`) from `components/browser_ui/styles/android/BUILD.gn` so vector drawables remain the single source of truth during APK resource linking.
+- Removed legacy PNG assets (`ic_chrome`, `ic_pause_white_24dp`, `ic_play_arrow_white_24dp` across all densities) from `components/browser_ui/styles/android` to align with Chromium 132 vector resources and satisfy strict resource-source checks.
