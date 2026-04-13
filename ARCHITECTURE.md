@@ -43,14 +43,16 @@ These are maintained as a selected subset of Chromium/Kiwi files relevant to the
 Current branch roles:
 
 - `chromium`: upstream-tracking baseline for Chromium file updates; expected to receive `[Chromium] ...` commits from import/update workflows. In some clones this may only exist as `origin/chromium`; create a local branch with `git switch -c chromium --track origin/chromium`.
-- `kiwi`: integration branch for Kiwi-specific deltas on top of Chromium-tracked files; historically rebased onto Chromium baselines.
-- `afterbird`: fork working branch and current default for governance/revival work; seeded from Kiwi lineage and intended to track upstream changes via periodic integration.
+- `kiwi`: legacy integration/reference branch for Kiwi-specific deltas.
+- `afterbird`: fork working branch and current default for governance/revival work; seeded from Kiwi lineage and periodically integrated with `origin/chromium` directly on feature branches.
 
 Conceptual flow:
 
-1. Update/import into `chromium`.
-2. Rebase or integrate into `kiwi`.
-3. Promote curated changes into `afterbird`.
+1. Update/import into `chromium` (or consume latest `origin/chromium`).
+2. Merge/rebase Chromium into a topic branch from `afterbird`.
+3. Resolve conflicts with Chromium baseline updates while preserving Afterbird governance/docs controls.
+4. Re-port Kiwi/Afterbird-specific integrations that are lost or regressed.
+5. Merge reviewed topic branch into `afterbird`.
 
 ## Build Architecture Status
 
@@ -59,6 +61,7 @@ Current state is hybrid and partially externalized:
 - The repository does not contain a full Chromium checkout on `afterbird`/`kiwi`.
 - Legacy workflows depend on external/private Kiwi infrastructure and secrets.
 - Build definitions in-repo are incomplete for reproducible local Android builds.
+- Chromium-forward merges can remove or overwrite Kiwi-specific integrations unless they are explicitly re-ported.
 
 Result: this repository should currently be treated as source + governance infrastructure, not as a complete build root.
 
@@ -81,6 +84,7 @@ Result: this repository should currently be treated as source + governance infra
 - Maintain/update target engine baseline (currently Chromium 132 lineage) with explicit integration cadence.
 - Document exact bootstrap process using full Chromium checkout + overlay from this repo.
 - Restore missing `.build/*/args.gn` profiles and deterministic build targets.
+- Track and re-port Kiwi-specific integrations dropped by Chromium syncs as a first-class backlog.
 
 ### Phase 4: CI Modernization
 

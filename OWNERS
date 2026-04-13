@@ -6,8 +6,8 @@
 file://ATL_OWNERS
 
 per-file .clang-format=thakis@chromium.org
-per-file .clang-tidy=file://styleguide/c++/OWNERS
-per-file .clangd=file://styleguide/c++/OWNERS
+per-file .clang-tidy=file://ATL_OWNERS
+per-file .clangd=file://ATL_OWNERS
 per-file .gitattributes=*
 per-file .gitignore=*
 per-file .gitmodules=*
@@ -15,18 +15,18 @@ per-file .git-blame-ignore-revs=thakis@chromium.org
 per-file .gn=ddorwin@chromium.org  # For fuchsia_target_api_level changes.
 per-file .gn=estaab@chromium.org
 per-file .gn=sergeyu@chromium.org  # For fuchsia_target_api_level changes.
-per-file .gn=file://build/OWNERS
+per-file .gn=file://ATL_OWNERS
 per-file .mailmap=*
-per-file .rustfmt.toml=file://styleguide/rust/OWNERS
+per-file .rustfmt.toml=file://ATL_OWNERS
 per-file .vpython3=bpastene@chromium.org
 per-file .vpython3=dpranke@google.com
 per-file .vpython3=tikuta@chromium.org
 per-file .yapfignore=*
 per-file AUTHORS=*
-per-file BUILD.gn=file://build/OWNERS
+per-file BUILD.gn=file://ATL_OWNERS
 per-file CODE_OF_CONDUCT.md=dpranke@google.com
 per-file CODE_OF_CONDUCT.md=ellyjones@chromium.org
-per-file CPPLINT.cfg=file://styleguide/c++/OWNERS
+per-file CPPLINT.cfg=file://ATL_OWNERS
 per-file DEPS=*
 per-file PRESUBMIT*.py=agrieve@chromium.org  # For .pydeps changes
 per-file PRESUBMIT*.py=dcheng@chromium.org
