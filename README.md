@@ -23,9 +23,10 @@ Top-level source coverage currently includes:
 
 Plus project metadata and automation:
 
-- `.github/workflows/` (branch rebasing/import automation and legacy build pipelines)
+- `.github/workflows/` (branch rebasing/import automation, plus Chromium smoke/full-build pipelines)
 - `.build/production_build_reference/args.gn` (reference GN args file)
 - `CHROMIUM_VERSION`, `KIWI_VERSION`, `VERSION`
+- `ci/chromium_android_pipeline.sh` (external Chromium checkout + overlay + smoke/full build)
 - `toolbox/` scripts
 
 ## Branches And Their Roles
@@ -61,23 +62,58 @@ Important caveat:
 
 ## Build Status (Realistic)
 
-Current status: no verified, self-contained local build path from this branch alone.
+Current status: this repo still is not a full standalone Chromium checkout, but it now includes an explicit external build pipeline script and CI entry points.
 
-Why:
+Why this is still externalized:
 
-- `afterbird`/`kiwi` still do not represent a full Chromium checkout and are missing required directories/tooling for standalone builds (for example `build/`, `tools/`, full dependency payloads), even though root manifests like `BUILD.gn` and `DEPS` are now present.
-- Existing CI workflows reference private/legacy Kiwi infrastructure and secrets (`longbuild.find.kiwi`, `build.find.kiwi`, storage/release credentials).
-- `build_and_sign_release_apk.yml` expects `.build/android_arm/args.gn`, which is not present in the current tree.
-- Chromium-baseline updates may compile while silently omitting historical Kiwi-specific integrations until they are reintroduced.
+- `afterbird`/`kiwi` do not contain a complete Chromium source tree and dependency payload by themselves.
+- Build/sync steps require Chromium tooling and infrastructure (`depot_tools`, `gclient`, GN/Ninja, Android toolchain).
+- Existing legacy Kiwi workflows still reference private infrastructure and are not a public baseline.
 
-What is required to build reliably:
+What is now available:
 
-- A full Chromium checkout at a chosen baseline tag.
-- Local Android/Chromium build prerequisites (depot_tools, GN/Ninja, Android SDK/NDK, supported JDK, system deps).
-- A reproducible overlay/patch application step from this repository onto that full checkout.
-- Reconstructed/validated GN args profiles and documented target commands.
+- `ci/chromium_android_pipeline.sh` reads `CHROMIUM_VERSION`, checks out exact Chromium tag into an external workdir, runs `gclient sync`, applies this repo as overlay, runs `gn gen` with `.build/production_build_reference/args.gn`, and validates the `chrome_public_apk` graph.
+- Default mode is smoke (`sync + overlay + gn gen + graph check`).
+- Full build mode (`autoninja ... chrome_public_apk`) is explicit via `--full-build`.
+- GitHub Actions now expose:
+  - Smoke on `push`/`pull_request` to `afterbird`.
+  - Full build on manual `workflow_dispatch`.
 
-Until those are formalized, treat this repository as a source-tracking and patch-integration base, not a one-command build environment.
+## Local Prerequisites And Commands
+
+Required tools (Linux/macOS):
+
+- `git`, `awk`, `rsync`, `python3`
+- Java 17 (or Chromium-compatible JDK)
+- `depot_tools` on `PATH` (`gclient`, `gn`, `autoninja`)
+- Android build prerequisites expected by Chromium hooks/tooling (SDK/NDK components and host packages)
+
+One-time `depot_tools` setup:
+
+```bash
+git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git "$HOME/depot_tools"
+export PATH="$HOME/depot_tools:$PATH"
+```
+
+Run smoke pipeline locally (default mode):
+
+```bash
+ci/chromium_android_pipeline.sh --workdir "$HOME/afterbird-chromium"
+```
+
+Run full build locally (explicit):
+
+```bash
+ci/chromium_android_pipeline.sh \
+  --workdir "$HOME/afterbird-chromium" \
+  --full-build \
+  --target chrome_public_apk
+```
+
+Notes:
+
+- The first run is heavy and can consume significant disk/network/time.
+- The script is idempotent and intended to be re-run against the same workdir.
 
 ## Next Documentation
 

@@ -35,8 +35,11 @@ These are maintained as a selected subset of Chromium/Kiwi files relevant to the
 
 ### 3) Automation Layer
 
-- `.github/workflows/`: historical automation for Chromium import/rebase, Kiwi rebasing, linting, and release orchestration.
-- `.build/production_build_reference/args.gn`: reference build args only (not a complete build profile set).
+- `.github/workflows/`: Chromium import/rebase automation, legacy Kiwi workflows, plus:
+  - `chromium_smoke_pipeline.yml` (PR/push smoke checks on `afterbird`)
+  - `chromium_full_build.yml` (manual full Android target build)
+- `.build/production_build_reference/args.gn`: reference build args consumed by the new external pipeline.
+- `ci/chromium_android_pipeline.sh`: local/CI pipeline script for exact-tag checkout, sync, overlay, GN generation, smoke graph check, and optional full build.
 - `toolbox/`: maintenance scripts.
 
 ## Branch Architecture
@@ -57,14 +60,14 @@ Conceptual flow:
 
 ## Build Architecture Status
 
-Current state is hybrid and partially externalized:
+Current state is hybrid and externalized by design:
 
 - The repository does not contain a full Chromium checkout on `afterbird`/`kiwi`.
-- Legacy workflows depend on external/private Kiwi infrastructure and secrets.
-- Build definitions in-repo are incomplete for reproducible local Android builds.
+- The build path is now formalized around an external Chromium workspace (`ci/chromium_android_pipeline.sh`) rather than attempting in-repo standalone builds.
+- Legacy workflows still include private Kiwi infrastructure and secrets and should be treated as legacy/non-baseline.
 - Chromium-forward merges can remove or overwrite Kiwi-specific integrations unless they are explicitly re-ported.
 
-Result: this repository should currently be treated as source + governance infrastructure, not as a complete build root.
+Result: this repository should be treated as source + governance + overlay/pipeline control, with actual compilation happening in an external Chromium checkout at the pinned tag.
 
 ## Revival Roadmap
 
@@ -89,9 +92,9 @@ Result: this repository should currently be treated as source + governance infra
 
 ### Phase 4: CI Modernization
 
-- Replace or gate private-infra-dependent workflows.
-- Add public CI checks runnable by contributors (lint, metadata validation, selected smoke checks).
-- Separate CI for docs-only changes vs source changes.
+- Add public CI checks runnable by contributors.
+- Keep full target builds explicit/manual because of runtime and infrastructure cost.
+- Continue replacing or gating private-infra-dependent legacy workflows.
 
 ### Phase 5: Release/Distribution Strategy
 

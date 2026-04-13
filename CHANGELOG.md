@@ -9,6 +9,15 @@ All notable changes to this repository are documented in this file.
 - `ARCHITECTURE.md` with source-tree/branch architecture and a practical revival roadmap.
 - `AGENTS.md` with contributor/agent workflow rules for branching, QA cross-review, merge policy, and commit hygiene.
 - `CHANGELOG.md` baseline.
+- `ci/chromium_android_pipeline.sh` to run a pinned Chromium external checkout pipeline:
+  - Reads `CHROMIUM_VERSION`
+  - Checks out exact Chromium tag into external workdir
+  - Runs `gclient sync`
+  - Applies Afterbird overlay
+  - Runs `gn gen` using `.build/production_build_reference/args.gn`
+  - Runs smoke graph checks by default, with optional explicit full build mode (`--full-build`)
+- `.github/workflows/chromium_smoke_pipeline.yml` for smoke checks on `push`/`pull_request` to `afterbird`.
+- `.github/workflows/chromium_full_build.yml` for manual full build runs (`workflow_dispatch`).
 
 ### Changed
 
@@ -19,6 +28,8 @@ All notable changes to this repository are documented in this file.
 - Updated docs to reflect the Chromium 132 baseline now present on `afterbird` (`CHROMIUM_VERSION=132.0.6834.83`).
 - Updated governance docs to reflect current reality: Chromium sync is performed by merging/rebasing `origin/chromium` into a feature branch from `afterbird`, then PR back to `afterbird` (with `kiwi` treated as legacy/reference, not mandatory intermediary).
 - Added explicit risk notes that direct Chromium merges may drop Kiwi-specific integrations and that re-porting these integrations is tracked as revival backlog work.
+- Updated `README.md` with local prerequisites and exact smoke/full commands for the new external Chromium pipeline.
+- Updated `ARCHITECTURE.md` automation/build sections to describe the new smoke/full CI and externalized build model.
 - Replaced top-level `LICENSE` with an explicit combined licensing notice covering both Afterbird/Kiwi fork-origin files and Chromium-origin files, with third-party license caveats.
 - Fixed top-level `OWNERS` references to missing paths by replacing unresolved `file://...` targets (`build/OWNERS`, `styleguide/c++/OWNERS`, `styleguide/rust/OWNERS`) with existing in-repo ownership references.
 - Noted that the Chromium 132 merge may have dropped historical Kiwi integrations; those are tracked for explicit re-port follow-up.
