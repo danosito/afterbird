@@ -86,3 +86,4 @@ All notable changes to this repository are documented in this file.
 - Removed legacy explore-sites layout overlays from chrome/android/java/res/layout (not present in pinned Chromium tree) to resolve missing-resource aapt2 link failures in full APK builds.
 - Removed overlay-only layouts fre_tosanduma/fullscreen_notification/history_toggle from chrome/android/java/res/layout to fix missing-resource aapt2 link failures during chrome_public_apk packaging.
 - Removed overlay-only infobar/password-generation layouts and added default base strings for legacy radio-button preferences to fix aapt2 resource linking.
+- Removed additional overlay-only layouts (revamped incognito, shopping filter, top sites, and start-surface toolbar variants) and dropped their explicit toolbar resource-list entries to fix aapt2 missing-resource failures.
