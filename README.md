@@ -76,6 +76,7 @@ Why this is still externalized:
 What is now available:
 
 - `ci/chromium_android_pipeline.sh` reads `CHROMIUM_VERSION`, checks out exact Chromium tag into an external workdir, runs `gclient sync`, applies this repo as overlay, runs `gn gen` with `.build/production_build_reference/args.gn`, and validates the `chrome_public_apk` graph.
+- The pipeline fetches only the required Chromium tag (instead of fetching all tags) and retries transient fetch/sync failures with backoff.
 - Default mode is smoke (`sync + overlay + gn gen + graph check`).
 - Full build mode (`autoninja ... chrome_public_apk`) is explicit via `--full-build`.
 - `ci/android_emulator_test.sh` provides emulator/device smoke automation:
@@ -124,6 +125,25 @@ ci/chromium_android_pipeline.sh \
   --target chrome_public_apk
 ```
 
+Network/performance overrides (optional):
+
+```bash
+# Use a mirror instead of googlesource
+AFTERBIRD_CHROMIUM_SRC_GIT_URL="https://github.com/chromium/chromium.git" \
+  ci/chromium_android_pipeline.sh --workdir "$HOME/afterbird-chromium"
+
+# For an existing workspace, also force rewrite of .gclient/origin when switching remotes
+AFTERBIRD_CHROMIUM_SRC_GIT_URL="https://github.com/chromium/chromium.git" \
+AFTERBIRD_FORCE_WORKSPACE_CONFIG=1 \
+  ci/chromium_android_pipeline.sh --workdir "$HOME/afterbird-chromium"
+
+# Keep lightweight sync defaults and tune retries/timeouts
+AFTERBIRD_GCLIENT_NO_HISTORY=1 \
+AFTERBIRD_FETCH_RETRIES=4 \
+AFTERBIRD_FETCH_TIMEOUT_SECONDS=900 \
+  ci/chromium_android_pipeline.sh --workdir "$HOME/afterbird-chromium"
+```
+
 Fetch pinned uBlock Chromium package (version `1.62.0`, published `2025-01-01`) for extension prep:
 
 ```bash
@@ -155,6 +175,9 @@ Notes:
 - The first run is heavy and can consume significant disk/network/time.
 - The script is idempotent for the same tag/workdir: each run resets and cleans `src` before applying overlay files.
 - `--out-dir` must be a safe relative path under `src` (absolute paths and `.`/`..` traversal are rejected).
+- Default sync mode uses `gclient sync -D --no-history`; override via `AFTERBIRD_GCLIENT_NO_HISTORY=0` when full history is required.
+- Existing workspace config is preserved by default; set `AFTERBIRD_FORCE_WORKSPACE_CONFIG=1` to rewrite `.gclient` and update `src` origin URL.
+- If `timeout`/`gtimeout` is unavailable, the script logs a warning and continues without enforced per-attempt timeout.
 
 ## Next Documentation
 
