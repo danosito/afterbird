@@ -38,8 +38,12 @@ These are maintained as a selected subset of Chromium/Kiwi files relevant to the
 - `.github/workflows/`: Chromium import/rebase automation, legacy Kiwi workflows, plus:
   - `chromium_smoke_pipeline.yml` (PR/push smoke checks on `afterbird`)
   - `chromium_full_build.yml` (manual full Android target build)
+  - `android_emulator_e2e.yml` (manual + scheduled emulator smoke/e2e telemetry run)
 - `.build/production_build_reference/args.gn`: reference build args consumed by the new external pipeline.
 - `ci/chromium_android_pipeline.sh`: local/CI pipeline script for exact-tag checkout, sync, overlay, GN generation, smoke graph check, and optional full build.
+- `ci/android_emulator_test.sh`: emulator/device automation script for APK install, smoke startup, internal page launchability checks, modern-site traversal, logcat crash scan, and memory trend reporting.
+- `ci/fetch_ublock_chromium.sh` + `ci/extensions/ublock_chromium_132.lock.json`: extension prep lock/manifest and deterministic fetch flow for pinned uBlock package (`1.62.0`).
+- `tests/emulator/`: smoke URL manifests plus manual-check matrix for extension/devtools validation scope.
 - `toolbox/`: maintenance scripts.
 
 ## Branch Architecture
@@ -68,6 +72,22 @@ Current state is hybrid and externalized by design:
 - Chromium-forward merges can remove or overwrite Kiwi-specific integrations unless they are explicitly re-ported.
 
 Result: this repository should be treated as source + governance + overlay/pipeline control, with actual compilation happening in an external Chromium checkout at the pinned tag.
+
+## Emulator Test Architecture
+
+Emulator coverage intentionally focuses on pragmatic smoke-level signals:
+
+1. Install APK and confirm browser process launchability.
+2. Check launchability for extension/devtools-related internal entry points (`chrome://extensions`, `chrome://inspect`, etc.).
+3. Run a time-boxed modern-site traversal (~120 seconds by default) to exercise startup + navigation lifecycle.
+4. Collect two low-cost telemetry channels:
+   - package-scoped `logcat` crash-pattern scan for obvious fatal signals.
+   - `dumpsys meminfo` sampled trend summary (min/max/avg/delta PSS).
+
+Validation boundaries are explicit:
+
+- Automated checks: `ci/android_emulator_test.sh` with manifests in `tests/emulator/*.txt`.
+- Manual checks: deeper extension/devtools UX/compatibility items listed in `tests/emulator/manual_checks.md`.
 
 ## Revival Roadmap
 

@@ -1,0 +1,142 @@
+name: Android Emulator E2E Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      apk_url:
+        description: APK URL to test (if empty, falls back to repository variable AFTERBIRD_TEST_APK_URL)
+        required: false
+        type: string
+      package_name:
+        description: Android package name under test
+        required: false
+        default: com.kiwibrowser.browser
+        type: string
+      launch_activity:
+        description: Launch activity class
+        required: false
+        default: org.chromium.chrome.browser.ChromeTabbedActivity
+        type: string
+      duration_sec:
+        description: Modern-site flow duration in seconds
+        required: false
+        default: '120'
+        type: string
+      allow_internal_page_failures:
+        description: Continue even if internal page launch checks fail
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: '30 2 * * 1'
+
+concurrency:
+  group: android-emulator-e2e-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  emulator_smoke:
+    name: Emulator smoke + e2e + telemetry
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve run configuration
+        id: config
+        env:
+          INPUT_APK_URL: ${{ github.event.inputs.apk_url }}
+          FALLBACK_APK_URL: ${{ vars.AFTERBIRD_TEST_APK_URL }}
+          INPUT_PACKAGE: ${{ github.event.inputs.package_name }}
+          INPUT_ACTIVITY: ${{ github.event.inputs.launch_activity }}
+          INPUT_DURATION: ${{ github.event.inputs.duration_sec }}
+          INPUT_ALLOW_INTERNAL: ${{ github.event.inputs.allow_internal_page_failures }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          APK_URL="${INPUT_APK_URL}"
+          if [[ -z "${APK_URL}" ]]; then
+            APK_URL="${FALLBACK_APK_URL}"
+          fi
+
+          PACKAGE="${INPUT_PACKAGE}"
+          [[ -n "${PACKAGE}" ]] || PACKAGE="com.kiwibrowser.browser"
+
+          ACTIVITY="${INPUT_ACTIVITY}"
+          [[ -n "${ACTIVITY}" ]] || ACTIVITY="org.chromium.chrome.browser.ChromeTabbedActivity"
+
+          DURATION="${INPUT_DURATION}"
+          [[ -n "${DURATION}" ]] || DURATION="120"
+
+          ALLOW_INTERNAL="${INPUT_ALLOW_INTERNAL}"
+          [[ -n "${ALLOW_INTERNAL}" ]] || ALLOW_INTERNAL="false"
+
+          if [[ -z "${APK_URL}" ]]; then
+            if [[ "${EVENT_NAME}" == "schedule" ]]; then
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "reason=Missing workflow input and repository variable AFTERBIRD_TEST_APK_URL" >> "$GITHUB_OUTPUT"
+            else
+              echo "Missing APK URL. Provide workflow input 'apk_url' or set repository variable AFTERBIRD_TEST_APK_URL." >&2
+              exit 1
+            fi
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "apk_url=${APK_URL}" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "package=${PACKAGE}" >> "$GITHUB_OUTPUT"
+          echo "activity=${ACTIVITY}" >> "$GITHUB_OUTPUT"
+          echo "duration=${DURATION}" >> "$GITHUB_OUTPUT"
+          echo "allow_internal=${ALLOW_INTERNAL}" >> "$GITHUB_OUTPUT"
+
+      - name: Handle scheduled skip
+        if: steps.config.outputs.skip == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/emulator-artifacts"
+          printf 'Skipped scheduled run: %s\n' "${{ steps.config.outputs.reason }}" > "$RUNNER_TEMP/emulator-artifacts/skip.txt"
+
+      - name: Download APK under test
+        if: steps.config.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 --retry-all-errors \
+            -o "$RUNNER_TEMP/afterbird-under-test.apk" \
+            "${{ steps.config.outputs.apk_url }}"
+
+      - name: Run emulator automation
+        if: steps.config.outputs.skip != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            set -euo pipefail
+            mkdir -p "$RUNNER_TEMP/emulator-artifacts"
+
+            EXTRA_ARGS=()
+            if [[ "${{ steps.config.outputs.allow_internal }}" == "true" ]]; then
+              EXTRA_ARGS+=(--allow-internal-page-failures)
+            fi
+
+            ci/android_emulator_test.sh \
+              --apk "$RUNNER_TEMP/afterbird-under-test.apk" \
+              --package "${{ steps.config.outputs.package }}" \
+              --activity "${{ steps.config.outputs.activity }}" \
+              --duration-sec "${{ steps.config.outputs.duration }}" \
+              --artifact-dir "$RUNNER_TEMP/emulator-artifacts" \
+              "${EXTRA_ARGS[@]}"
+
+      - name: Upload emulator artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-e2e-artifacts-${{ github.run_id }}
+          path: ${{ runner.temp }}/emulator-artifacts
+          if-no-files-found: warn

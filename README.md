@@ -27,6 +27,9 @@ Plus project metadata and automation:
 - `.build/production_build_reference/args.gn` (reference GN args file)
 - `CHROMIUM_VERSION`, `KIWI_VERSION`, `VERSION`
 - `ci/chromium_android_pipeline.sh` (external Chromium checkout + overlay + smoke/full build)
+- `ci/android_emulator_test.sh` (APK install/startup + internal-pages smoke + ~120s modern-site flow + crash/memory telemetry)
+- `ci/fetch_ublock_chromium.sh` and `ci/extensions/ublock_chromium_132.lock.json` (pinned extension package fetch metadata)
+- `tests/emulator/` manifests (`modern_sites.txt`, `internal_pages_smoke.txt`, `manual_checks.md`)
 - `toolbox/` scripts
 
 ## Branches And Their Roles
@@ -75,9 +78,16 @@ What is now available:
 - `ci/chromium_android_pipeline.sh` reads `CHROMIUM_VERSION`, checks out exact Chromium tag into an external workdir, runs `gclient sync`, applies this repo as overlay, runs `gn gen` with `.build/production_build_reference/args.gn`, and validates the `chrome_public_apk` graph.
 - Default mode is smoke (`sync + overlay + gn gen + graph check`).
 - Full build mode (`autoninja ... chrome_public_apk`) is explicit via `--full-build`.
+- `ci/android_emulator_test.sh` provides emulator/device smoke automation:
+  - APK install
+  - startup check
+  - internal page launchability checks for extension/devtools entry points
+  - ~120s modern-site traversal
+  - package-scoped logcat crash signal scan + `dumpsys meminfo` trend summary
 - GitHub Actions now expose:
   - Smoke on `push`/`pull_request` to `afterbird`.
   - Full build on manual `workflow_dispatch`.
+  - Emulator smoke/e2e telemetry run via manual dispatch (and optional schedule) in `android_emulator_e2e.yml`.
 
 ## Local Prerequisites And Commands
 
@@ -87,6 +97,10 @@ Required tools (Linux/macOS):
 - Java 17 (or Chromium-compatible JDK)
 - `depot_tools` on `PATH` (`gclient`, `gn`, `autoninja`)
 - Android build prerequisites expected by Chromium hooks/tooling (SDK/NDK components and host packages)
+- Android emulator test prerequisites:
+  - `adb` on `PATH`
+  - Android SDK emulator + system image (`android-34` / x86_64 recommended)
+  - `curl` plus `sha256sum` or `shasum` for extension package pin verification
 
 One-time `depot_tools` setup:
 
@@ -109,6 +123,32 @@ ci/chromium_android_pipeline.sh \
   --full-build \
   --target chrome_public_apk
 ```
+
+Fetch pinned uBlock Chromium package (version `1.62.0`, published `2025-01-01`) for extension prep:
+
+```bash
+ci/fetch_ublock_chromium.sh
+```
+
+Run emulator smoke/e2e checks locally (after booting an emulator or connecting a test device):
+
+```bash
+ci/android_emulator_test.sh \
+  --apk /absolute/path/to/afterbird.apk \
+  --package com.kiwibrowser.browser \
+  --activity org.chromium.chrome.browser.ChromeTabbedActivity \
+  --duration-sec 120 \
+  --artifact-dir "$PWD/tests/artifacts/local-emulator"
+```
+
+Automated vs manual extension/devtools verification boundary:
+
+- Automated smoke coverage is defined in:
+  - `tests/emulator/internal_pages_smoke.txt`
+  - `tests/emulator/modern_sites.txt`
+  - `ci/android_emulator_test.sh`
+- Manual checks still required are listed in:
+  - `tests/emulator/manual_checks.md`
 
 Notes:
 

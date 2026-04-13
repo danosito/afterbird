@@ -1,0 +1,13 @@
+{
+  "name": "uBlock Origin",
+  "channel": "chromium",
+  "chromium_baseline_major": 132,
+  "version": "1.62.0",
+  "published_at": "2025-01-01T13:41:41Z",
+  "source_url": "https://github.com/gorhill/uBlock/releases/download/1.62.0/uBlock0_1.62.0.chromium.zip",
+  "release_page": "https://github.com/gorhill/uBlock/releases/tag/1.62.0",
+  "filename": "uBlock0_1.62.0.chromium.zip",
+  "size_bytes": 3957669,
+  "sha256": "e714fe2d033b672f0b134954a293d67ce97999269ecb2f0d34b9765e5d45e62a",
+  "notes": "Pinned Chromium package for Chromium 132 timeframe extension preparation."
+}
