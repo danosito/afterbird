@@ -103,6 +103,13 @@
 #include "chrome/browser/ui/webui/chrome_untrusted_web_ui_configs.h"
 #include "chrome/browser/ui/webui/chrome_web_ui_configs.h"
 #include "chrome/browser/ui/webui/chrome_web_ui_controller_factory.h"
+#include "extensions/buildflags/buildflags.h"
+
+#if BUILDFLAG(IS_ANDROID) && BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+#include "chrome/browser/ui/webui/extensions/extensions_ui.h"
+#include "chrome/browser/ui/webui/inspect_ui.h"
+#include "content/public/browser/webui_config_map.h"
+#endif
 #include "chrome/common/buildflags.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_constants.h"
@@ -1657,6 +1664,15 @@ int ChromeBrowserMainParts::PreMainMessageLoopRunImpl() {
   content::WebUIControllerFactory::RegisterFactory(
       ChromeWebUIControllerFactory::GetInstance());
   RegisterChromeWebUIConfigs();
+#if BUILDFLAG(IS_ANDROID) && BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+  // Desktop-Android extension mode does not register these by default.
+  auto& webui_config_map = content::WebUIConfigMap::GetInstance();
+  webui_config_map.AddWebUIConfig(std::make_unique<InspectUIConfig>());
+#if !BUILDFLAG(ENABLE_EXTENSIONS)
+  webui_config_map.AddWebUIConfig(
+      std::make_unique<extensions::ExtensionsUIConfig>());
+#endif
+#endif
   RegisterChromeUntrustedWebUIConfigs();
 
 #if BUILDFLAG(IS_ANDROID)
