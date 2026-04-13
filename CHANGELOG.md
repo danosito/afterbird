@@ -79,3 +79,4 @@ All notable changes to this repository are documented in this file.
 - Removed legacy `passwords_error_dialog.xml` and `passwords_progress_dialog.xml` from `chrome/android` to avoid duplicate resource definitions with `//chrome/browser/password_manager/android:java_resources`.
 - Removed legacy `sync_promo_view.xml` from `chrome/android` to avoid duplicate resource definitions with `//chrome/browser/ui/android/signin:java_resources`.
 - Removed legacy `sheet_tab_toolbar.xml` from `chrome/android` to avoid duplicate resource definitions with `//chrome/browser/ui/android/toolbar:java_resources`.
+- Removed legacy `accessibility_preferences.xml` from `chrome/android` to avoid duplicate resource definitions with `//components/browser_ui/accessibility/android:java_resources`.
