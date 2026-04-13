@@ -239,6 +239,12 @@ build_webui("build") {
   ]
   if (is_android && enable_desktop_android_extensions) {
     ts_definitions += [ "polymer_bundled_compat.d.ts" ]
+    ts_path_mappings = [
+      "//resources/polymer/v3_0/polymer/polymer_bundled.min.js|" +
+          rebase_path("//third_party/polymer/v3_0/components-chromium/polymer/polymer_bundled.min.js", target_gen_dir),
+      "chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js|" +
+          rebase_path("//third_party/polymer/v3_0/components-chromium/polymer/polymer_bundled.min.js", target_gen_dir),
+    ]
   }
   webui_context_type = "relative"
   generate_grdp = true
