@@ -77,3 +77,4 @@ All notable changes to this repository are documented in this file.
 - Removed legacy `chrome/android` Autofill editor resources that are now provided by `//chrome/browser/autofill/android:java_resources`, preventing duplicate layout/menu collisions during `chrome_public_apk` resource linking.
 - Restored `allow_missing_resources = true` after strict mode exposed a very large legacy overlay drift set; continued with targeted duplicate-resource removals instead.
 - Removed legacy `passwords_error_dialog.xml` and `passwords_progress_dialog.xml` from `chrome/android` to avoid duplicate resource definitions with `//chrome/browser/password_manager/android:java_resources`.
+- Removed legacy `sync_promo_view.xml` from `chrome/android` to avoid duplicate resource definitions with `//chrome/browser/ui/android/signin:java_resources`.
