@@ -1,0 +1,89 @@
+name: Chromium Android Smoke Pipeline
+
+on:
+  pull_request:
+    branches:
+      - afterbird
+    paths:
+      - 'CHROMIUM_VERSION'
+      - '.build/production_build_reference/args.gn'
+      - 'ci/**'
+      - '.github/workflows/chromium_smoke_pipeline.yml'
+      - '.github/workflows/chromium_full_build.yml'
+      - 'BUILD.gn'
+      - 'DEPS'
+      - 'base/**'
+      - 'chrome/**'
+      - 'components/**'
+      - 'content/**'
+      - 'extensions/**'
+      - 'net/**'
+      - 'remoting/**'
+      - 'services/**'
+      - 'third_party/**'
+      - 'ui/**'
+  push:
+    branches:
+      - afterbird
+    paths:
+      - 'CHROMIUM_VERSION'
+      - '.build/production_build_reference/args.gn'
+      - 'ci/**'
+      - '.github/workflows/chromium_smoke_pipeline.yml'
+      - '.github/workflows/chromium_full_build.yml'
+      - 'BUILD.gn'
+      - 'DEPS'
+      - 'base/**'
+      - 'chrome/**'
+      - 'components/**'
+      - 'content/**'
+      - 'extensions/**'
+      - 'net/**'
+      - 'remoting/**'
+      - 'services/**'
+      - 'third_party/**'
+      - 'ui/**'
+
+concurrency:
+  group: chromium-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke (sync + overlay + gn)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            python3 \
+            rsync \
+            curl \
+            ca-certificates \
+            xz-utils \
+            unzip
+
+      - name: Install depot_tools
+        run: |
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$HOME/depot_tools"
+          echo "$HOME/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Run Chromium smoke pipeline
+        env:
+          DEPOT_TOOLS_UPDATE: '0'
+        run: |
+          ci/chromium_android_pipeline.sh \
+            --workdir "$RUNNER_TEMP/afterbird-chromium"

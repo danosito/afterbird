@@ -1,0 +1,60 @@
+name: Chromium Android Full Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Ninja target to build
+        required: true
+        default: chrome_public_apk
+      out_dir:
+        description: GN output directory relative to src
+        required: true
+        default: out/afterbird_production
+
+concurrency:
+  group: chromium-full-build
+  cancel-in-progress: false
+
+jobs:
+  full_build:
+    name: Full build (manual)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 720
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            python3 \
+            rsync \
+            curl \
+            ca-certificates \
+            xz-utils \
+            unzip
+
+      - name: Install depot_tools
+        run: |
+          git clone --depth 1 https://chromium.googlesource.com/chromium/tools/depot_tools.git "$HOME/depot_tools"
+          echo "$HOME/depot_tools" >> "$GITHUB_PATH"
+
+      - name: Run Chromium full build pipeline
+        env:
+          DEPOT_TOOLS_UPDATE: '0'
+        run: |
+          ci/chromium_android_pipeline.sh \
+            --workdir "$RUNNER_TEMP/afterbird-chromium" \
+            --out-dir "${{ github.event.inputs.out_dir }}" \
+            --target "${{ github.event.inputs.target }}" \
+            --full-build
