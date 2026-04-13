@@ -1373,6 +1373,11 @@ public class TabGroupModelFilterImpl implements TabGroupModelFilterInternal, Tab
     }
 
     @Override
+    public int getLastNonExtensionActiveIndex() {
+        return getTabModel().getLastNonExtensionActiveIndex();
+    }
+
+    @Override
     public int index() {
         return mCurrentGroupIndex;
     }

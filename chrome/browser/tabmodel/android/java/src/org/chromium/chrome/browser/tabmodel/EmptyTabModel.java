@@ -68,6 +68,11 @@ public class EmptyTabModel implements IncognitoTabModelInternal {
     }
 
     @Override
+    public int getLastNonExtensionActiveIndex() {
+        return INVALID_TAB_INDEX;
+    }
+
+    @Override
     public @NonNull TabRemover getTabRemover() {
         return new EmptyTabRemover();
     }
