@@ -11,6 +11,14 @@ WORKDIR="${AFTERBIRD_CHROMIUM_WORKDIR:-${HOME}/afterbird-chromium}"
 OUT_DIR="${AFTERBIRD_OUT_DIR:-out/afterbird_production}"
 TARGET="${AFTERBIRD_BUILD_TARGET:-chrome_public_apk}"
 FULL_BUILD=0
+CHROMIUM_SRC_GIT_URL="${AFTERBIRD_CHROMIUM_SRC_GIT_URL:-https://chromium.googlesource.com/chromium/src.git}"
+FETCH_RETRIES="${AFTERBIRD_FETCH_RETRIES:-3}"
+FETCH_BACKOFF_SECONDS="${AFTERBIRD_FETCH_BACKOFF_SECONDS:-10}"
+FETCH_TIMEOUT_SECONDS="${AFTERBIRD_FETCH_TIMEOUT_SECONDS:-600}"
+GCLIENT_RETRIES="${AFTERBIRD_GCLIENT_RETRIES:-2}"
+GCLIENT_BACKOFF_SECONDS="${AFTERBIRD_GCLIENT_BACKOFF_SECONDS:-20}"
+GCLIENT_NO_HISTORY="${AFTERBIRD_GCLIENT_NO_HISTORY:-1}"
+GCLIENT_EXTRA_ARGS="${AFTERBIRD_GCLIENT_EXTRA_ARGS:-}"
 
 usage() {
   cat <<'USAGE'
@@ -27,6 +35,16 @@ Options:
 Behavior:
   Default smoke mode runs: checkout pinned tag + gclient sync + overlay + gn gen + target graph check.
   Full build mode runs all smoke steps, then builds the selected target.
+
+Environment overrides:
+  AFTERBIRD_CHROMIUM_SRC_GIT_URL   Chromium git remote (default: chromium.googlesource.com)
+  AFTERBIRD_FETCH_RETRIES          Retries for tag fetch (default: 3)
+  AFTERBIRD_FETCH_BACKOFF_SECONDS  Backoff base for fetch retries (default: 10)
+  AFTERBIRD_FETCH_TIMEOUT_SECONDS  Per-attempt timeout for tag fetch (default: 600)
+  AFTERBIRD_GCLIENT_RETRIES        Retries for gclient sync (default: 2)
+  AFTERBIRD_GCLIENT_BACKOFF_SECONDS Backoff base for gclient retries (default: 20)
+  AFTERBIRD_GCLIENT_NO_HISTORY     Use --no-history during sync (default: 1)
+  AFTERBIRD_GCLIENT_EXTRA_ARGS     Extra args appended to gclient sync
 USAGE
 }
 
@@ -42,6 +60,72 @@ die() {
 require_cmd() {
   local cmd="$1"
   command -v "${cmd}" >/dev/null 2>&1 || die "Missing required command: ${cmd}"
+}
+
+validate_non_negative_int() {
+  local value="$1"
+  local key="$2"
+  [[ "${value}" =~ ^[0-9]+$ ]] || die "${key} must be a non-negative integer (got '${value}')"
+}
+
+timeout_bin() {
+  if command -v timeout >/dev/null 2>&1; then
+    printf 'timeout\n'
+    return 0
+  fi
+  if command -v gtimeout >/dev/null 2>&1; then
+    printf 'gtimeout\n'
+    return 0
+  fi
+  return 0
+}
+
+run_with_timeout() {
+  local timeout_seconds="$1"
+  shift
+
+  if [[ "${timeout_seconds}" -le 0 ]]; then
+    "$@"
+    return
+  fi
+
+  local tbin
+  tbin="$(timeout_bin)"
+  if [[ -n "${tbin}" ]]; then
+    "${tbin}" "${timeout_seconds}s" "$@"
+  else
+    "$@"
+  fi
+}
+
+run_with_retries() {
+  local attempts="$1"
+  local backoff_seconds="$2"
+  local label="$3"
+  shift 3
+
+  local try=1
+  local rc
+  while true; do
+    if "$@"; then
+      return 0
+    fi
+
+    rc=$?
+    if [[ "${try}" -ge "${attempts}" ]]; then
+      die "${label} failed after ${try} attempt(s) (exit ${rc})"
+    fi
+
+    local wait_seconds=$((backoff_seconds * try))
+    if [[ "${rc}" -eq 124 ]]; then
+      log "${label} timed out (attempt ${try}/${attempts}); retrying in ${wait_seconds}s"
+    else
+      log "${label} failed (attempt ${try}/${attempts}, exit ${rc}); retrying in ${wait_seconds}s"
+    fi
+
+    sleep "${wait_seconds}"
+    try=$((try + 1))
+  done
 }
 
 validate_out_dir() {
@@ -71,13 +155,12 @@ read_version_part() {
 ensure_workspace() {
   mkdir -p "${WORKDIR}"
 
-  if [[ ! -f "${WORKDIR}/.gclient" ]]; then
-    log "Creating ${WORKDIR}/.gclient"
-    cat > "${WORKDIR}/.gclient" <<'GCLIENT'
+  log "Writing ${WORKDIR}/.gclient"
+  cat > "${WORKDIR}/.gclient" <<GCLIENT
 solutions = [
   {
     "name": "src",
-    "url": "https://chromium.googlesource.com/chromium/src.git",
+    "url": "${CHROMIUM_SRC_GIT_URL}",
     "managed": False,
     "custom_deps": {},
     "custom_vars": {},
@@ -85,28 +168,56 @@ solutions = [
 ]
 target_os = ["android"]
 GCLIENT
-  fi
 
   if [[ ! -d "${WORKDIR}/src/.git" ]]; then
-    log "Cloning Chromium source into ${WORKDIR}/src"
-    git clone --filter=blob:none https://chromium.googlesource.com/chromium/src.git "${WORKDIR}/src"
+    log "Initializing Chromium source repo in ${WORKDIR}/src"
+    mkdir -p "${WORKDIR}/src"
+    git -C "${WORKDIR}/src" init
+    git -C "${WORKDIR}/src" remote add origin "${CHROMIUM_SRC_GIT_URL}"
+  else
+    local existing_origin
+    existing_origin="$(git -C "${WORKDIR}/src" remote get-url origin 2>/dev/null || true)"
+    if [[ -z "${existing_origin}" ]]; then
+      log "Adding missing src origin '${CHROMIUM_SRC_GIT_URL}'"
+      git -C "${WORKDIR}/src" remote add origin "${CHROMIUM_SRC_GIT_URL}"
+    elif [[ "${existing_origin}" != "${CHROMIUM_SRC_GIT_URL}" ]]; then
+      log "Updating src origin from '${existing_origin}' to '${CHROMIUM_SRC_GIT_URL}'"
+      git -C "${WORKDIR}/src" remote set-url origin "${CHROMIUM_SRC_GIT_URL}"
+    fi
   fi
+}
+
+fetch_required_tag() {
+  local tag="$1"
+  local refspec="+refs/tags/${tag}:refs/tags/${tag}"
+
+  run_with_retries "${FETCH_RETRIES}" "${FETCH_BACKOFF_SECONDS}" "Chromium tag fetch (${tag}) from ${CHROMIUM_SRC_GIT_URL}" \
+    run_with_timeout "${FETCH_TIMEOUT_SECONDS}" \
+    env GIT_TERMINAL_PROMPT=0 \
+    git -c protocol.version=2 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 \
+      -C "${WORKDIR}/src" fetch --no-tags --depth=1 origin "${refspec}"
 }
 
 checkout_tag() {
   local tag="$1"
 
-  pushd "${WORKDIR}/src" >/dev/null
-  log "Fetching Chromium tags"
-  git fetch --force --tags origin
+  log "Fetching only required Chromium tag ${tag} from ${CHROMIUM_SRC_GIT_URL}"
+  if [[ "${FETCH_TIMEOUT_SECONDS}" -gt 0 ]]; then
+    log "Fetch timeout per attempt: ${FETCH_TIMEOUT_SECONDS}s"
+  fi
+  if [[ "${CHROMIUM_SRC_GIT_URL}" == "https://chromium.googlesource.com/chromium/src.git" ]]; then
+    log "If googlesource is blocked or slow, set AFTERBIRD_CHROMIUM_SRC_GIT_URL to a reachable mirror."
+  fi
+  fetch_required_tag "${tag}"
 
+  pushd "${WORKDIR}/src" >/dev/null
   git rev-parse --verify "refs/tags/${tag}" >/dev/null 2>&1 || die "Chromium tag '${tag}' was not found"
 
   local current
   current="$(git describe --tags --exact-match 2>/dev/null || true)"
   if [[ "${current}" != "${tag}" ]]; then
     log "Checking out Chromium tag ${tag}"
-    git checkout --force "${tag}"
+    git checkout --force --detach "${tag}"
   else
     log "Chromium tag ${tag} already checked out"
   fi
@@ -114,9 +225,22 @@ checkout_tag() {
 }
 
 sync_dependencies() {
-  log "Running gclient sync (this can take a long time)"
+  local sync_args=(-D)
+  if [[ "${GCLIENT_NO_HISTORY}" == "1" ]]; then
+    sync_args+=(--no-history)
+  fi
+
+  if [[ -n "${GCLIENT_EXTRA_ARGS}" ]]; then
+    # Intentionally split additional arguments provided as a string override.
+    # shellcheck disable=SC2206
+    local extra_args=( ${GCLIENT_EXTRA_ARGS} )
+    sync_args+=("${extra_args[@]}")
+  fi
+
+  log "Running gclient sync (this can take a long time): gclient sync ${sync_args[*]}"
   pushd "${WORKDIR}" >/dev/null
-  gclient sync --with_branch_heads --with_tags -D
+  run_with_retries "${GCLIENT_RETRIES}" "${GCLIENT_BACKOFF_SECONDS}" "gclient sync" \
+    gclient sync "${sync_args[@]}"
   popd >/dev/null
 }
 
@@ -215,6 +339,22 @@ main() {
   [[ -f "${CHROMIUM_VERSION_FILE}" ]] || die "Missing ${CHROMIUM_VERSION_FILE}"
   validate_out_dir
 
+  validate_non_negative_int "${FETCH_RETRIES}" "AFTERBIRD_FETCH_RETRIES"
+  validate_non_negative_int "${FETCH_BACKOFF_SECONDS}" "AFTERBIRD_FETCH_BACKOFF_SECONDS"
+  validate_non_negative_int "${FETCH_TIMEOUT_SECONDS}" "AFTERBIRD_FETCH_TIMEOUT_SECONDS"
+  validate_non_negative_int "${GCLIENT_RETRIES}" "AFTERBIRD_GCLIENT_RETRIES"
+  validate_non_negative_int "${GCLIENT_BACKOFF_SECONDS}" "AFTERBIRD_GCLIENT_BACKOFF_SECONDS"
+
+  if [[ "${FETCH_RETRIES}" -eq 0 ]]; then
+    die "AFTERBIRD_FETCH_RETRIES must be at least 1"
+  fi
+  if [[ "${GCLIENT_RETRIES}" -eq 0 ]]; then
+    die "AFTERBIRD_GCLIENT_RETRIES must be at least 1"
+  fi
+  if [[ "${GCLIENT_NO_HISTORY}" != "0" && "${GCLIENT_NO_HISTORY}" != "1" ]]; then
+    die "AFTERBIRD_GCLIENT_NO_HISTORY must be '0' or '1'"
+  fi
+
   require_cmd awk
   require_cmd git
   require_cmd gclient
@@ -234,6 +374,7 @@ main() {
 
   log "Pinned Chromium tag: ${tag}"
   log "Workspace: ${WORKDIR}"
+  log "Chromium source URL: ${CHROMIUM_SRC_GIT_URL}"
   log "Output dir: ${OUT_DIR}"
 
   ensure_workspace

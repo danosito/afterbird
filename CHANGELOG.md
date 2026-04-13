@@ -46,6 +46,9 @@ All notable changes to this repository are documented in this file.
 - Hardened `ci/chromium_android_pipeline.sh` idempotency by resetting/cleaning the external Chromium `src` checkout before overlay application, preventing stale state from previous runs.
 - Added strict `--out-dir` validation in `ci/chromium_android_pipeline.sh` to allow only safe relative paths under `src` (rejects absolute and traversal segments).
 - Narrowed `chromium_smoke_pipeline.yml` triggers using `paths` filters so docs-only updates do not run the expensive smoke job.
+- Optimized Chromium startup fetch in `ci/chromium_android_pipeline.sh` by fetching only the pinned tag ref (`refs/tags/<version>`) instead of all remote tags.
+- Added retry/backoff + timeout controls for remote tag fetch and `gclient sync`, with clearer logs and mirror guidance for blocked/slow networks.
+- Added environment override support for Chromium source URL (`AFTERBIRD_CHROMIUM_SRC_GIT_URL`) and lightweight sync controls (`AFTERBIRD_GCLIENT_NO_HISTORY`, retry/timeout knobs).
 - Replaced top-level `LICENSE` with an explicit combined licensing notice covering both Afterbird/Kiwi fork-origin files and Chromium-origin files, with third-party license caveats.
 - Fixed top-level `OWNERS` references to missing paths by replacing unresolved `file://...` targets (`build/OWNERS`, `styleguide/c++/OWNERS`, `styleguide/rust/OWNERS`) with existing in-repo ownership references.
 - Noted that the Chromium 132 merge may have dropped historical Kiwi integrations; those are tracked for explicit re-port follow-up.
