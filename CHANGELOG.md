@@ -18,6 +18,17 @@ All notable changes to this repository are documented in this file.
   - Runs smoke graph checks by default, with optional explicit full build mode (`--full-build`)
 - `.github/workflows/chromium_smoke_pipeline.yml` for smoke checks on `push`/`pull_request` to `afterbird`.
 - `.github/workflows/chromium_full_build.yml` for manual full build runs (`workflow_dispatch`).
+- `ci/android_emulator_test.sh` for emulator APK automation:
+  - install APK on emulator/device
+  - startup smoke launch check
+  - internal pages launchability checks for extension/devtools entry points
+  - modern-site e2e flow (~120 seconds default)
+  - logcat crash signal scan + `dumpsys meminfo` trend report
+- `tests/emulator/modern_sites.txt` and `tests/emulator/internal_pages_smoke.txt` to define automated URL coverage.
+- `tests/emulator/manual_checks.md` to explicitly separate manual-only extension/devtools checks from automation scope.
+- `.github/workflows/android_emulator_e2e.yml` for manual-dispatch emulator automation (plus optional weekly schedule path).
+- `ci/extensions/ublock_chromium_132.lock.json` pinning uBlock Chromium package `1.62.0` (`2025-01-01`) with URL/size/SHA256 metadata.
+- `ci/fetch_ublock_chromium.sh` to fetch and verify the pinned uBlock package from the lock manifest.
 
 ### Changed
 
@@ -30,6 +41,7 @@ All notable changes to this repository are documented in this file.
 - Added explicit risk notes that direct Chromium merges may drop Kiwi-specific integrations and that re-porting these integrations is tracked as revival backlog work.
 - Updated `README.md` with local prerequisites and exact smoke/full commands for the new external Chromium pipeline.
 - Updated `ARCHITECTURE.md` automation/build sections to describe the new smoke/full CI and externalized build model.
+- Updated docs to include exact local emulator-test commands/prerequisites and lockfile-based extension package prep workflow.
 - Hardened `ci/chromium_android_pipeline.sh` idempotency by resetting/cleaning the external Chromium `src` checkout before overlay application, preventing stale state from previous runs.
 - Added strict `--out-dir` validation in `ci/chromium_android_pipeline.sh` to allow only safe relative paths under `src` (rejects absolute and traversal segments).
 - Narrowed `chromium_smoke_pipeline.yml` triggers using `paths` filters so docs-only updates do not run the expensive smoke job.

@@ -1,0 +1,7 @@
+# Internal browser entry-point launchability checks.
+# These checks validate that URL intents are accepted and launch returns Status: ok.
+chrome://version/
+chrome://flags/
+chrome://extensions/
+chrome://inspect/
+chrome://inspect/#devices

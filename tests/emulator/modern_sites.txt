@@ -1,0 +1,10 @@
+# Modern-site coverage list for emulator e2e smoke traversal.
+# Keep entries stable/public and accessible without auth.
+https://www.wikipedia.org/
+https://github.com/
+https://web.dev/
+https://developer.mozilla.org/
+https://m.youtube.com/
+https://www.reddit.com/
+https://news.ycombinator.com/
+https://www.theverge.com/
