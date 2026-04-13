@@ -75,3 +75,4 @@ All notable changes to this repository are documented in this file.
 - Removed legacy `chrome/android` copy of `custom_tabs_toast_branding_layout.xml` to avoid duplicate resource collisions with Chromium 132 `//chrome/browser/android/customtabs/branding:java_resources`.
 - Reverted `chrome_app_java_resources` back to strict resource listing (`allow_missing_resources = false`) to stop broad duplicate-resource collisions between legacy overlay files and modular Android resource deps.
 - Removed legacy `chrome/android` Autofill editor resources that are now provided by `//chrome/browser/autofill/android:java_resources`, preventing duplicate layout/menu collisions during `chrome_public_apk` resource linking.
+- Restored `allow_missing_resources = true` after strict mode exposed a very large legacy overlay drift set; continued with targeted duplicate-resource removals instead.
