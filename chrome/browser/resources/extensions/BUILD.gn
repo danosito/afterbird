@@ -157,8 +157,16 @@ build_webui("build") {
     "//ui/webui/resources/js:build_ts",
   ]
 
-  if (!is_android || enable_desktop_android_extensions) {
+  if (!is_android) {
     ts_deps += [ "//ui/webui/resources/cr_components/managed_footnote:build_ts" ]
+  }
+
+  if (is_android && enable_desktop_android_extensions) {
+    ts_definitions += [ "managed_footnote_stub.d.ts" ]
+    ts_path_mappings = [
+      "chrome://resources/cr_components/managed_footnote/managed_footnote.js|" +
+          rebase_path("managed_footnote_stub.d.ts", target_gen_dir),
+    ]
   }
 
   webui_context_type = "trusted"
