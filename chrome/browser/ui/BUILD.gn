@@ -980,14 +980,6 @@ static_library("ui") {
       sources += [
         "webui/extensions/extensions_ui.cc",
         "webui/extensions/extensions_ui.h",
-        "webui/favicon_source.cc",
-        "webui/favicon_source.h",
-        "webui/managed_ui_handler.cc",
-        "webui/managed_ui_handler.h",
-        "webui/page_not_available_for_guest/page_not_available_for_guest_ui.cc",
-        "webui/page_not_available_for_guest/page_not_available_for_guest_ui.h",
-        "webui/plural_string_handler.cc",
-        "webui/plural_string_handler.h",
       ]
     }
 
