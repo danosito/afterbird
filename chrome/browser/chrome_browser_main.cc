@@ -1667,7 +1667,6 @@ int ChromeBrowserMainParts::PreMainMessageLoopRunImpl() {
 #if BUILDFLAG(IS_ANDROID) && BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
   // Desktop-Android extension mode does not register these by default.
   auto& webui_config_map = content::WebUIConfigMap::GetInstance();
-  webui_config_map.AddWebUIConfig(std::make_unique<InspectUIConfig>());
 #if !BUILDFLAG(ENABLE_EXTENSIONS)
   webui_config_map.AddWebUIConfig(
       std::make_unique<extensions::ExtensionsUIConfig>());
