@@ -691,7 +691,7 @@ source_set("browser_sources") {
   # TODO(https://crbug.com/356905053): The following files don't compile cleanly
   # with desktop-android. Either make them compile, or determine they should
   # not be included and place them under a more appropriate if-block.
-  if (enable_extensions) {
+  if (enable_extensions && !is_android) {
     sources += [
       "api/device_permissions_manager.cc",
       "api/device_permissions_manager.h",
