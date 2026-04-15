@@ -40,7 +40,7 @@ update_android_aar_prebuilts = true
 
 enable_extensions = false
 enable_desktop_android_extensions = true
-enable_guest_view = true
+enable_guest_view = false
 enable_platform_apps = false
 chrome_pgo_phase = 0
 enable_pdf = false
