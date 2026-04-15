@@ -45,7 +45,6 @@ enable_platform_apps = false
 chrome_pgo_phase = 0
 enable_pdf = false
 enable_plugins = false
-enable_vulkan = false
 
 disable_android_lint = true
 treat_warnings_as_errors = false
