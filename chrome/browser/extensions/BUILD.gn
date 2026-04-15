@@ -715,7 +715,6 @@ source_set("extensions") {
     "//mojo/public/cpp/bindings",
   ]
   deps = [
-    "//apps",
     "//base",
     "//build:branding_buildflags",
     "//build:chromeos_buildflags",
@@ -971,6 +970,10 @@ source_set("extensions") {
     "//ui/strings",
     "//url",
   ]
+
+  if (!is_android) {
+    deps += [ "//apps" ]
+  }
 
   if (is_linux || is_mac || is_win) {
     sources += [
