@@ -23,15 +23,21 @@
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/browser_process.h"
+#if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/extensions/manifest_v2_experiment_manager.h"
 #include "chrome/browser/extensions/mv2_experiment_stage.h"
 #include "chrome/browser/extensions/permissions_url_constants.h"
+#endif
 #include "chrome/browser/profiles/profile.h"
+#if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/webui/favicon_source.h"
 #include "chrome/browser/ui/webui/managed_ui_handler.h"
+#endif
 #include "chrome/browser/ui/webui/metrics_handler.h"
+#if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/webui/page_not_available_for_guest/page_not_available_for_guest_ui.h"
 #include "chrome/browser/ui/webui/plural_string_handler.h"
+#endif
 #include "chrome/browser/ui/webui/webui_util.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
@@ -451,9 +457,11 @@ content::WebUIDataSource* CreateAndAddExtensionsSource(Profile* profile,
                   extension_urls::kExtensionsSidebarUtmSource),
               g_browser_process->GetApplicationLocale())
               .spec()));
+#if !BUILDFLAG(IS_ANDROID)
   source->AddString(
       "hostPermissionsLearnMoreLink",
       extension_permissions_constants::kRuntimeHostPermissionsHelpURL);
+#endif
   source->AddBoolean(kInDevModeKey, in_dev_mode);
   source->AddBoolean(kShowActivityLogKey,
                      base::CommandLine::ForCurrentProcess()->HasSwitch(
@@ -472,9 +480,11 @@ content::WebUIDataSource* CreateAndAddExtensionsSource(Profile* profile,
   source->AddBoolean(kEnableEnhancedSiteControls,
                      base::FeatureList::IsEnabled(
                          extensions_features::kExtensionsMenuAccessControl));
+#if !BUILDFLAG(IS_ANDROID)
   source->AddString(
       "showAccessRequestsInToolbarLearnMoreLink",
       extension_permissions_constants::kShowAccessRequestsInToolbarHelpURL);
+#endif
   source->AddBoolean(
       "enableUserPermittedSites",
       base::FeatureList::IsEnabled(
@@ -489,6 +499,7 @@ content::WebUIDataSource* CreateAndAddExtensionsSource(Profile* profile,
   source->AddBoolean("safetyHubShowReviewPanel",
                      base::FeatureList::IsEnabled(features::kSafetyHub));
 
+#if !BUILDFLAG(IS_ANDROID)
   // MV2 deprecation.
   auto* mv2_experiment_manager = ManifestV2ExperimentManager::Get(profile);
   MV2ExperimentStage experiment_stage =
@@ -497,6 +508,10 @@ content::WebUIDataSource* CreateAndAddExtensionsSource(Profile* profile,
   source->AddBoolean(
       "MV2DeprecationNoticeDismissed",
       mv2_experiment_manager->DidUserAcknowledgeNoticeGlobally());
+#else
+  source->AddInteger("MV2ExperimentStage", 0);
+  source->AddBoolean("MV2DeprecationNoticeDismissed", false);
+#endif
 
 #if BUILDFLAG(IS_CHROMEOS_ASH)
   source->AddString(
@@ -523,10 +538,12 @@ std::unique_ptr<content::WebUIController>
 ExtensionsUIConfig::CreateWebUIController(content::WebUI* web_ui,
                                           const GURL& url) {
   Profile* profile = Profile::FromWebUI(web_ui);
+#if !BUILDFLAG(IS_ANDROID)
   if (profile->IsGuestSession()) {
     return std::make_unique<PageNotAvailableForGuestUI>(
         web_ui, chrome::kChromeUIExtensionsHost);
   }
+#endif
   return std::make_unique<ExtensionsUI>(web_ui);
 }
 
@@ -543,13 +560,16 @@ ExtensionsUI::ExtensionsUI(content::WebUI* web_ui)
                                         base::Unretained(this)));
 
   source = CreateAndAddExtensionsSource(profile, *in_dev_mode_);
+#if !BUILDFLAG(IS_ANDROID)
   ManagedUIHandler::Initialize(web_ui, source);
+#endif
 
   // Need to allow <object> elements so that the <extensionoptions> browser
   // plugin can be loaded within chrome://extensions.
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ObjectSrc, "object-src 'self';");
 
+#if !BUILDFLAG(IS_ANDROID)
   content::URLDataSource::Add(
       profile, std::make_unique<FaviconSource>(
                    profile, chrome::FaviconUrlFormat::kFavicon2));
@@ -577,6 +597,7 @@ ExtensionsUI::ExtensionsUI(content::WebUI* web_ui)
       IDS_EXTENSIONS_MV2_DEPRECATION_PANEL_DISABLED_SUBTITLE);
 #endif
   web_ui->AddMessageHandler(std::move(plural_string_handler));
+#endif  // !BUILDFLAG(IS_ANDROID)
 }
 
 ExtensionsUI::~ExtensionsUI() = default;
