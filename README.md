@@ -19,7 +19,7 @@ by [Arnaud Granal](https://github.com/arnaudgranal).
 
 ## Current Status
 
-**v0.2 — Kiwi-style extensions menu** — see [Releases](https://github.com/danosito/afterbird/releases).
+**v0.3 — `chrome://extensions` WebUI works** — see [Releases](https://github.com/danosito/afterbird/releases).
 
 - Browser launches on Android 15+ (emulator and physical devices)
 - `--load-extension=/path/to/ext[,/path2,...]` loads one or more unpacked extensions
@@ -28,22 +28,24 @@ by [Arnaud Granal](https://github.com/arnaudgranal).
 - Main app menu shows:
   - "Extensions" entry (opens `chrome://extensions`)
   - One entry per running extension (opens its popup URL in a new tab)
+- **`chrome://extensions` page renders the real Chromium extensions manager**
+  (Polymer-based WebUI with enable/disable toggles, developer mode, details pages)
 - Built on Chromium 132.0.6834.83
 
-### Known Limitations in v0.2
+### Known Limitations in v0.3
 
-- Extension popup pages open but JavaScript doesn't execute yet
-  (extensions/renderer pipeline for desktop-android not wired up)
-- Extension messaging API stubbed (`chrome.runtime.sendMessage` drops silently)
-- `chrome://extensions` WebUI page blank (desktop-only string resources)
-- No UI to enable/disable/manage extensions at runtime
+- Extension messaging API stubbed (`chrome.runtime.sendMessage` drops silently —
+  requires `MessageService` / `guest_view` wiring)
+- No Kiwi-style `+ (from .zip/.crx/.user.js)` install-from-file button yet
+  (Kiwi UI customization, not in stock Chromium)
+- Menu "more" button still reads "Customize and control Google Chrome"
+  in accessibility text (inherited string)
 
 ### Roadmap
 
-- Fix JavaScript execution in extension pages (unblocks popups, content scripts)
 - Enable full MessageService for extension messaging
-- Re-enable `chrome://extensions` WebUI with Android-compatible resources
-- DevTools parity on mobile
+- Add install-from-zip UI to chrome://extensions (match Kiwi)
+- Full DevTools parity on mobile
 
 ## What This Repository Contains
 
