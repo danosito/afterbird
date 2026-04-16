@@ -295,21 +295,6 @@ DesktopAndroidDeveloperPrivateGetExtensionsInfoFunction::Run() {
 
 // ----------------------------------------------------------------------------
 
-DesktopAndroidDeveloperPrivateGetItemsInfoFunction::
-    DesktopAndroidDeveloperPrivateGetItemsInfoFunction() = default;
-DesktopAndroidDeveloperPrivateGetItemsInfoFunction::
-    ~DesktopAndroidDeveloperPrivateGetItemsInfoFunction() = default;
-
-ExtensionFunction::ResponseAction
-DesktopAndroidDeveloperPrivateGetItemsInfoFunction::Run() {
-  // Legacy API surface — identical payload to getExtensionsInfo.
-  base::Value::List args;
-  args.Append(BuildAllExtensionsInfo(browser_context()));
-  return RespondNow(ArgumentList(std::move(args)));
-}
-
-// ----------------------------------------------------------------------------
-
 DesktopAndroidDeveloperPrivateGetExtensionInfoFunction::
     DesktopAndroidDeveloperPrivateGetExtensionInfoFunction() = default;
 DesktopAndroidDeveloperPrivateGetExtensionInfoFunction::
@@ -354,8 +339,6 @@ void RegisterDesktopAndroidDeveloperPrivateFunctions(
       DesktopAndroidDeveloperPrivateUpdateProfileConfigurationFunction>();
   registry->RegisterFunction<
       DesktopAndroidDeveloperPrivateGetExtensionsInfoFunction>();
-  registry->RegisterFunction<
-      DesktopAndroidDeveloperPrivateGetItemsInfoFunction>();
   registry->RegisterFunction<
       DesktopAndroidDeveloperPrivateGetExtensionInfoFunction>();
 

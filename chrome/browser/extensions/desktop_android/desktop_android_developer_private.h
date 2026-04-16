@@ -42,7 +42,7 @@ class DesktopAndroidDeveloperPrivateGetProfileConfigurationFunction
     : public ExtensionFunction {
  public:
   DECLARE_EXTENSION_FUNCTION("developerPrivate.getProfileConfiguration",
-                             DEVELOPER_PRIVATE_GETPROFILECONFIGURATION)
+                             DEVELOPERPRIVATE_GETPROFILECONFIGURATION)
   DesktopAndroidDeveloperPrivateGetProfileConfigurationFunction();
 
  protected:
@@ -54,7 +54,7 @@ class DesktopAndroidDeveloperPrivateUpdateProfileConfigurationFunction
     : public ExtensionFunction {
  public:
   DECLARE_EXTENSION_FUNCTION("developerPrivate.updateProfileConfiguration",
-                             DEVELOPER_PRIVATE_UPDATEPROFILECONFIGURATION)
+                             DEVELOPERPRIVATE_UPDATEPROFILECONFIGURATION)
   DesktopAndroidDeveloperPrivateUpdateProfileConfigurationFunction();
 
  protected:
@@ -66,7 +66,7 @@ class DesktopAndroidDeveloperPrivateGetExtensionsInfoFunction
     : public ExtensionFunction {
  public:
   DECLARE_EXTENSION_FUNCTION("developerPrivate.getExtensionsInfo",
-                             DEVELOPER_PRIVATE_GETEXTENSIONSINFO)
+                             DEVELOPERPRIVATE_GETEXTENSIONSINFO)
   DesktopAndroidDeveloperPrivateGetExtensionsInfoFunction();
 
  protected:
@@ -74,23 +74,11 @@ class DesktopAndroidDeveloperPrivateGetExtensionsInfoFunction
   ResponseAction Run() override;
 };
 
-class DesktopAndroidDeveloperPrivateGetItemsInfoFunction
-    : public ExtensionFunction {
- public:
-  DECLARE_EXTENSION_FUNCTION("developerPrivate.getItemsInfo",
-                             DEVELOPER_PRIVATE_GETITEMSINFO)
-  DesktopAndroidDeveloperPrivateGetItemsInfoFunction();
-
- protected:
-  ~DesktopAndroidDeveloperPrivateGetItemsInfoFunction() override;
-  ResponseAction Run() override;
-};
-
 class DesktopAndroidDeveloperPrivateGetExtensionInfoFunction
     : public ExtensionFunction {
  public:
   DECLARE_EXTENSION_FUNCTION("developerPrivate.getExtensionInfo",
-                             DEVELOPER_PRIVATE_GETEXTENSIONINFO)
+                             DEVELOPERPRIVATE_GETEXTENSIONINFO)
   DesktopAndroidDeveloperPrivateGetExtensionInfoFunction();
 
  protected:
@@ -107,38 +95,38 @@ class DesktopAndroidDeveloperPrivateNoOpFunction : public ExtensionFunction {
   ResponseAction Run() override;
 };
 
-#define AFTERBIRD_DEVELOPER_PRIVATE_NOOP(ClassName, api_name, histogram_value) \
+#define AFTERBIRD_DEVELOPERPRIVATE_NOOP(ClassName, api_name, histogram_value) \
   class ClassName : public DesktopAndroidDeveloperPrivateNoOpFunction {       \
    public:                                                                    \
     DECLARE_EXTENSION_FUNCTION(api_name, histogram_value)                     \
   }
 
-AFTERBIRD_DEVELOPER_PRIVATE_NOOP(
+AFTERBIRD_DEVELOPERPRIVATE_NOOP(
     DesktopAndroidDeveloperPrivateAutoUpdateFunction,
     "developerPrivate.autoUpdate",
-    DEVELOPER_PRIVATE_AUTOUPDATE);
-AFTERBIRD_DEVELOPER_PRIVATE_NOOP(
+    DEVELOPERPRIVATE_AUTOUPDATE);
+AFTERBIRD_DEVELOPERPRIVATE_NOOP(
     DesktopAndroidDeveloperPrivateReloadFunction,
     "developerPrivate.reload",
-    DEVELOPER_PRIVATE_RELOAD);
-AFTERBIRD_DEVELOPER_PRIVATE_NOOP(
+    DEVELOPERPRIVATE_RELOAD);
+AFTERBIRD_DEVELOPERPRIVATE_NOOP(
     DesktopAndroidDeveloperPrivateDeleteExtensionErrorsFunction,
     "developerPrivate.deleteExtensionErrors",
-    DEVELOPER_PRIVATE_DELETEEXTENSIONERRORS);
-AFTERBIRD_DEVELOPER_PRIVATE_NOOP(
+    DEVELOPERPRIVATE_DELETEEXTENSIONERRORS);
+AFTERBIRD_DEVELOPERPRIVATE_NOOP(
     DesktopAndroidDeveloperPrivateGetUserSiteSettingsFunction,
     "developerPrivate.getUserSiteSettings",
-    DEVELOPER_PRIVATE_GETUSERSITESETTINGS);
-AFTERBIRD_DEVELOPER_PRIVATE_NOOP(
+    DEVELOPERPRIVATE_GETUSERSITESETTINGS);
+AFTERBIRD_DEVELOPERPRIVATE_NOOP(
     DesktopAndroidDeveloperPrivateGetUserAndExtensionSitesByEtldFunction,
     "developerPrivate.getUserAndExtensionSitesByEtld",
-    DEVELOPER_PRIVATE_GETUSERANDEXTENSIONSITESBYETLD);
-AFTERBIRD_DEVELOPER_PRIVATE_NOOP(
+    DEVELOPERPRIVATE_GETUSERANDEXTENSIONSITESBYETLD);
+AFTERBIRD_DEVELOPERPRIVATE_NOOP(
     DesktopAndroidDeveloperPrivateGetMatchingExtensionsForSiteFunction,
     "developerPrivate.getMatchingExtensionsForSite",
-    DEVELOPER_PRIVATE_GETMATCHINGEXTENSIONSFORSITE);
+    DEVELOPERPRIVATE_GETMATCHINGEXTENSIONSFORSITE);
 
-#undef AFTERBIRD_DEVELOPER_PRIVATE_NOOP
+#undef AFTERBIRD_DEVELOPERPRIVATE_NOOP
 
 }  // namespace extensions
 
