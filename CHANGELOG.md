@@ -2,6 +2,43 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.1.0 - 2026-04-17
+
+### Added
+
+- **Install extensions from the Chrome Web Store.** Navigating to a
+  `chromewebstore.google.com/detail/<slug>/<id>` URL (or the legacy
+  `chrome.google.com/webstore/detail/...` form) now auto-installs the
+  extension. The `ExtensionInstallNavigationThrottle` extracts the
+  extension ID, fetches the signed `.crx` from Google's update
+  endpoint, and pipes it through `DesktopAndroidExtensionInstaller`.
+- **Install from any `.crx` / `.user.js` link on the web.** Same
+  throttle catches direct navigations to extension payloads. The
+  download is cancelled on the navigation side and handled by a
+  self-owned `CrxDownloadInstaller` helper so it outlives the throttle.
+- **chrome://extensions list cards render.** `developerPrivate` now
+  emits `runtimeWarnings`; the upstream Polymer item used to throw on
+  `.length` of an undefined field and every row collapsed to `height=0`.
+
+### Changed
+
+- The `--load-extension` command-line hack is no longer required for
+  any end-user flow. Both the built-in Load Unpacked picker and the
+  new URL throttles cover first-time install, and persisted extensions
+  come back on restart.
+
+### Known Limitations
+
+- Extension icons on `chrome://extensions` render as broken images —
+  `chrome://extension-icon/` is not yet wired up on desktop-android.
+- Re-installing the same extension produces a new staging dir + new
+  unpacked-location ID, so the list accumulates duplicates. Desktop
+  Chrome dedups by public key; Afterbird doesn't yet.
+- The install flow is silent — no permission confirmation sheet.
+- Enable toggle / Remove / Details / Pack / dev-mode toggle on
+  `chrome://extensions` still need polish; some actions don't wire
+  through to the real extension system yet.
+
 ## v1.0.0 - 2026-04-17
 
 ### Added
