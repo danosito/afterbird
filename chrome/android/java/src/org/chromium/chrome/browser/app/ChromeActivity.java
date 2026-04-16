@@ -2435,6 +2435,24 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
             return true;
         }
 
+        // Afterbird: dynamic per-extension menu items. Tapping any of these
+        // opens the extension's browser_action popup URL in a new tab.
+        if (org.chromium.chrome.browser.extensions.ExtensionMenuManager
+                .isExtensionMenuItem(id)) {
+            String popupUrl =
+                    org.chromium.chrome.browser.extensions.ExtensionMenuManager
+                            .getPopupUrlForItem(id);
+            RecordUserAction.record("MobileMenuExtensionAction");
+            Tab activeTab = getActivityTab();
+            TabCreator tabCreator = getTabCreator(getCurrentTabModel().isIncognito());
+            if (popupUrl != null && !popupUrl.isEmpty() && tabCreator != null) {
+                tabCreator.createNewTab(
+                        new LoadUrlParams(popupUrl, PageTransition.LINK),
+                        TabLaunchType.FROM_CHROME_UI, activeTab);
+            }
+            return true;
+        }
+
         if (id == R.id.preferences_id) {
             SettingsNavigation settingsNavigation =
                     SettingsNavigationFactory.createSettingsNavigation();

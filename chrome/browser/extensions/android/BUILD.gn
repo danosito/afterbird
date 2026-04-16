@@ -1,0 +1,39 @@
+# Copyright 2026 The Afterbird Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/android/rules.gni")
+
+generate_jni("jni_headers") {
+  sources = [
+    "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/AppMenuBridge.java",
+  ]
+}
+
+source_set("android") {
+  sources = [ "app_menu_bridge.cc" ]
+
+  deps = [
+    ":jni_headers",
+    "//base",
+    "//chrome/browser/profiles:profile",
+    "//content/public/browser",
+    "//extensions/browser",
+    "//extensions/common",
+    "//url",
+  ]
+}
+
+android_library("java") {
+  sources = [
+    "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/AppMenuBridge.java",
+  ]
+
+  deps = [
+    "//chrome/browser/profiles/android:java",
+    "//content/public/android:content_java",
+    "//third_party/jni_zero:jni_zero_java",
+  ]
+
+  srcjar_deps = [ ":jni_headers" ]
+}

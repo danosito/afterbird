@@ -7828,6 +7828,8 @@ static_library("browser") {
     ]
     public_deps += [ "//extensions/browser" ]
     deps += [ "//extensions/browser/updater" ]
+    # Afterbird: Java->C++ bridge for per-extension menu entries.
+    deps += [ "//chrome/browser/extensions/android" ]
   }
 
   if (enable_library_cdms) {
