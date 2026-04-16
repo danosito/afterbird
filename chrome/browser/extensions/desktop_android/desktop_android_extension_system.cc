@@ -244,12 +244,12 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
       LOG(INFO) << "[Afterbird] --install-extension starting for "
                 << install_path;
       auto installer =
-          std::make_unique<ExtensionInstaller>(browser_context_);
+          std::make_unique<DesktopAndroidExtensionInstaller>(browser_context_);
       auto* installer_raw = installer.get();
       installer_raw->InstallFromFile(
           install_path,
           base::BindOnce(
-              [](std::unique_ptr<ExtensionInstaller> keep_alive,
+              [](std::unique_ptr<DesktopAndroidExtensionInstaller> keep_alive,
                  scoped_refptr<const Extension> ext, const std::string& err) {
                 if (ext) {
                   LOG(INFO) << "[Afterbird] --install-extension succeeded: "

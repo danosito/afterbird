@@ -98,32 +98,32 @@ int64_t ReadCrxBodyOffset(const base::FilePath& path) {
 
 }  // namespace
 
-struct ExtensionInstaller::UnpackedResult {
+struct DesktopAndroidExtensionInstaller::UnpackedResult {
   base::FilePath unpacked_root;
   std::string error;
 };
 
-ExtensionInstaller::ExtensionInstaller(content::BrowserContext* browser_context)
+DesktopAndroidExtensionInstaller::DesktopAndroidExtensionInstaller(content::BrowserContext* browser_context)
     : browser_context_(browser_context) {}
 
-ExtensionInstaller::~ExtensionInstaller() = default;
+DesktopAndroidExtensionInstaller::~DesktopAndroidExtensionInstaller() = default;
 
-void ExtensionInstaller::InstallFromFile(const base::FilePath& file_path,
+void DesktopAndroidExtensionInstaller::InstallFromFile(const base::FilePath& file_path,
                                          Callback cb) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   const base::FilePath install_root =
       browser_context_->GetPath().AppendASCII("Extensions");
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
-      base::BindOnce(&ExtensionInstaller::UnpackOnBlockingThread, file_path,
+      base::BindOnce(&DesktopAndroidExtensionInstaller::UnpackOnBlockingThread, file_path,
                      install_root),
-      base::BindOnce(&ExtensionInstaller::OnUnpacked,
+      base::BindOnce(&DesktopAndroidExtensionInstaller::OnUnpacked,
                      weak_factory_.GetWeakPtr(), std::move(cb)));
 }
 
 // static
-ExtensionInstaller::UnpackedResult
-ExtensionInstaller::UnpackOnBlockingThread(const base::FilePath& src,
+DesktopAndroidExtensionInstaller::UnpackedResult
+DesktopAndroidExtensionInstaller::UnpackOnBlockingThread(const base::FilePath& src,
                                            const base::FilePath& dest_root) {
   UnpackedResult result;
   if (!base::PathExists(src)) {
@@ -249,7 +249,7 @@ ExtensionInstaller::UnpackOnBlockingThread(const base::FilePath& src,
   return result;
 }
 
-void ExtensionInstaller::OnUnpacked(Callback cb, UnpackedResult result) {
+void DesktopAndroidExtensionInstaller::OnUnpacked(Callback cb, UnpackedResult result) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!result.error.empty() || result.unpacked_root.empty()) {
     std::move(cb).Run(nullptr, result.error);

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
-// ExtensionInstaller unpacks an extension payload (.zip, .crx, or an already-
+// DesktopAndroidExtensionInstaller unpacks an extension payload (.zip, .crx, or an already-
 // unpacked directory) to `<profile>/Extensions/<id>/<version>/` and hands the
 // resulting Extension back to DesktopAndroidExtensionSystem::AddExtension.
 //
@@ -16,7 +16,7 @@
 //
 // Usage (on the UI thread):
 //
-//   auto* installer = ExtensionInstaller::Get(browser_context);
+//   auto* installer = DesktopAndroidExtensionInstaller::Get(browser_context);
 //   installer->InstallFromFile(
 //       file_path,
 //       base::BindOnce([](scoped_refptr<const Extension> ext,
@@ -46,16 +46,16 @@ namespace extensions {
 
 class Extension;
 
-class ExtensionInstaller {
+class DesktopAndroidExtensionInstaller {
  public:
   using Callback =
       base::OnceCallback<void(scoped_refptr<const Extension> extension,
                               const std::string& error)>;
 
-  explicit ExtensionInstaller(content::BrowserContext* browser_context);
-  ExtensionInstaller(const ExtensionInstaller&) = delete;
-  ExtensionInstaller& operator=(const ExtensionInstaller&) = delete;
-  ~ExtensionInstaller();
+  explicit DesktopAndroidExtensionInstaller(content::BrowserContext* browser_context);
+  DesktopAndroidExtensionInstaller(const DesktopAndroidExtensionInstaller&) = delete;
+  DesktopAndroidExtensionInstaller& operator=(const DesktopAndroidExtensionInstaller&) = delete;
+  ~DesktopAndroidExtensionInstaller();
 
   // `file_path` may be:
   //   * an extension directory (with manifest.json in root)
@@ -75,7 +75,7 @@ class ExtensionInstaller {
 
   raw_ptr<content::BrowserContext> browser_context_;
 
-  base::WeakPtrFactory<ExtensionInstaller> weak_factory_{this};
+  base::WeakPtrFactory<DesktopAndroidExtensionInstaller> weak_factory_{this};
 };
 
 }  // namespace extensions
