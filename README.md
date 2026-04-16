@@ -1,8 +1,21 @@
 # Afterbird
 
-Afterbird is a continuation-focused fork of the Kiwi `src.next` codebase,
-bringing MV2 extension support to a modern Chromium baseline on Android.
-Repository owner/maintainer: `danosito` (`https://github.com/danosito`).
+Afterbird is a Chromium-based Android browser with MV2 extension support,
+inspired by and built on the work of [Kiwi Browser](https://github.com/kiwibrowser/src.next)
+by [Arnaud Granal](https://github.com/arnaudgranal).
+
+**Author & maintainer:** danosito — 
+[GitHub @danosito](https://github.com/danosito) · 
+[Telegram @danosito](https://t.me/danosito)
+
+**Package name:** `com.danosito.afterbird`
+
+**Credits:**
+- Original Kiwi Browser concept and implementation: Arnaud Granal and
+  [Kiwi Browser contributors](https://github.com/kiwibrowser/src.next/graphs/contributors).
+  Afterbird builds on Kiwi's pioneering work bringing Chrome extensions
+  to Android.
+- Chromium upstream: [The Chromium Authors](https://www.chromium.org/).
 
 ## Current Status
 

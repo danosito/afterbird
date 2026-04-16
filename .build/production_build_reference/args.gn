@@ -3,7 +3,9 @@ target_cpu = "arm64"
 is_debug = false
 is_java_debug = false
 
-android_channel = "dev"
+android_channel = "default"
+# Afterbird package identity.
+chrome_public_manifest_package = "com.danosito.afterbird"
 is_official_build = true
 is_component_build = false
 is_chrome_branded = false

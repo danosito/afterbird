@@ -30,3 +30,8 @@ jspm_packages/
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
+
+# Build artifacts
+artifacts/
+tests/artifacts/
+third_party/extensions/*.zip

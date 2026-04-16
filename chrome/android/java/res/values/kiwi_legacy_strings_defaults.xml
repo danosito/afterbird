@@ -5,4 +5,11 @@
     <string name="preferences_tabswitcher">Tab switcher</string>
     <!-- Afterbird: extensions menu -->
     <string name="main_menu_extensions">Extensions</string>
+    <!-- Afterbird: about page credits -->
+    <string name="afterbird_about_title">Afterbird</string>
+    <string name="afterbird_about_summary">A Chromium-based Android browser with MV2 extension support.</string>
+    <string name="afterbird_author_title">Author</string>
+    <string name="afterbird_author_summary">danosito · github.com/danosito · t.me/danosito</string>
+    <string name="afterbird_credits_title">Credits</string>
+    <string name="afterbird_credits_summary">Built on Kiwi Browser by Arnaud Granal and contributors. Powered by Chromium.</string>
 </resources>
