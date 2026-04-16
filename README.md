@@ -6,25 +6,29 @@ Repository owner/maintainer: `danosito` (`https://github.com/danosito`).
 
 ## Current Status
 
-**First working build with extension support available** — see [Releases](https://github.com/danosito/afterbird/releases).
+**v0.2 — Kiwi-style extensions menu** — see [Releases](https://github.com/danosito/afterbird/releases).
 
 - Browser launches on Android 15+ (emulator and physical devices)
-- `--load-extension=/path/to/ext` loads unpacked extensions at startup
+- `--load-extension=/path/to/ext[,/path2,...]` loads one or more unpacked extensions
 - uBlock Origin loads successfully; content scripts execute
 - DNR (declarativeNetRequest) based ad blocking works
+- Main app menu shows:
+  - "Extensions" entry (opens `chrome://extensions`)
+  - One entry per running extension (opens its popup URL in a new tab)
 - Built on Chromium 132.0.6834.83
 
-### Known Limitations in v0.1
+### Known Limitations in v0.2
 
-- Extension messaging API is stubbed (chrome.runtime.sendMessage drops silently) — extensions that rely on background ↔ content script messaging have limited functionality
-- Extension popups not available (no guest_view support yet)
-- `chrome://extensions` WebUI page is disabled (desktop-only string resources)
+- Extension popup pages open but JavaScript doesn't execute yet
+  (extensions/renderer pipeline for desktop-android not wired up)
+- Extension messaging API stubbed (`chrome.runtime.sendMessage` drops silently)
+- `chrome://extensions` WebUI page blank (desktop-only string resources)
 - No UI to enable/disable/manage extensions at runtime
 
 ### Roadmap
 
+- Fix JavaScript execution in extension pages (unblocks popups, content scripts)
 - Enable full MessageService for extension messaging
-- Implement Kiwi-style extensions menu with per-extension entries
 - Re-enable `chrome://extensions` WebUI with Android-compatible resources
 - DevTools parity on mobile
 

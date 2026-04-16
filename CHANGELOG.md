@@ -2,6 +2,37 @@
 
 All notable changes to this repository are documented in this file.
 
+## v0.2.0 - 2026-04-16
+
+### Added
+
+- **Kiwi-style Extensions menu**: main menu now has a static "Extensions"
+  entry (puzzle-piece icon) that opens `chrome://extensions`.
+- **Per-extension menu items**: each running extension gets its own entry
+  at the bottom of the main menu (e.g. "uBlock Origin"). Tapping it opens
+  the extension's browser_action `default_popup` URL in a new tab.
+- New `//chrome/browser/extensions/android` build module containing:
+  - `AppMenuBridge` JNI class that enumerates
+    `ExtensionRegistry::enabled_extensions()` for the menu
+  - `ExtensionMenuManager` Java helper that maps menu item ids to popup
+    URLs and parses the `name/id/popupUrl/icon/active` tuple from native
+- Multi-extension loading via comma-separated `--load-extension` paths.
+
+### Changed
+
+- `AppMenuPropertiesDelegateImpl.prepareMenu()` now appends extension
+  entries after standard items when on `PAGE_MENU` with a valid tab.
+- `ChromeActivity.onMenuOrKeyboardAction()` handles `R.id.extensions_id`
+  and the dynamic extension id range (`ExtensionMenuManager.MENU_ITEM_ID_BASE`).
+
+### Known Limitations (unchanged from v0.1)
+
+- Extension popup pages open but their JavaScript doesn't execute
+  (extensions/renderer pipeline needs work for desktop-android).
+- External `<script src>` in extension pages causes renderer crash.
+- MessageService still stubbed; `chrome.runtime.sendMessage` drops silently.
+- `chrome://extensions` WebUI page still blank (desktop string resources).
+
 ## v0.1.0 - 2026-04-16
 
 ### Added
