@@ -233,34 +233,53 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
     LOG(INFO) << "[Afterbird] Loaded extension: " << extension_path;
   }
 
-  // Afterbird v0.6 dev switch: --install-extension=<path> runs the same code
-  // path the UI will (zip/crx/dir → stage under profile/Extensions/ → register)
-  // so we can exercise the installer end-to-end without the Java file picker
-  // yet. Path can be a file OR a directory.
+  // Afterbird v0.6 dev switch: --install-extension=<path> exercises the
+  // installer end-to-end (zip/crx/dir → stage under profile/Extensions/ →
+  // register) without the Java file picker yet. Same fallback-file escape
+  // hatch as --load-extension above: non-debuggable Android builds don't
+  // read /data/local/tmp/chrome-command-line, so we also pick up paths from
+  // /data/local/tmp/afterbird-install-extension (one per line).
+  std::vector<base::FilePath> install_paths;
   if (command_line.HasSwitch("install-extension")) {
-    base::FilePath install_path(command_line.GetSwitchValueNative(
+    install_paths.emplace_back(command_line.GetSwitchValueNative(
         "install-extension"));
-    if (base::PathExists(install_path)) {
-      LOG(INFO) << "[Afterbird] --install-extension starting for "
-                << install_path;
-      auto installer =
-          std::make_unique<DesktopAndroidExtensionInstaller>(browser_context_);
-      auto* installer_raw = installer.get();
-      installer_raw->InstallFromFile(
-          install_path,
-          base::BindOnce(
-              [](std::unique_ptr<DesktopAndroidExtensionInstaller> keep_alive,
-                 scoped_refptr<const Extension> ext, const std::string& err) {
-                if (ext) {
-                  LOG(INFO) << "[Afterbird] --install-extension succeeded: "
-                            << ext->id() << " " << ext->name();
-                } else {
-                  LOG(WARNING) << "[Afterbird] --install-extension failed: "
-                               << err;
-                }
-              },
-              std::move(installer)));
+  }
+  const base::FilePath kInstallFallback(
+      FILE_PATH_LITERAL("/data/local/tmp/afterbird-install-extension"));
+  if (base::PathExists(kInstallFallback)) {
+    std::string contents;
+    if (base::ReadFileToString(kInstallFallback, &contents)) {
+      for (std::string_view line :
+           base::SplitStringPiece(contents, "\n", base::TRIM_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY)) {
+        install_paths.emplace_back(line);
+      }
     }
+    // Consume the file — we only want to install each payload once per launch.
+    base::DeleteFile(kInstallFallback);
+  }
+  for (const base::FilePath& install_path : install_paths) {
+    if (!base::PathExists(install_path)) {
+      LOG(WARNING) << "[Afterbird] install path missing: " << install_path;
+      continue;
+    }
+    LOG(INFO) << "[Afterbird] installing from " << install_path;
+    auto installer =
+        std::make_unique<DesktopAndroidExtensionInstaller>(browser_context_);
+    auto* installer_raw = installer.get();
+    installer_raw->InstallFromFile(
+        install_path,
+        base::BindOnce(
+            [](std::unique_ptr<DesktopAndroidExtensionInstaller> keep_alive,
+               scoped_refptr<const Extension> ext, const std::string& err) {
+              if (ext) {
+                LOG(INFO) << "[Afterbird] install succeeded: " << ext->id()
+                          << " " << ext->name();
+              } else {
+                LOG(WARNING) << "[Afterbird] install failed: " << err;
+              }
+            },
+            std::move(installer)));
   }
 
   ready_.Signal();
