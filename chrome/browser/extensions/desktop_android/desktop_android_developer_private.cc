@@ -8,9 +8,13 @@
 #include <string>
 #include <utility>
 
+#include "base/memory/scoped_refptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
+#include "content/public/browser/web_contents.h"
+#include "chrome/browser/extensions/android/extension_install_bridge.h"
 #include "chrome/browser/extensions/desktop_android/desktop_android_extension_system.h"
+#include "chrome/browser/extensions/desktop_android/extension_installer.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_context.h"
@@ -461,6 +465,62 @@ DesktopAndroidDeveloperPrivateReloadFunction::Run() {
 }
 
 // ----------------------------------------------------------------------------
+// developerPrivate.loadUnpacked — async file-picker driven install.
+//
+// chrome://extensions calls this when the user taps "Load unpacked". The
+// upstream handler pops a native directory picker and installs on success;
+// our Android picker can pick a .zip/.crx or a tree uri (treated as a
+// directory after extraction). The function stays alive across the
+// async picker roundtrip via AddRef / Release inside ExtensionFunction.
+
+DesktopAndroidDeveloperPrivateLoadUnpackedFunction::
+    DesktopAndroidDeveloperPrivateLoadUnpackedFunction() = default;
+DesktopAndroidDeveloperPrivateLoadUnpackedFunction::
+    ~DesktopAndroidDeveloperPrivateLoadUnpackedFunction() = default;
+
+ExtensionFunction::ResponseAction
+DesktopAndroidDeveloperPrivateLoadUnpackedFunction::Run() {
+  content::WebContents* web_contents = GetSenderWebContents();
+  if (!web_contents) {
+    return RespondNow(Error("Cannot show file picker — no WebContents"));
+  }
+  installer_ =
+      std::make_unique<DesktopAndroidExtensionInstaller>(browser_context());
+  android::ShowFilePicker(
+      web_contents,
+      base::BindOnce(
+          &DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnFilePicked,
+          base::WrapRefCounted(this)));
+  return RespondLater();
+}
+
+void DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnFilePicked(
+    const base::FilePath& path) {
+  if (path.empty()) {
+    Respond(Error("File selection was canceled."));
+    return;
+  }
+  installer_->InstallFromFile(
+      path,
+      base::BindOnce(
+          &DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnInstalled,
+          base::WrapRefCounted(this)));
+}
+
+void DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnInstalled(
+    scoped_refptr<const Extension> extension,
+    const std::string& error) {
+  if (!extension) {
+    // chrome://extensions expects a LoadError object on failure, but the
+    // simple text error path triggers the same toast + empty-state UI —
+    // good enough for v0.6 and keeps us out of LoadError's ~20-field dict.
+    Respond(Error(error.empty() ? "Extension failed to load" : error));
+    return;
+  }
+  Respond(NoArguments());
+}
+
+// ----------------------------------------------------------------------------
 
 void RegisterDesktopAndroidDeveloperPrivateFunctions(
     ExtensionFunctionRegistry* registry) {
@@ -479,6 +539,8 @@ void RegisterDesktopAndroidDeveloperPrivateFunctions(
   registry->RegisterFunction<
       DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction>();
   registry->RegisterFunction<DesktopAndroidDeveloperPrivateReloadFunction>();
+  registry->RegisterFunction<
+      DesktopAndroidDeveloperPrivateLoadUnpackedFunction>();
 
   // Stub functions.
   registry->RegisterFunction<DesktopAndroidDeveloperPrivateAutoUpdateFunction>();

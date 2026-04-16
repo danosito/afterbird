@@ -24,9 +24,18 @@
 #ifndef CHROME_BROWSER_EXTENSIONS_DESKTOP_ANDROID_DESKTOP_ANDROID_DEVELOPER_PRIVATE_H_
 #define CHROME_BROWSER_EXTENSIONS_DESKTOP_ANDROID_DESKTOP_ANDROID_DEVELOPER_PRIVATE_H_
 
+#include <memory>
+
+#include "base/files/file_path.h"
+#include "base/memory/scoped_refptr.h"
 #include "extensions/browser/extension_function.h"
 #include "extensions/browser/extension_function_histogram_value.h"
 #include "extensions/browser/extension_function_registry.h"
+
+namespace extensions {
+class DesktopAndroidExtensionInstaller;
+class Extension;
+}  // namespace extensions
 
 namespace extensions {
 
@@ -99,6 +108,30 @@ class DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction
   ~DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction()
       override;
   ResponseAction Run() override;
+};
+
+// developerPrivate.loadUnpacked — opens the Android file picker, streams the
+// selection into the app cache, and runs DesktopAndroidExtensionInstaller.
+// Responds asynchronously after either the user cancels, the install fails,
+// or the install succeeds. Takes a LoadUnpackedOptions dict but we ignore
+// failQuietly / populateError / retryGuid / useDraggedPath.
+class DesktopAndroidDeveloperPrivateLoadUnpackedFunction
+    : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("developerPrivate.loadUnpacked",
+                             DEVELOPERPRIVATE_LOADUNPACKED)
+  DesktopAndroidDeveloperPrivateLoadUnpackedFunction();
+
+ protected:
+  ~DesktopAndroidDeveloperPrivateLoadUnpackedFunction() override;
+  ResponseAction Run() override;
+
+ private:
+  void OnFilePicked(const base::FilePath& path);
+  void OnInstalled(scoped_refptr<const Extension> extension,
+                   const std::string& error);
+
+  std::unique_ptr<DesktopAndroidExtensionInstaller> installer_;
 };
 
 // chrome://extensions' toolbar calls these for Remove and toggle. Their
