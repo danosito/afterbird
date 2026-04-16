@@ -127,7 +127,6 @@ if (enable_desktop_android_extensions) {
     "events.json",
     "extension_types.json",
     "types.json",
-    "metrics_private.json",
     "declarative_net_request.idl",
   ]
 }
