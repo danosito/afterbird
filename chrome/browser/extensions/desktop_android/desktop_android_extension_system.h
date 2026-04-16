@@ -13,6 +13,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/one_shot_event.h"
+#include "extensions/browser/app_sorting.h"
 #include "extensions/browser/extension_registrar.h"
 #include "extensions/browser/extension_system.h"
 
@@ -133,6 +134,8 @@ class DesktopAndroidExtensionSystem : public ExtensionSystem {
 
   std::unique_ptr<ExtensionRegistrar::Delegate> registrar_delegate_;
   std::unique_ptr<ExtensionRegistrar> registrar_;
+  // Afterbird: lazily created; see ExtensionPrefs::OnExtensionUninstalled.
+  std::unique_ptr<AppSorting> app_sorting_;
 
   // Signaled when the extension system has completed its startup tasks.
   base::OneShotEvent ready_;

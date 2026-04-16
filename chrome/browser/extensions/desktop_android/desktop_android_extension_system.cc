@@ -273,7 +273,14 @@ QuotaService* DesktopAndroidExtensionSystem::quota_service() {
 }
 
 AppSorting* DesktopAndroidExtensionSystem::app_sorting() {
-  return nullptr;
+  // Afterbird: ExtensionPrefs::OnExtensionUninstalled unconditionally calls
+  // app_sorting()->ClearOrdinals(), so we can't return nullptr. Hand out a
+  // lazily-constructed NullAppSorting so uninstall succeeds instead of
+  // SIGSEGV'ing.
+  if (!app_sorting_) {
+    app_sorting_ = std::make_unique<NullAppSorting>();
+  }
+  return app_sorting_.get();
 }
 
 const base::OneShotEvent& DesktopAndroidExtensionSystem::ready() const {
