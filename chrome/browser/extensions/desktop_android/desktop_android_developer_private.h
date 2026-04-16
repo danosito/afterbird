@@ -95,10 +95,16 @@ class DesktopAndroidDeveloperPrivateNoOpFunction : public ExtensionFunction {
   ResponseAction Run() override;
 };
 
+// chromium-style lints require ref-counted classes to declare an explicit
+// protected/private destructor, so the NOOP macro expands to a full class with
+// =default dtor rather than the one-liner pattern.
 #define AFTERBIRD_DEVELOPERPRIVATE_NOOP(ClassName, api_name, histogram_value) \
   class ClassName : public DesktopAndroidDeveloperPrivateNoOpFunction {       \
    public:                                                                    \
     DECLARE_EXTENSION_FUNCTION(api_name, histogram_value)                     \
+                                                                              \
+   protected:                                                                 \
+    ~ClassName() override = default;                                          \
   }
 
 AFTERBIRD_DEVELOPERPRIVATE_NOOP(
