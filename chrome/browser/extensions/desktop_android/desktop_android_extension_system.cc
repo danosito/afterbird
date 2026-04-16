@@ -172,6 +172,51 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
   quota_service_ = std::make_unique<QuotaService>();
   user_script_manager_ = std::make_unique<UserScriptManager>(browser_context_);
 
+  // Afterbird: Re-register extensions previously installed via the picker /
+  // --install-extension path. These live under <profile>/Extensions/ and their
+  // id + path + location are persisted in ExtensionPrefs by AddExtension().
+  // Without this, staged extensions disappear on every restart.
+  ExtensionPrefs* prefs = ExtensionPrefs::Get(browser_context_);
+  if (prefs) {
+    ExtensionsInfo persisted = prefs->GetInstalledExtensionsInfo();
+    LOG(INFO) << "[Afterbird] reloading " << persisted.size()
+              << " persisted extension(s)";
+    for (const ExtensionInfo& info : persisted) {
+      if (!base::PathExists(info.extension_path)) {
+        LOG(WARNING) << "[Afterbird] persisted extension path missing, "
+                     << "dropping from prefs: " << info.extension_path
+                     << " id=" << info.extension_id;
+        prefs->OnExtensionUninstalled(info.extension_id,
+                                      info.extension_location,
+                                      /*external_uninstall=*/false);
+        continue;
+      }
+      std::string error;
+      scoped_refptr<Extension> extension = file_util::LoadExtension(
+          info.extension_path, info.extension_location, Extension::NO_FLAGS,
+          &error);
+      if (!extension) {
+        LOG(WARNING) << "[Afterbird] failed to reload persisted extension "
+                     << info.extension_id << ": " << error;
+        continue;
+      }
+      // Re-index DNR rules; InstallIndexHelper is idempotent on the ruleset
+      // dir, and this keeps behaviour identical to fresh-install AddExtension.
+      base::expected<base::Value::Dict, std::string> index_result =
+          declarative_net_request::InstallIndexHelper::
+              IndexAndPersistRulesOnInstall(*extension);
+      if (!index_result.has_value()) {
+        LOG(WARNING) << "[Afterbird] DNR reindex failed for "
+                     << info.extension_id << ": " << index_result.error();
+      }
+      // ExtensionRegistrar::AddExtension honours the disabled-bit stored in
+      // prefs, so a previously-disabled extension stays disabled.
+      registrar_->AddExtension(std::move(extension));
+      LOG(INFO) << "[Afterbird] reloaded persisted extension "
+                << info.extension_id;
+    }
+  }
+
   // Afterbird: Load extensions from --load-extension command line flag.
   // This is normally handled by ExtensionService which is not available
   // in desktop-android builds.
