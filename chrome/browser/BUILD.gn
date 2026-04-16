@@ -7839,6 +7839,11 @@ static_library("browser") {
     deps += [ "//chrome/browser/extensions/android" ]
     # Afterbird v0.6: zip extraction for .zip/.crx install.
     deps += [ "//third_party/zlib/google:zip" ]
+    # Afterbird v0.7: real MessageService so chrome.runtime.sendMessage
+    # actually routes between extension frames. The upstream source_set
+    # is gated on enable_extensions; the overlay relaxes that assert to
+    # also permit enable_desktop_android_extensions.
+    deps += [ "//extensions/browser/api/messaging" ]
   }
 
   if (enable_library_cdms) {
