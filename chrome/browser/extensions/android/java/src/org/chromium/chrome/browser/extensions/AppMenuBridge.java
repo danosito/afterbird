@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.extensions;
 
 import org.jni_zero.JNINamespace;
+import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
 
 import org.chromium.chrome.browser.profiles.Profile;
@@ -66,11 +67,19 @@ public class AppMenuBridge {
 
     @NativeMethods
     public interface Natives {
-        String getRunningExtensions(Profile profile, WebContents webContents);
+        @JniType("std::string")
+        String getRunningExtensions(
+                @JniType("Profile*") Profile profile,
+                @JniType("content::WebContents*") WebContents webContents);
 
-        void callExtension(Profile profile, WebContents webContents, String extensionId);
+        void callExtension(
+                @JniType("Profile*") Profile profile,
+                @JniType("content::WebContents*") WebContents webContents,
+                @JniType("std::string") String extensionId);
 
         void grantExtensionActiveTab(
-                Profile profile, WebContents webContents, String extensionId);
+                @JniType("Profile*") Profile profile,
+                @JniType("content::WebContents*") WebContents webContents,
+                @JniType("std::string") String extensionId);
     }
 }

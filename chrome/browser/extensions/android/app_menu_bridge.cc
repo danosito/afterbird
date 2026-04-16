@@ -57,21 +57,19 @@ std::string GetPopupUrlForExtension(const Extension* extension) {
 
 }  // namespace
 
-// static jstring JNI_AppMenuBridge_GetRunningExtensions(JNIEnv*, Profile*,
-//                                                      WebContents*).
-static base::android::ScopedJavaLocalRef<jstring>
-JNI_AppMenuBridge_GetRunningExtensions(
+// @JniType("std::string") return from Java → return std::string directly.
+static std::string JNI_AppMenuBridge_GetRunningExtensions(
     JNIEnv* env,
     Profile* profile,
     content::WebContents* web_contents) {
   std::string result;
   if (!profile) {
-    return base::android::ConvertUTF8ToJavaString(env, result);
+    return result;
   }
 
   ExtensionRegistry* registry = ExtensionRegistry::Get(profile);
   if (!registry) {
-    return base::android::ConvertUTF8ToJavaString(env, result);
+    return result;
   }
 
   const ExtensionSet& enabled = registry->enabled_extensions();
@@ -104,7 +102,7 @@ JNI_AppMenuBridge_GetRunningExtensions(
     result += "active";
   }
 
-  return base::android::ConvertUTF8ToJavaString(env, result);
+  return result;
 }
 
 static void JNI_AppMenuBridge_CallExtension(
