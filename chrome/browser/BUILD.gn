@@ -7832,6 +7832,10 @@ static_library("browser") {
       # developerPrivate.loadUnpacked and the webstore URL interceptor.
       "extensions/desktop_android/extension_installer.cc",
       "extensions/desktop_android/extension_installer.h",
+      # Afterbird v1.1: NavigationThrottle that turns direct .crx /
+      # .user.js navigations into an install.
+      "extensions/desktop_android/extension_install_navigation_throttle.cc",
+      "extensions/desktop_android/extension_install_navigation_throttle.h",
     ]
     public_deps += [ "//extensions/browser" ]
     deps += [ "//extensions/browser/updater" ]
