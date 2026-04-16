@@ -2,6 +2,37 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.0.0 - 2026-04-17
+
+### Added
+
+- **Full extension messaging.** Enabled `extensions::MessageService` on
+  `enable_desktop_android_extensions` builds — `chrome.runtime.sendMessage`
+  and port-based `chrome.runtime.connect` now actually route between
+  extension frames. Before this, every message was silently dropped by
+  `ExtensionFrameHost::OpenChannelToExtension`, which kept dashboards and
+  popups (uBlock Origin, etc.) blank even though their JS ran.
+  - Relaxed the assert in `extensions/browser/api/messaging/BUILD.gn` to
+    accept `enable_desktop_android_extensions`.
+  - Shimmed `WebViewGuest::FromRenderFrameHost` in `message_service.cc`
+    since there are no `<webview>` frames on Android.
+  - `DesktopAndroidExtensionsBrowserClient` now installs a subclassed
+    `ExtensionsAPIClient` that returns a default `MessagingDelegate`
+    (the base class returns null and `MessageService` dereferences it
+    on first message → crash fixed).
+  - `DesktopAndroidExtensionSystem::InitForRegularProfile` forces the
+    `MessageService` factory to materialise so `MessageServiceApi` is
+    bound before any extension frame opens a channel.
+
+### Known Limitations
+
+- End-to-end extension workflows beyond uBlock Origin are **not yet
+  tested** in this release. Expect rough edges with extensions that
+  rely on `chrome.management`, background service workers, or APIs
+  still stubbed in the desktop-android extension system.
+- Chrome Web Store install flow and install-from-page (`.crx` link
+  clicks) are still deferred to a follow-up.
+
 ## v0.6.0 - 2026-04-17
 
 ### Added

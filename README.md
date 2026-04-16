@@ -16,7 +16,7 @@ Grab the latest APK from
 [Releases](https://github.com/danosito/afterbird/releases) and install it.
 Android 15+ is supported (emulator and physical devices).
 
-## What works in v0.6
+## What works in v1.0
 
 - `chrome://extensions` renders the real Chromium extensions manager
   (Polymer WebUI).
@@ -31,22 +31,31 @@ Android 15+ is supported (emulator and physical devices).
   system walks `ExtensionPrefs::GetInstalledExtensionsInfo()` and
   re-registers every previously-installed extension. Prefs whose staging
   directory was deleted out-of-band are pruned.
+- **Extension messaging.** `chrome.runtime.sendMessage` and
+  `chrome.runtime.connect` port-based channels route between extension
+  frames, so dashboards and popups (e.g. uBlock Origin Settings) render
+  populated instead of blank.
 - DNR (declarativeNetRequest) based ad blocking via uBlock Origin.
 - `--load-extension=/path[,/path2,...]` still works as a dev affordance.
 - Main app menu exposes `Extensions` plus one entry per running extension.
 
-Verified end-to-end on device: install uBlock Origin from `.zip` via the
-picker, toggle it off/on, remove it, restart — remaining extensions come
-back.
+Smoke-tested on device with uBlock Origin: install from `.zip` via the
+picker, toggle off/on, remove, restart — remaining extensions come back,
+uBO Settings panel renders. **Extensions beyond uBO are not yet
+validated** — expect rough edges.
 
 ## Known limitations
 
-- **No Chrome Web Store install flow yet** — planned for v0.7.
-- **JS execution inside `chrome-extension://*` pages is partial.** uBO's
-  background page loads but its popup/dashboard render blank. Content
-  scripts and DNR rules still run.
+- **Broader extension testing is pending.** Only uBlock Origin has been
+  exercised end-to-end in v1.0. Other extensions may hit stubs in the
+  desktop-android extension system or missing `chrome.*` APIs.
+- **No Chrome Web Store install flow yet.** Install-from-page (clicking
+  a `.crx` link / opening a store detail URL) is also not wired —
+  planned for the next release.
 - `chrome.management` API is not wired up.
-- Extension messaging (`chrome.runtime.sendMessage`) still stubbed.
+- Some extension APIs (`browserAction.setIcon`, `tabs.query`, etc.) log
+  `Unknown Extension API` errors; extensions that depend on them may
+  degrade silently.
 
 ## Repository layout and build
 
