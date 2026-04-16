@@ -171,6 +171,10 @@ build_webui("build") {
 
   webui_context_type = "trusted"
   optimize = optimize_webui
+  # Disable rollup on Android - managed_footnote.js is desktop-only
+  if (is_android) {
+    optimize = false
+  }
   if (optimize) {
     optimize_webui_host = "extensions"
     optimize_webui_in_files = [ "extensions.js" ]
