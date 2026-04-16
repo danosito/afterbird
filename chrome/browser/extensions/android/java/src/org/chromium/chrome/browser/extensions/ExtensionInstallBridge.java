@@ -42,18 +42,18 @@ public class ExtensionInstallBridge {
     private ExtensionInstallBridge() {}
 
     @CalledByNative
-    public static void showFilePicker(long nativeCallback, WebContents webContents) {
+    public static void showFilePicker(long nativeExtensionInstallCallback, WebContents webContents) {
         WindowAndroid window =
                 webContents != null ? webContents.getTopLevelNativeWindow() : null;
         if (window == null) {
             Log.w(TAG, "no WindowAndroid, cannot show picker");
-            ExtensionInstallBridgeJni.get().onFilePicked(nativeCallback, "");
+            ExtensionInstallBridgeJni.get().onFilePicked(nativeExtensionInstallCallback, "");
             return;
         }
         Activity activity = window.getActivity().get();
         if (activity == null) {
             Log.w(TAG, "no Activity, cannot show picker");
-            ExtensionInstallBridgeJni.get().onFilePicked(nativeCallback, "");
+            ExtensionInstallBridgeJni.get().onFilePicked(nativeExtensionInstallCallback, "");
             return;
         }
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -70,7 +70,7 @@ public class ExtensionInstallBridge {
             public void onIntentCompleted(int resultCode, Intent data) {
                 if (resultCode != Activity.RESULT_OK || data == null
                         || data.getData() == null) {
-                    ExtensionInstallBridgeJni.get().onFilePicked(nativeCallback, "");
+                    ExtensionInstallBridgeJni.get().onFilePicked(nativeExtensionInstallCallback, "");
                     return;
                 }
                 final Uri uri = data.getData();
@@ -83,7 +83,7 @@ public class ExtensionInstallBridge {
                     @Override
                     protected void onPostExecute(String path) {
                         ExtensionInstallBridgeJni.get().onFilePicked(
-                                nativeCallback, path == null ? "" : path);
+                                nativeExtensionInstallCallback, path == null ? "" : path);
                     }
                 }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             }
@@ -96,7 +96,7 @@ public class ExtensionInstallBridge {
         boolean launched = window.showIntent(intent, cb, null);
         if (!launched) {
             Log.w(TAG, "showIntent returned false — no Activity for picker");
-            ExtensionInstallBridgeJni.get().onFilePicked(nativeCallback, "");
+            ExtensionInstallBridgeJni.get().onFilePicked(nativeExtensionInstallCallback, "");
         }
     }
 
@@ -152,6 +152,6 @@ public class ExtensionInstallBridge {
 
     @NativeMethods
     public interface Natives {
-        void onFilePicked(long nativeCallback, String pathOrEmpty);
+        void onFilePicked(long nativeExtensionInstallCallback, String pathOrEmpty);
     }
 }

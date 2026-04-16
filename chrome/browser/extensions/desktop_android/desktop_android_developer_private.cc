@@ -486,7 +486,7 @@ DesktopAndroidDeveloperPrivateLoadUnpackedFunction::Run() {
   }
   installer_ =
       std::make_unique<DesktopAndroidExtensionInstaller>(browser_context());
-  android::ShowFilePicker(
+  ExtensionInstallCallback::Show(
       web_contents,
       base::BindOnce(
           &DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnFilePicked,
