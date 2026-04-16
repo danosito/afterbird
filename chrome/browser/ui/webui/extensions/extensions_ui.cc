@@ -371,6 +371,9 @@ content::WebUIDataSource* CreateAndAddExtensionsSource(Profile* profile,
       {"mv2DeprecationUnsupportedExtensionOffText",
        IDS_EXTENSIONS_MV2_DEPRECATION_UNSUPPORTED_EXTENSION_OFF_TEXT},
 #endif
+      // Afterbird: non-IDS fallback slots are registered below via
+      // source->AddString() when ENABLE_EXTENSIONS is off, so the HTML
+      // template's $i18n{mv2Deprecation*} lookups don't CHECK-fail.
       {"shortcutNotSet", IDS_EXTENSIONS_SHORTCUT_NOT_SET},
       {"shortcutScopeGlobal", IDS_EXTENSIONS_SHORTCUT_SCOPE_GLOBAL},
       {"shortcutScopeLabel", IDS_EXTENSIONS_SHORTCUT_SCOPE_LABEL},
@@ -426,6 +429,28 @@ content::WebUIDataSource* CreateAndAddExtensionsSource(Profile* profile,
   };
   source->AddLocalizedStrings(kLocalizedStrings);
 
+  // Afterbird: the HTML template unconditionally references these keys, but
+  // their IDS_* constants only exist when ENABLE_EXTENSIONS is on. Provide
+  // empty fallbacks here so $i18n resolution doesn't CHECK-fail when we
+  // build desktop-android (enable_extensions=false,
+  // enable_desktop_android_extensions=true).
+#if !BUILDFLAG(ENABLE_EXTENSIONS)
+  source->AddString("mv2DeprecationPanelTitle", "");
+  source->AddString("mv2DeprecationPanelDismissButton", "");
+  source->AddString("mv2DeprecationPanelExtensionActionMenuLabel", "");
+  source->AddString("mv2DeprecationPanelFindAlternativeButton", "");
+  source->AddString("mv2DeprecationPanelFindAlternativeButtonAccLabel", "");
+  source->AddString("mv2DeprecationPanelRemoveButtonAccLabel", "");
+  source->AddString("mv2DeprecationPanelKeepForNowButton", "");
+  source->AddString("mv2DeprecationPanelRemoveExtensionButton", "");
+  source->AddString("mv2DeprecationMessageDisabledHeader", "");
+  source->AddString("mv2DeprecationMessageDisabledSubtitle", "");
+  source->AddString("mv2DeprecationMessageRemoveButton", "");
+  source->AddString("mv2DeprecationMessageWarningHeader", "");
+  source->AddString("mv2DeprecationMessageWarningSubtitle", "");
+  source->AddString("mv2DeprecationUnsupportedExtensionOffText", "");
+#endif
+
   // Add localized generic strings that need '&' to be removed from them.
   webui::AddLocalizedString(source, "edit", IDS_EDIT);
 
@@ -461,6 +486,12 @@ content::WebUIDataSource* CreateAndAddExtensionsSource(Profile* profile,
   source->AddString(
       "hostPermissionsLearnMoreLink",
       extension_permissions_constants::kRuntimeHostPermissionsHelpURL);
+#else
+  // Afterbird: the template HTML always references this key; provide an
+  // empty fallback so $i18n{hostPermissionsLearnMoreLink} resolution doesn't
+  // CHECK-fail on desktop-android where the real URL constants aren't
+  // compiled.
+  source->AddString("hostPermissionsLearnMoreLink", "");
 #endif
   source->AddBoolean(kInDevModeKey, in_dev_mode);
   source->AddBoolean(kShowActivityLogKey,
@@ -484,6 +515,9 @@ content::WebUIDataSource* CreateAndAddExtensionsSource(Profile* profile,
   source->AddString(
       "showAccessRequestsInToolbarLearnMoreLink",
       extension_permissions_constants::kShowAccessRequestsInToolbarHelpURL);
+#else
+  // Afterbird: see note above; empty fallback to avoid $i18n CHECK failure.
+  source->AddString("showAccessRequestsInToolbarLearnMoreLink", "");
 #endif
   source->AddBoolean(
       "enableUserPermittedSites",
