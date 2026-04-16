@@ -29,9 +29,11 @@ source_set("android") {
 android_library("java") {
   sources = [
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/AppMenuBridge.java",
+    "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionMenuManager.java",
   ]
 
   deps = [
+    "//base:base_java",
     "//chrome/browser/profiles/android:java",
     "//content/public/android:content_java",
     "//third_party/jni_zero:jni_zero_java",
