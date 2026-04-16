@@ -976,12 +976,13 @@ static_library("ui") {
       "//url",
     ]
 
-    if (enable_desktop_android_extensions) {
-      sources += [
-        "webui/extensions/extensions_ui.cc",
-        "webui/extensions/extensions_ui.h",
-      ]
-    }
+    # TODO: Enable extensions WebUI when string resources are available on Android
+    # if (enable_desktop_android_extensions) {
+    #   sources += [
+    #     "webui/extensions/extensions_ui.cc",
+    #     "webui/extensions/extensions_ui.h",
+    #   ]
+    # }
 
     # TODO(b/335257259): Resolve circular deps.
     # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
