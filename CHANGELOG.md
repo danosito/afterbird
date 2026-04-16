@@ -2,6 +2,52 @@
 
 All notable changes to this repository are documented in this file.
 
+## v0.6.0 - 2026-04-17
+
+### Added
+
+- **Runtime extension management on `chrome://extensions`**: enable /
+  disable / remove / reload buttons now drive the real extension system.
+  Wired through `developerPrivate.updateExtensionConfiguration`,
+  `removeMultipleExtensions`, and `reload` against
+  `DesktopAndroidExtensionSystem` / `ExtensionRegistrar`.
+- **`DesktopAndroidExtensionInstaller::InstallFromFile`**: unpacks
+  `.zip`, `.crx` (strips the CRX3 header), or a plain directory into
+  `<profile>/Extensions/afterbird_install_<rand>/`, then registers the
+  unpacked tree via `AddExtension`. Also backs the
+  `--install-extension=/path` command-line flag and a fallback
+  install-list file for non-debug builds.
+- **Load Unpacked file picker**: new Java `ExtensionInstallBridge` +
+  JNI plumbing pops the Android `ACTION_OPEN_DOCUMENT` picker, streams
+  the `content://` URI into the app cache, and hands the staged path to
+  C++ `ExtensionInstallCallback::OnFilePicked`. Wired to
+  `developerPrivate.loadUnpacked({})` so the Load Unpacked button on
+  `chrome://extensions` works on Android.
+- **Persistence across restart**:
+  `DesktopAndroidExtensionSystem::InitForRegularProfile` now walks
+  `ExtensionPrefs::GetInstalledExtensionsInfo()` and re-registers every
+  previously-installed extension on startup. Prefs entries whose staging
+  directory was deleted out-of-band are pruned.
+
+### Changed
+
+- `DesktopAndroidExtensionSystem` returns a `NullAppSorting` so uninstall
+  flows no longer SIGSEGV when the extensions WebUI asks for ordering.
+- Uninstall loop now snapshots extension ids before iterating and uses
+  the real install location instead of a synthetic placeholder.
+
+### Known Limitations
+
+- Chrome Web Store install flow is not implemented yet (planned for
+  v0.7). Installs go through the picker or the `--install-extension`
+  flag.
+- JavaScript execution inside `chrome-extension://*` pages is still
+  partial: uBO's background page loads but its popup/dashboard render
+  blank. Content scripts and DNR rules run.
+- `chrome.management` API is not wired up.
+- Extension messaging (`chrome.runtime.sendMessage`) remains stubbed
+  (unchanged from prior releases).
+
 ## v0.2.0 - 2026-04-16
 
 ### Added

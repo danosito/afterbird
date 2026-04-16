@@ -8,14 +8,23 @@
 #include <string>
 #include <utility>
 
+#include "base/memory/scoped_refptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
+#include "content/public/browser/web_contents.h"
+#include "chrome/browser/extensions/android/extension_install_bridge.h"
+#include "chrome/browser/extensions/desktop_android/desktop_android_extension_system.h"
+#include "chrome/browser/extensions/desktop_android/extension_installer.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_context.h"
+#include "extensions/browser/disable_reason.h"
 #include "extensions/browser/extension_function_registry.h"
 #include "extensions/browser/extension_prefs.h"
+#include "extensions/browser/extension_registrar.h"
 #include "extensions/browser/extension_registry.h"
+#include "extensions/browser/extension_system.h"
+#include "extensions/browser/unloaded_extension_reason.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_handlers/icons_handler.h"
@@ -330,6 +339,188 @@ DesktopAndroidDeveloperPrivateNoOpFunction::Run() {
 }
 
 // ----------------------------------------------------------------------------
+// Extension management: updateExtensionConfiguration (toggle),
+// removeMultipleExtensions (uninstall), reload.
+//
+// These delegate to ExtensionRegistrar owned by DesktopAndroidExtensionSystem.
+// ExtensionRegistrar lives in extensions/browser and is not gated on
+// ENABLE_EXTENSIONS, so it links cleanly in our desktop-android build.
+// ----------------------------------------------------------------------------
+
+namespace {
+
+ExtensionRegistrar* GetRegistrar(content::BrowserContext* context) {
+  auto* system = static_cast<DesktopAndroidExtensionSystem*>(
+      ExtensionSystem::Get(context));
+  return system ? system->extension_registrar() : nullptr;
+}
+
+}  // namespace
+
+DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction::
+    DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction() =
+        default;
+DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction::
+    ~DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction() =
+        default;
+
+ExtensionFunction::ResponseAction
+DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction::Run() {
+  if (args().empty() || !args()[0].is_dict()) {
+    return RespondNow(Error("Expected a config dict"));
+  }
+  const base::Value::Dict& update = args()[0].GetDict();
+  const std::string* id = update.FindString("extensionId");
+  if (!id || id->empty()) {
+    return RespondNow(Error("extensionId is required"));
+  }
+  ExtensionRegistrar* registrar = GetRegistrar(browser_context());
+  if (!registrar) {
+    return RespondNow(Error("ExtensionRegistrar unavailable"));
+  }
+
+  if (std::optional<bool> enabled = update.FindBool("isEnabled")) {
+    if (*enabled) {
+      registrar->EnableExtension(*id);
+    } else {
+      registrar->DisableExtension(
+          *id, /*disable_reasons=*/disable_reason::DISABLE_USER_ACTION);
+    }
+  }
+
+  // Other flags (allowIncognito, fileAccess, hostAccess, showAccessRequests,
+  // pinnedToToolbar, collectsErrors, ...) are silently accepted as no-ops —
+  // desktop-android doesn't support them and the JS expects the promise to
+  // resolve regardless.
+
+  return RespondNow(NoArguments());
+}
+
+// ----------------------------------------------------------------------------
+
+DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction::
+    DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction() = default;
+DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction::
+    ~DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction() =
+        default;
+
+ExtensionFunction::ResponseAction
+DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction::Run() {
+  if (args().empty() || !args()[0].is_list()) {
+    return RespondNow(Error("Expected an array of extension ids"));
+  }
+  ExtensionRegistrar* registrar = GetRegistrar(browser_context());
+  if (!registrar) {
+    return RespondNow(Error("ExtensionRegistrar unavailable"));
+  }
+  // Collect the ids first — registrar->RemoveExtension() may invalidate the
+  // Extension* we'd otherwise need to ask about its manifest location.
+  std::vector<ExtensionId> ids;
+  for (const base::Value& id_val : args()[0].GetList()) {
+    if (id_val.is_string()) {
+      ids.push_back(id_val.GetString());
+    }
+  }
+  ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context());
+  ExtensionPrefs* prefs = ExtensionPrefs::Get(browser_context());
+  for (const ExtensionId& id : ids) {
+    // Capture the location before we remove the extension from the registry
+    // (afterwards GetInstalledExtension returns nullptr).
+    mojom::ManifestLocation location = mojom::ManifestLocation::kUnpacked;
+    if (const Extension* ext = registry->GetInstalledExtension(id)) {
+      location = ext->location();
+    }
+    registrar->RemoveExtension(id, UnloadedExtensionReason::UNINSTALL);
+    if (prefs) {
+      prefs->OnExtensionUninstalled(id, location,
+                                    /*external_uninstall=*/false);
+    }
+  }
+  return RespondNow(NoArguments());
+}
+
+// ----------------------------------------------------------------------------
+
+DesktopAndroidDeveloperPrivateReloadFunction::
+    DesktopAndroidDeveloperPrivateReloadFunction() = default;
+DesktopAndroidDeveloperPrivateReloadFunction::
+    ~DesktopAndroidDeveloperPrivateReloadFunction() = default;
+
+ExtensionFunction::ResponseAction
+DesktopAndroidDeveloperPrivateReloadFunction::Run() {
+  if (args().empty() || !args()[0].is_dict()) {
+    return RespondNow(Error("Expected a reload options dict"));
+  }
+  const base::Value::Dict& opts = args()[0].GetDict();
+  const std::string* id = opts.FindString("extensionId");
+  if (!id || id->empty()) {
+    return RespondNow(Error("extensionId is required"));
+  }
+  ExtensionRegistrar* registrar = GetRegistrar(browser_context());
+  if (!registrar) {
+    return RespondNow(Error("ExtensionRegistrar unavailable"));
+  }
+  registrar->ReloadExtension(*id, ExtensionRegistrar::LoadErrorBehavior::kNoisy);
+  return RespondNow(NoArguments());
+}
+
+// ----------------------------------------------------------------------------
+// developerPrivate.loadUnpacked — async file-picker driven install.
+//
+// chrome://extensions calls this when the user taps "Load unpacked". The
+// upstream handler pops a native directory picker and installs on success;
+// our Android picker can pick a .zip/.crx or a tree uri (treated as a
+// directory after extraction). The function stays alive across the
+// async picker roundtrip via AddRef / Release inside ExtensionFunction.
+
+DesktopAndroidDeveloperPrivateLoadUnpackedFunction::
+    DesktopAndroidDeveloperPrivateLoadUnpackedFunction() = default;
+DesktopAndroidDeveloperPrivateLoadUnpackedFunction::
+    ~DesktopAndroidDeveloperPrivateLoadUnpackedFunction() = default;
+
+ExtensionFunction::ResponseAction
+DesktopAndroidDeveloperPrivateLoadUnpackedFunction::Run() {
+  content::WebContents* web_contents = GetSenderWebContents();
+  if (!web_contents) {
+    return RespondNow(Error("Cannot show file picker — no WebContents"));
+  }
+  installer_ =
+      std::make_unique<DesktopAndroidExtensionInstaller>(browser_context());
+  ExtensionInstallCallback::Show(
+      web_contents,
+      base::BindOnce(
+          &DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnFilePicked,
+          base::WrapRefCounted(this)));
+  return RespondLater();
+}
+
+void DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnFilePicked(
+    const base::FilePath& path) {
+  if (path.empty()) {
+    Respond(Error("File selection was canceled."));
+    return;
+  }
+  installer_->InstallFromFile(
+      path,
+      base::BindOnce(
+          &DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnInstalled,
+          base::WrapRefCounted(this)));
+}
+
+void DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnInstalled(
+    scoped_refptr<const Extension> extension,
+    const std::string& error) {
+  if (!extension) {
+    // chrome://extensions expects a LoadError object on failure, but the
+    // simple text error path triggers the same toast + empty-state UI —
+    // good enough for v0.6 and keeps us out of LoadError's ~20-field dict.
+    Respond(Error(error.empty() ? "Extension failed to load" : error));
+    return;
+  }
+  Respond(NoArguments());
+}
+
+// ----------------------------------------------------------------------------
 
 void RegisterDesktopAndroidDeveloperPrivateFunctions(
     ExtensionFunctionRegistry* registry) {
@@ -342,9 +533,17 @@ void RegisterDesktopAndroidDeveloperPrivateFunctions(
   registry->RegisterFunction<
       DesktopAndroidDeveloperPrivateGetExtensionInfoFunction>();
 
+  // Extension management (v0.6 phase 1).
+  registry->RegisterFunction<
+      DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction>();
+  registry->RegisterFunction<
+      DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction>();
+  registry->RegisterFunction<DesktopAndroidDeveloperPrivateReloadFunction>();
+  registry->RegisterFunction<
+      DesktopAndroidDeveloperPrivateLoadUnpackedFunction>();
+
   // Stub functions.
   registry->RegisterFunction<DesktopAndroidDeveloperPrivateAutoUpdateFunction>();
-  registry->RegisterFunction<DesktopAndroidDeveloperPrivateReloadFunction>();
   registry->RegisterFunction<
       DesktopAndroidDeveloperPrivateDeleteExtensionErrorsFunction>();
   registry->RegisterFunction<

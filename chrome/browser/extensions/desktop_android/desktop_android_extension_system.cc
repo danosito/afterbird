@@ -24,6 +24,7 @@
 #include "extensions/browser/extension_registry_factory.h"
 #include "extensions/browser/extension_system_provider.h"
 #include "extensions/browser/install_flag.h"
+#include "chrome/browser/extensions/desktop_android/extension_installer.h"
 #include "extensions/browser/null_app_sorting.h"
 #include "extensions/browser/quota_service.h"
 #include "extensions/browser/service_worker_manager.h"
@@ -171,9 +172,58 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
   quota_service_ = std::make_unique<QuotaService>();
   user_script_manager_ = std::make_unique<UserScriptManager>(browser_context_);
 
+  // Afterbird: Re-register extensions previously installed via the picker /
+  // --install-extension path. These live under <profile>/Extensions/ and their
+  // id + path + location are persisted in ExtensionPrefs by AddExtension().
+  // Without this, staged extensions disappear on every restart.
+  ExtensionPrefs* prefs = ExtensionPrefs::Get(browser_context_);
+  if (prefs) {
+    ExtensionPrefs::ExtensionsInfo persisted =
+        prefs->GetInstalledExtensionsInfo();
+    LOG(INFO) << "[Afterbird] reloading " << persisted.size()
+              << " persisted extension(s)";
+    for (const ExtensionInfo& info : persisted) {
+      if (!base::PathExists(info.extension_path)) {
+        LOG(WARNING) << "[Afterbird] persisted extension path missing, "
+                     << "dropping from prefs: " << info.extension_path
+                     << " id=" << info.extension_id;
+        prefs->OnExtensionUninstalled(info.extension_id,
+                                      info.extension_location,
+                                      /*external_uninstall=*/false);
+        continue;
+      }
+      std::string error;
+      scoped_refptr<Extension> extension = file_util::LoadExtension(
+          info.extension_path, info.extension_location, Extension::NO_FLAGS,
+          &error);
+      if (!extension) {
+        LOG(WARNING) << "[Afterbird] failed to reload persisted extension "
+                     << info.extension_id << ": " << error;
+        continue;
+      }
+      // Re-index DNR rules; InstallIndexHelper is idempotent on the ruleset
+      // dir, and this keeps behaviour identical to fresh-install AddExtension.
+      base::expected<base::Value::Dict, std::string> index_result =
+          declarative_net_request::InstallIndexHelper::
+              IndexAndPersistRulesOnInstall(*extension);
+      if (!index_result.has_value()) {
+        LOG(WARNING) << "[Afterbird] DNR reindex failed for "
+                     << info.extension_id << ": " << index_result.error();
+      }
+      // ExtensionRegistrar::AddExtension honours the disabled-bit stored in
+      // prefs, so a previously-disabled extension stays disabled.
+      registrar_->AddExtension(std::move(extension));
+      LOG(INFO) << "[Afterbird] reloaded persisted extension "
+                << info.extension_id;
+    }
+  }
+
   // Afterbird: Load extensions from --load-extension command line flag.
   // This is normally handled by ExtensionService which is not available
   // in desktop-android builds.
+  LOG(INFO) << "[Afterbird] InitForRegularProfile enter, enabled="
+            << extensions_enabled;
+  std::vector<base::FilePath> paths_to_load;
   const base::CommandLine& command_line =
       *base::CommandLine::ForCurrentProcess();
   if (command_line.HasSwitch(switches::kLoadExtension)) {
@@ -183,28 +233,99 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
          base::SplitStringPiece(path_list, FILE_PATH_LITERAL(","),
                                 base::TRIM_WHITESPACE,
                                 base::SPLIT_WANT_NONEMPTY)) {
-      base::FilePath extension_path =
-          base::FilePath(base::FilePath::StringType(path_str));
-      if (!base::PathExists(extension_path)) {
-        LOG(WARNING) << "Extension path does not exist: " << extension_path;
-        continue;
-      }
-      std::string error;
-      scoped_refptr<Extension> extension =
-          file_util::LoadExtension(extension_path, mojom::ManifestLocation::kCommandLine,
-                                   Extension::NO_FLAGS, &error);
-      if (!extension) {
-        LOG(WARNING) << "Failed to load extension from " << extension_path
-                     << ": " << error;
-        continue;
-      }
-      if (!AddExtension(std::move(extension), error)) {
-        LOG(WARNING) << "Failed to add extension: " << error;
-        continue;
-      }
-      LOG(INFO) << "[Afterbird] Loaded extension from command line: "
-                << extension_path;
+      paths_to_load.emplace_back(base::FilePath::StringType(path_str));
     }
+  }
+
+  // Afterbird: fallback dev path for non-debuggable builds where
+  // /data/local/tmp/chrome-command-line isn't consulted by Chromium. Reading
+  // a sibling file manually works without changing the APK's debuggable flag.
+  // Format: one extension directory per line.
+  const base::FilePath kFallbackListFile(
+      FILE_PATH_LITERAL("/data/local/tmp/afterbird-load-extension"));
+  if (base::PathExists(kFallbackListFile)) {
+    std::string contents;
+    if (base::ReadFileToString(kFallbackListFile, &contents)) {
+      for (std::string_view line :
+           base::SplitStringPiece(contents, "\n", base::TRIM_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY)) {
+        paths_to_load.emplace_back(line);
+      }
+      LOG(INFO) << "[Afterbird] Read "
+                << (contents.empty() ? "empty " : "") << "fallback list from "
+                << kFallbackListFile;
+    }
+  }
+
+  for (const base::FilePath& extension_path : paths_to_load) {
+    if (!base::PathExists(extension_path)) {
+      LOG(WARNING) << "[Afterbird] Extension path does not exist: "
+                   << extension_path;
+      continue;
+    }
+    std::string error;
+    scoped_refptr<Extension> extension = file_util::LoadExtension(
+        extension_path, mojom::ManifestLocation::kCommandLine,
+        Extension::NO_FLAGS, &error);
+    if (!extension) {
+      LOG(WARNING) << "[Afterbird] Failed to load extension from "
+                   << extension_path << ": " << error;
+      continue;
+    }
+    if (!AddExtension(std::move(extension), error)) {
+      LOG(WARNING) << "[Afterbird] Failed to add extension: " << error;
+      continue;
+    }
+    LOG(INFO) << "[Afterbird] Loaded extension: " << extension_path;
+  }
+
+  // Afterbird v0.6 dev switch: --install-extension=<path> exercises the
+  // installer end-to-end (zip/crx/dir → stage under profile/Extensions/ →
+  // register) without the Java file picker yet. Same fallback-file escape
+  // hatch as --load-extension above: non-debuggable Android builds don't
+  // read /data/local/tmp/chrome-command-line, so we also pick up paths from
+  // /data/local/tmp/afterbird-install-extension (one per line).
+  std::vector<base::FilePath> install_paths;
+  if (command_line.HasSwitch("install-extension")) {
+    install_paths.emplace_back(command_line.GetSwitchValueNative(
+        "install-extension"));
+  }
+  const base::FilePath kInstallFallback(
+      FILE_PATH_LITERAL("/data/local/tmp/afterbird-install-extension"));
+  if (base::PathExists(kInstallFallback)) {
+    std::string contents;
+    if (base::ReadFileToString(kInstallFallback, &contents)) {
+      for (std::string_view line :
+           base::SplitStringPiece(contents, "\n", base::TRIM_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY)) {
+        install_paths.emplace_back(line);
+      }
+    }
+    // Consume the file — we only want to install each payload once per launch.
+    base::DeleteFile(kInstallFallback);
+  }
+  for (const base::FilePath& install_path : install_paths) {
+    if (!base::PathExists(install_path)) {
+      LOG(WARNING) << "[Afterbird] install path missing: " << install_path;
+      continue;
+    }
+    LOG(INFO) << "[Afterbird] installing from " << install_path;
+    auto installer =
+        std::make_unique<DesktopAndroidExtensionInstaller>(browser_context_);
+    auto* installer_raw = installer.get();
+    installer_raw->InstallFromFile(
+        install_path,
+        base::BindOnce(
+            [](std::unique_ptr<DesktopAndroidExtensionInstaller> keep_alive,
+               scoped_refptr<const Extension> ext, const std::string& err) {
+              if (ext) {
+                LOG(INFO) << "[Afterbird] install succeeded: " << ext->id()
+                          << " " << ext->name();
+              } else {
+                LOG(WARNING) << "[Afterbird] install failed: " << err;
+              }
+            },
+            std::move(installer)));
   }
 
   ready_.Signal();
@@ -248,7 +369,14 @@ QuotaService* DesktopAndroidExtensionSystem::quota_service() {
 }
 
 AppSorting* DesktopAndroidExtensionSystem::app_sorting() {
-  return nullptr;
+  // Afterbird: ExtensionPrefs::OnExtensionUninstalled unconditionally calls
+  // app_sorting()->ClearOrdinals(), so we can't return nullptr. Hand out a
+  // lazily-constructed NullAppSorting so uninstall succeeds instead of
+  // SIGSEGV'ing.
+  if (!app_sorting_) {
+    app_sorting_ = std::make_unique<NullAppSorting>();
+  }
+  return app_sorting_.get();
 }
 
 const base::OneShotEvent& DesktopAndroidExtensionSystem::ready() const {

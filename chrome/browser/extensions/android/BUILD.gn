@@ -9,11 +9,16 @@ import("//third_party/jni_zero/jni_zero.gni")
 generate_jni("jni_headers") {
   sources = [
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/AppMenuBridge.java",
+    "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionInstallBridge.java",
   ]
 }
 
 source_set("android") {
-  sources = [ "app_menu_bridge.cc" ]
+  sources = [
+    "app_menu_bridge.cc",
+    "extension_install_bridge.cc",
+    "extension_install_bridge.h",
+  ]
 
   deps = [
     ":jni_headers",
@@ -29,6 +34,7 @@ source_set("android") {
 android_library("java") {
   sources = [
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/AppMenuBridge.java",
+    "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionInstallBridge.java",
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionMenuManager.java",
   ]
 
@@ -37,6 +43,7 @@ android_library("java") {
     "//chrome/browser/profiles/android:java",
     "//content/public/android:content_java",
     "//third_party/jni_zero:jni_zero_java",
+    "//ui/android:ui_no_recycler_view_java",
   ]
 
   srcjar_deps = [ ":jni_headers" ]
