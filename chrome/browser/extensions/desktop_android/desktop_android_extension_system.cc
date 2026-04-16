@@ -174,6 +174,9 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
   // Afterbird: Load extensions from --load-extension command line flag.
   // This is normally handled by ExtensionService which is not available
   // in desktop-android builds.
+  LOG(INFO) << "[Afterbird] InitForRegularProfile enter, enabled="
+            << extensions_enabled;
+  std::vector<base::FilePath> paths_to_load;
   const base::CommandLine& command_line =
       *base::CommandLine::ForCurrentProcess();
   if (command_line.HasSwitch(switches::kLoadExtension)) {
@@ -183,28 +186,50 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
          base::SplitStringPiece(path_list, FILE_PATH_LITERAL(","),
                                 base::TRIM_WHITESPACE,
                                 base::SPLIT_WANT_NONEMPTY)) {
-      base::FilePath extension_path =
-          base::FilePath(base::FilePath::StringType(path_str));
-      if (!base::PathExists(extension_path)) {
-        LOG(WARNING) << "Extension path does not exist: " << extension_path;
-        continue;
-      }
-      std::string error;
-      scoped_refptr<Extension> extension =
-          file_util::LoadExtension(extension_path, mojom::ManifestLocation::kCommandLine,
-                                   Extension::NO_FLAGS, &error);
-      if (!extension) {
-        LOG(WARNING) << "Failed to load extension from " << extension_path
-                     << ": " << error;
-        continue;
-      }
-      if (!AddExtension(std::move(extension), error)) {
-        LOG(WARNING) << "Failed to add extension: " << error;
-        continue;
-      }
-      LOG(INFO) << "[Afterbird] Loaded extension from command line: "
-                << extension_path;
+      paths_to_load.emplace_back(base::FilePath::StringType(path_str));
     }
+  }
+
+  // Afterbird: fallback dev path for non-debuggable builds where
+  // /data/local/tmp/chrome-command-line isn't consulted by Chromium. Reading
+  // a sibling file manually works without changing the APK's debuggable flag.
+  // Format: one extension directory per line.
+  const base::FilePath kFallbackListFile(
+      FILE_PATH_LITERAL("/data/local/tmp/afterbird-load-extension"));
+  if (base::PathExists(kFallbackListFile)) {
+    std::string contents;
+    if (base::ReadFileToString(kFallbackListFile, &contents)) {
+      for (std::string_view line :
+           base::SplitStringPiece(contents, "\n", base::TRIM_WHITESPACE,
+                                  base::SPLIT_WANT_NONEMPTY)) {
+        paths_to_load.emplace_back(line);
+      }
+      LOG(INFO) << "[Afterbird] Read "
+                << (contents.empty() ? "empty " : "") << "fallback list from "
+                << kFallbackListFile;
+    }
+  }
+
+  for (const base::FilePath& extension_path : paths_to_load) {
+    if (!base::PathExists(extension_path)) {
+      LOG(WARNING) << "[Afterbird] Extension path does not exist: "
+                   << extension_path;
+      continue;
+    }
+    std::string error;
+    scoped_refptr<Extension> extension = file_util::LoadExtension(
+        extension_path, mojom::ManifestLocation::kCommandLine,
+        Extension::NO_FLAGS, &error);
+    if (!extension) {
+      LOG(WARNING) << "[Afterbird] Failed to load extension from "
+                   << extension_path << ": " << error;
+      continue;
+    }
+    if (!AddExtension(std::move(extension), error)) {
+      LOG(WARNING) << "[Afterbird] Failed to add extension: " << error;
+      continue;
+    }
+    LOG(INFO) << "[Afterbird] Loaded extension: " << extension_path;
   }
 
   ready_.Signal();
