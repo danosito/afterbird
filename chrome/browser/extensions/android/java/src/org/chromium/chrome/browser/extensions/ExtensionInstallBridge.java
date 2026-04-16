@@ -90,12 +90,12 @@ public class ExtensionInstallBridge {
         };
 
         // Pass null errorId so we don't depend on a specific chrome string
-        // resource — if the intent fails WindowAndroid will surface its own
-        // default message. Return value (err) is an Integer allocation id;
-        // a null return means the launch failed synchronously.
-        Integer err = window.showIntent(intent, cb, null);
-        if (err == null) {
-            Log.w(TAG, "showIntent returned null — picker couldn't launch");
+        // resource — if the intent fails WindowAndroid surfaces its own
+        // toast. showIntent returns true iff the intent was actually
+        // launched; false means no Activity could handle it.
+        boolean launched = window.showIntent(intent, cb, null);
+        if (!launched) {
+            Log.w(TAG, "showIntent returned false — no Activity for picker");
             ExtensionInstallBridgeJni.get().onFilePicked(nativeCallback, "");
         }
     }
