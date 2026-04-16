@@ -7815,6 +7815,9 @@ static_library("browser") {
       # TODO(https://crbug.com/356905053): These files are temporary workarounds
       # allow for a lightweight extensions runtime in desktop-android builds.
       # They should be removed.
+      # Afterbird: developer_private minimal implementation for chrome://extensions.
+      "extensions/desktop_android/desktop_android_developer_private.cc",
+      "extensions/desktop_android/desktop_android_developer_private.h",
       "extensions/desktop_android/desktop_android_extension_host_delegate.cc",
       "extensions/desktop_android/desktop_android_extension_host_delegate.h",
       "extensions/desktop_android/desktop_android_extension_system.cc",
