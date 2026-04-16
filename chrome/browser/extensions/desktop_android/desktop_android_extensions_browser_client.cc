@@ -25,6 +25,7 @@
 #include "extensions/browser/api/core_extensions_browser_api_provider.h"
 #include "extensions/browser/extensions_browser_api_provider.h"
 #include "extensions/browser/api/extensions_api_client.h"
+#include "extensions/browser/api/messaging/messaging_delegate.h"
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/extension_web_contents_observer.h"
 #include "extensions/browser/extensions_browser_interface_binders.h"
@@ -51,6 +52,28 @@ class DesktopAndroidKioskDelegate : public KioskDelegate {
     // Desktop-android does not support kiosk apps.
     return false;
   }
+};
+
+// Afterbird: subclass of ExtensionsAPIClient that hands MessageService a
+// non-null MessagingDelegate. Plain ExtensionsAPIClient::GetMessagingDelegate
+// returns nullptr, which crashes on the first sendMessage (dereferenced at
+// MessageService::OpenChannelToExtension). The base MessagingDelegate gives
+// sensible defaults (no tab info, no native messaging) — enough for
+// extension→extension runtime.sendMessage.
+class DesktopAndroidAPIClient : public ExtensionsAPIClient {
+ public:
+  DesktopAndroidAPIClient() = default;
+  ~DesktopAndroidAPIClient() override = default;
+
+  MessagingDelegate* GetMessagingDelegate() override {
+    if (!messaging_delegate_) {
+      messaging_delegate_ = std::make_unique<MessagingDelegate>();
+    }
+    return messaging_delegate_.get();
+  }
+
+ private:
+  std::unique_ptr<MessagingDelegate> messaging_delegate_;
 };
 
 }  // namespace
@@ -81,7 +104,7 @@ class AfterbirdChromeExtensionsBrowserAPIProvider
 DesktopAndroidExtensionsBrowserClient::DesktopAndroidExtensionsBrowserClient()
     : extension_cache_(std::make_unique<NullExtensionCache>()),
       kiosk_delegate_(std::make_unique<DesktopAndroidKioskDelegate>()),
-      api_client_(std::make_unique<ExtensionsAPIClient>()) {
+      api_client_(std::make_unique<DesktopAndroidAPIClient>()) {
   AddAPIProvider(std::make_unique<CoreExtensionsBrowserAPIProvider>());
   AddAPIProvider(
       std::make_unique<AfterbirdChromeExtensionsBrowserAPIProvider>());

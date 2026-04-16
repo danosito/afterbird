@@ -17,6 +17,7 @@
 #include "content/public/browser/browser_thread.h"
 #include "extensions/browser/api/app_runtime/app_runtime_api.h"
 #include "extensions/browser/api/declarative_net_request/install_index_helper.h"
+#include "extensions/browser/api/messaging/message_service.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_prefs_factory.h"
 #include "extensions/browser/extension_registrar.h"
@@ -171,6 +172,13 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
       std::make_unique<ServiceWorkerManager>(browser_context_);
   quota_service_ = std::make_unique<QuotaService>();
   user_script_manager_ = std::make_unique<UserScriptManager>(browser_context_);
+
+  // Afterbird: touch the MessageService keyed-service factory so its
+  // constructor fires and calls MessageServiceApi::SetMessageService.
+  // Without this, ExtensionFrameHost::OpenChannelToExtension bails out
+  // with "MessageService not available" and sendMessage silently drops.
+  // The Get() call materialises the MessageService for this profile too.
+  MessageService::Get(browser_context_);
 
   // Afterbird: Re-register extensions previously installed via the picker /
   // --install-extension path. These live under <profile>/Extensions/ and their
