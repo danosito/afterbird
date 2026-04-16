@@ -7828,11 +7828,17 @@ static_library("browser") {
       "extensions/desktop_android/desktop_android_extensions_browser_client.h",
       "extensions/desktop_android/desktop_android_runtime_api_delegate.cc",
       "extensions/desktop_android/desktop_android_runtime_api_delegate.h",
+      # Afterbird v0.6: install-from-file pipeline backing
+      # developerPrivate.loadUnpacked and the webstore URL interceptor.
+      "extensions/desktop_android/extension_installer.cc",
+      "extensions/desktop_android/extension_installer.h",
     ]
     public_deps += [ "//extensions/browser" ]
     deps += [ "//extensions/browser/updater" ]
     # Afterbird: Java->C++ bridge for per-extension menu entries.
     deps += [ "//chrome/browser/extensions/android" ]
+    # Afterbird v0.6: zip extraction for .zip/.crx install.
+    deps += [ "//third_party/zlib/google:zip" ]
   }
 
   if (enable_library_cdms) {

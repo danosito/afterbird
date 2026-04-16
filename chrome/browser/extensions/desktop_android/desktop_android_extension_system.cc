@@ -24,6 +24,7 @@
 #include "extensions/browser/extension_registry_factory.h"
 #include "extensions/browser/extension_system_provider.h"
 #include "extensions/browser/install_flag.h"
+#include "chrome/browser/extensions/desktop_android/extension_installer.h"
 #include "extensions/browser/null_app_sorting.h"
 #include "extensions/browser/quota_service.h"
 #include "extensions/browser/service_worker_manager.h"
@@ -230,6 +231,36 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
       continue;
     }
     LOG(INFO) << "[Afterbird] Loaded extension: " << extension_path;
+  }
+
+  // Afterbird v0.6 dev switch: --install-extension=<path> runs the same code
+  // path the UI will (zip/crx/dir → stage under profile/Extensions/ → register)
+  // so we can exercise the installer end-to-end without the Java file picker
+  // yet. Path can be a file OR a directory.
+  if (command_line.HasSwitch("install-extension")) {
+    base::FilePath install_path(command_line.GetSwitchValueNative(
+        "install-extension"));
+    if (base::PathExists(install_path)) {
+      LOG(INFO) << "[Afterbird] --install-extension starting for "
+                << install_path;
+      auto installer =
+          std::make_unique<ExtensionInstaller>(browser_context_);
+      auto* installer_raw = installer.get();
+      installer_raw->InstallFromFile(
+          install_path,
+          base::BindOnce(
+              [](std::unique_ptr<ExtensionInstaller> keep_alive,
+                 scoped_refptr<const Extension> ext, const std::string& err) {
+                if (ext) {
+                  LOG(INFO) << "[Afterbird] --install-extension succeeded: "
+                            << ext->id() << " " << ext->name();
+                } else {
+                  LOG(WARNING) << "[Afterbird] --install-extension failed: "
+                               << err;
+                }
+              },
+              std::move(installer)));
+    }
   }
 
   ready_.Signal();
