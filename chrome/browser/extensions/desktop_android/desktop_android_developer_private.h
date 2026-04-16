@@ -85,6 +85,49 @@ class DesktopAndroidDeveloperPrivateGetExtensionInfoFunction
   ResponseAction Run() override;
 };
 
+// developerPrivate.updateExtensionConfiguration — { extensionId, ...flags }.
+// Only the `userMayModify → disableReason` subset is honoured; most flags are
+// no-ops on desktop-android.
+class DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction
+    : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("developerPrivate.updateExtensionConfiguration",
+                             DEVELOPERPRIVATE_UPDATEEXTENSIONCONFIGURATION)
+  DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction();
+
+ protected:
+  ~DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction()
+      override;
+  ResponseAction Run() override;
+};
+
+// chrome://extensions' toolbar calls these for Remove and toggle. Their
+// official names (management.uninstall / management.setEnabled) live in the
+// `management` API namespace which we don't compile; service.ts is patched
+// to route through developerPrivate instead.
+class DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction
+    : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("developerPrivate.removeMultipleExtensions",
+                             DEVELOPERPRIVATE_REMOVEMULTIPLEEXTENSIONS)
+  DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction();
+
+ protected:
+  ~DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction() override;
+  ResponseAction Run() override;
+};
+
+class DesktopAndroidDeveloperPrivateReloadFunction : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("developerPrivate.reload",
+                             DEVELOPERPRIVATE_RELOAD)
+  DesktopAndroidDeveloperPrivateReloadFunction();
+
+ protected:
+  ~DesktopAndroidDeveloperPrivateReloadFunction() override;
+  ResponseAction Run() override;
+};
+
 // Simple stubs that always succeed with an empty response, so that the JS
 // can optimistically call them without throwing. Backend side-effects are
 // not implemented.
@@ -110,10 +153,6 @@ AFTERBIRD_DEVELOPERPRIVATE_NOOP(
     DesktopAndroidDeveloperPrivateAutoUpdateFunction,
     "developerPrivate.autoUpdate",
     DEVELOPERPRIVATE_AUTOUPDATE);
-AFTERBIRD_DEVELOPERPRIVATE_NOOP(
-    DesktopAndroidDeveloperPrivateReloadFunction,
-    "developerPrivate.reload",
-    DEVELOPERPRIVATE_RELOAD);
 AFTERBIRD_DEVELOPERPRIVATE_NOOP(
     DesktopAndroidDeveloperPrivateDeleteExtensionErrorsFunction,
     "developerPrivate.deleteExtensionErrors",

@@ -168,7 +168,9 @@ export class Service implements ServiceInterface {
     }
     chrome.metricsPrivate.recordUserAction('Extensions.RemoveExtensionClick');
     this.isDeleting_ = true;
-    chrome.management.uninstall(id, {showConfirmDialog: true})
+    // Afterbird: route through developerPrivate.removeMultipleExtensions
+    // because chrome.management.* isn't wired on desktop-android.
+    chrome.developerPrivate.removeMultipleExtensions([id])
         .catch(
             _ => {
                 // The error was almost certainly the user canceling the dialog.
@@ -184,7 +186,8 @@ export class Service implements ServiceInterface {
    */
   uninstallItem(id: string): Promise<void> {
     chrome.metricsPrivate.recordUserAction('Extensions.RemoveExtensionClick');
-    return chrome.management.uninstall(id, {showConfirmDialog: true});
+    // Afterbird: see deleteItem above.
+    return chrome.developerPrivate.removeMultipleExtensions([id]);
   }
 
   deleteItems(ids: string[]): Promise<void> {
@@ -207,7 +210,13 @@ export class Service implements ServiceInterface {
     chrome.metricsPrivate.recordUserAction(
         isEnabled ? 'Extensions.ExtensionEnabled' :
                     'Extensions.ExtensionDisabled');
-    chrome.management.setEnabled(id, isEnabled);
+    // Afterbird: chrome.management.setEnabled isn't wired on desktop-android;
+    // route through developerPrivate.updateExtensionConfiguration which we
+    // handle in desktop_android_developer_private.cc.
+    chrome.developerPrivate.updateExtensionConfiguration({
+      extensionId: id,
+      isEnabled,
+    } as any);
   }
 
   setItemAllowedIncognito(id: string, isAllowedIncognito: boolean) {

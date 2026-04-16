@@ -10,12 +10,17 @@
 
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
+#include "chrome/browser/extensions/desktop_android/desktop_android_extension_system.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_context.h"
+#include "extensions/browser/disable_reason.h"
 #include "extensions/browser/extension_function_registry.h"
 #include "extensions/browser/extension_prefs.h"
+#include "extensions/browser/extension_registrar.h"
 #include "extensions/browser/extension_registry.h"
+#include "extensions/browser/extension_system.h"
+#include "extensions/browser/uninstall_reason.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_handlers/icons_handler.h"
@@ -330,6 +335,123 @@ DesktopAndroidDeveloperPrivateNoOpFunction::Run() {
 }
 
 // ----------------------------------------------------------------------------
+// Extension management: updateExtensionConfiguration (toggle),
+// removeMultipleExtensions (uninstall), reload.
+//
+// These delegate to ExtensionRegistrar owned by DesktopAndroidExtensionSystem.
+// ExtensionRegistrar lives in extensions/browser and is not gated on
+// ENABLE_EXTENSIONS, so it links cleanly in our desktop-android build.
+// ----------------------------------------------------------------------------
+
+namespace {
+
+ExtensionRegistrar* GetRegistrar(content::BrowserContext* context) {
+  auto* system = static_cast<DesktopAndroidExtensionSystem*>(
+      ExtensionSystem::Get(context));
+  return system ? system->extension_registrar() : nullptr;
+}
+
+}  // namespace
+
+DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction::
+    DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction() =
+        default;
+DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction::
+    ~DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction() =
+        default;
+
+ExtensionFunction::ResponseAction
+DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction::Run() {
+  if (args().empty() || !args()[0].is_dict()) {
+    return RespondNow(Error("Expected a config dict"));
+  }
+  const base::Value::Dict& update = args()[0].GetDict();
+  const std::string* id = update.FindString("extensionId");
+  if (!id || id->empty()) {
+    return RespondNow(Error("extensionId is required"));
+  }
+  ExtensionRegistrar* registrar = GetRegistrar(browser_context());
+  if (!registrar) {
+    return RespondNow(Error("ExtensionRegistrar unavailable"));
+  }
+
+  if (std::optional<bool> enabled = update.FindBool("isEnabled")) {
+    if (*enabled) {
+      registrar->EnableExtension(*id);
+    } else {
+      registrar->DisableExtension(*id,
+                                  /*disable_reasons=*/{disable_reason::DISABLE_USER_ACTION});
+    }
+  }
+
+  // Other flags (allowIncognito, fileAccess, hostAccess, showAccessRequests,
+  // pinnedToToolbar, collectsErrors, ...) are silently accepted as no-ops —
+  // desktop-android doesn't support them and the JS expects the promise to
+  // resolve regardless.
+
+  return RespondNow(NoArguments());
+}
+
+// ----------------------------------------------------------------------------
+
+DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction::
+    DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction() = default;
+DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction::
+    ~DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction() =
+        default;
+
+ExtensionFunction::ResponseAction
+DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction::Run() {
+  if (args().empty() || !args()[0].is_list()) {
+    return RespondNow(Error("Expected an array of extension ids"));
+  }
+  ExtensionRegistrar* registrar = GetRegistrar(browser_context());
+  if (!registrar) {
+    return RespondNow(Error("ExtensionRegistrar unavailable"));
+  }
+  for (const base::Value& id_val : args()[0].GetList()) {
+    if (!id_val.is_string()) {
+      continue;
+    }
+    const std::string& id = id_val.GetString();
+    // Registrar removes from registry; ExtensionPrefs entry cleanup happens
+    // on DeleteExtension in upstream flows. We'll also drop the on-disk
+    // install directory in phase 2 once Installer owns it; for now leave
+    // it on disk — it's harmless because registrar won't re-add without
+    // a corresponding prefs entry.
+    registrar->RemoveExtension(id, UnloadedExtensionReason::UNINSTALL);
+    ExtensionPrefs::Get(browser_context())->OnExtensionUninstalled(
+        id, mojom::ManifestLocation::kUnpacked, /*external_uninstall=*/false);
+  }
+  return RespondNow(NoArguments());
+}
+
+// ----------------------------------------------------------------------------
+
+DesktopAndroidDeveloperPrivateReloadFunction::
+    DesktopAndroidDeveloperPrivateReloadFunction() = default;
+DesktopAndroidDeveloperPrivateReloadFunction::
+    ~DesktopAndroidDeveloperPrivateReloadFunction() = default;
+
+ExtensionFunction::ResponseAction
+DesktopAndroidDeveloperPrivateReloadFunction::Run() {
+  if (args().empty() || !args()[0].is_dict()) {
+    return RespondNow(Error("Expected a reload options dict"));
+  }
+  const base::Value::Dict& opts = args()[0].GetDict();
+  const std::string* id = opts.FindString("extensionId");
+  if (!id || id->empty()) {
+    return RespondNow(Error("extensionId is required"));
+  }
+  ExtensionRegistrar* registrar = GetRegistrar(browser_context());
+  if (!registrar) {
+    return RespondNow(Error("ExtensionRegistrar unavailable"));
+  }
+  registrar->ReloadExtension(*id, LoadErrorBehavior::kNoisy);
+  return RespondNow(NoArguments());
+}
+
+// ----------------------------------------------------------------------------
 
 void RegisterDesktopAndroidDeveloperPrivateFunctions(
     ExtensionFunctionRegistry* registry) {
@@ -342,9 +464,15 @@ void RegisterDesktopAndroidDeveloperPrivateFunctions(
   registry->RegisterFunction<
       DesktopAndroidDeveloperPrivateGetExtensionInfoFunction>();
 
+  // Extension management (v0.6 phase 1).
+  registry->RegisterFunction<
+      DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction>();
+  registry->RegisterFunction<
+      DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction>();
+  registry->RegisterFunction<DesktopAndroidDeveloperPrivateReloadFunction>();
+
   // Stub functions.
   registry->RegisterFunction<DesktopAndroidDeveloperPrivateAutoUpdateFunction>();
-  registry->RegisterFunction<DesktopAndroidDeveloperPrivateReloadFunction>();
   registry->RegisterFunction<
       DesktopAndroidDeveloperPrivateDeleteExtensionErrorsFunction>();
   registry->RegisterFunction<
