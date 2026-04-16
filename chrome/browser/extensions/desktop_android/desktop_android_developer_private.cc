@@ -149,6 +149,11 @@ base::Value::Dict BuildExtensionInfo(const Extension& extension,
   info.Set("installWarnings", base::Value::List());
   info.Set("manifestErrors", base::Value::List());
   info.Set("runtimeErrors", base::Value::List());
+  // Afterbird: `runtimeWarnings` is NOT optional on the UI side —
+  // `ExtensionsItemElement.hasSevereWarnings_()` reads `.length`
+  // unconditionally, so missing it throws and kills the Lit render →
+  // the item row collapses to height=0 and the list looks empty.
+  info.Set("runtimeWarnings", base::Value::List());
 
   // Disable reasons dictionary (all false when enabled).
   base::Value::Dict disable_reasons;
