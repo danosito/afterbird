@@ -13,6 +13,7 @@
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/path_service.h"
+#include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/thread_pool.h"
@@ -144,6 +145,58 @@ bool LooksLikeExtensionUrl(const GURL& url) {
   return base::EndsWith(path, ".crx") || base::EndsWith(path, ".user.js");
 }
 
+// Recognises Chrome Web Store detail pages so we can auto-install the
+// extension by fetching the raw CRX from the update endpoint. Supports both
+// the current host (chromewebstore.google.com) and the legacy one still seen
+// in shared links (chrome.google.com/webstore).
+// Returns the 32-character extension id on match, empty string otherwise.
+std::string ExtractWebstoreExtensionId(const GURL& url) {
+  if (!url.SchemeIsHTTPOrHTTPS()) {
+    return std::string();
+  }
+  const std::string host = url.host();
+  const std::string path = url.path();
+  std::string id_candidate;
+  if (host == "chromewebstore.google.com") {
+    // /detail/<slug>/<id> or /detail/<id>
+    std::vector<std::string_view> parts = base::SplitStringPiece(
+        path, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    if (parts.size() >= 2 && parts[0] == "detail") {
+      id_candidate = std::string(parts.back());
+    }
+  } else if (host == "chrome.google.com" &&
+             base::StartsWith(path, "/webstore/detail/",
+                              base::CompareCase::SENSITIVE)) {
+    std::vector<std::string_view> parts = base::SplitStringPiece(
+        path, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    // /webstore/detail/<slug>/<id> or /webstore/detail/<id>
+    if (parts.size() >= 3) {
+      id_candidate = std::string(parts.back());
+    }
+  }
+  if (id_candidate.size() != 32) {
+    return std::string();
+  }
+  // Extension IDs are lowercase a-p (32 chars of the 16-letter alphabet used
+  // by ExtensionId::kAlphabet). Be lenient: just require [a-p].
+  for (char c : id_candidate) {
+    if (c < 'a' || c > 'p') {
+      return std::string();
+    }
+  }
+  return id_candidate;
+}
+
+// Builds the Chrome Web Store "get CRX" URL. This is the same endpoint the
+// omaha updater hits for autoupdates; it returns a 302 to a googleusercontent
+// CRX blob for any valid public extension ID.
+GURL BuildWebstoreCrxUrl(const std::string& extension_id) {
+  return GURL(
+      "https://clients2.google.com/service/update2/crx?response=redirect"
+      "&prodversion=128.0&acceptformat=crx2,crx3&x=id%3D" +
+      extension_id + "%26installsource%3Dondemand%26uc");
+}
+
 // Response MIME match. Servers serving .crx under a generic path still set
 // Content-Type correctly. See Extension::kMimeType.
 bool LooksLikeExtensionMime(const std::string& mime_type) {
@@ -210,12 +263,28 @@ ExtensionInstallNavigationThrottle::~ExtensionInstallNavigationThrottle() =
 content::NavigationThrottle::ThrottleCheckResult
 ExtensionInstallNavigationThrottle::WillStartRequest() {
   const GURL& url = navigation_handle()->GetURL();
-  if (!LooksLikeExtensionUrl(url)) {
-    return PROCEED;
+  VLOG(2) << "[Afterbird] throttle WillStartRequest: " << url;
+  if (LooksLikeExtensionUrl(url)) {
+    LOG(INFO) << "[Afterbird] crx-url intercept, starting download: " << url;
+    StartDownload(url);
+    return CANCEL_AND_IGNORE;
   }
-  LOG(INFO) << "[Afterbird] crx-url intercept, starting download: " << url;
-  StartDownload(url);
-  return CANCEL_AND_IGNORE;
+  const std::string webstore_id = ExtractWebstoreExtensionId(url);
+  if (!webstore_id.empty()) {
+    const GURL crx_url = BuildWebstoreCrxUrl(webstore_id);
+    LOG(INFO) << "[Afterbird] webstore intercept id=" << webstore_id
+              << " crx=" << crx_url;
+    StartDownload(crx_url);
+    return CANCEL_AND_IGNORE;
+  }
+  // Temporary: log CWS navigations we *didn't* intercept so we can see
+  // whether the URL layout changed, the host is different, or the throttle
+  // simply didn't run. Drop this once we're confident.
+  if (url.DomainIs("chromewebstore.google.com") ||
+      url.DomainIs("chrome.google.com")) {
+    LOG(INFO) << "[Afterbird] throttle saw store URL but didn't match: " << url;
+  }
+  return PROCEED;
 }
 
 content::NavigationThrottle::ThrottleCheckResult
