@@ -7836,6 +7836,11 @@ static_library("browser") {
       # .user.js navigations into an install.
       "extensions/desktop_android/extension_install_navigation_throttle.cc",
       "extensions/desktop_android/extension_install_navigation_throttle.h",
+      # Afterbird v1.2: orchestrates fetch → unpack → confirm → install,
+      # replacing the v1.1 silent-install CrxDownloadInstaller. Owns the
+      # SimpleURLLoader, staging dir, and the JNI confirm-dialog bridge.
+      "extensions/desktop_android/crx_install_coordinator.cc",
+      "extensions/desktop_android/crx_install_coordinator.h",
     ]
     public_deps += [ "//extensions/browser" ]
     deps += [ "//extensions/browser/updater" ]
