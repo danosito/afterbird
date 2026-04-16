@@ -19,6 +19,8 @@
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_context.h"
 #include "extensions/browser/disable_reason.h"
+#include "extensions/browser/event_router.h"
+#include "extensions/browser/extension_event_histogram_value.h"
 #include "extensions/browser/extension_function_registry.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_registrar.h"
@@ -234,6 +236,37 @@ base::Value::List BuildAllExtensionsInfo(content::BrowserContext* context) {
   return list;
 }
 
+// Broadcasts developerPrivate.onItemStateChanged so chrome://extensions
+// refreshes its data when an extension's state changes from our backend.
+// Mirrors upstream DeveloperPrivateEventRouter::BroadcastItemStateChanged
+// but without the full KeyedService observer chain — we call this
+// imperatively from Run() handlers.
+void BroadcastItemStateChanged(content::BrowserContext* context,
+                               const std::string& event_type_name,
+                               const std::string& extension_id,
+                               base::Value::Dict extension_info) {
+  EventRouter* router = EventRouter::Get(context);
+  if (!router) {
+    return;
+  }
+  base::Value::Dict event_data;
+  event_data.Set("event_type", event_type_name);
+  event_data.Set("item_id", extension_id);
+  if (!extension_info.empty()) {
+    // IDL calls this field extensionInfo (camelCase, unlike its siblings).
+    // Using snake_case here silently fails on the JS side — manager.ts
+    // reads `eventData.extensionInfo`, so a snake_case key leaves the UI
+    // with `undefined` and the list-row never updates.
+    event_data.Set("extensionInfo", std::move(extension_info));
+  }
+  base::Value::List args;
+  args.Append(std::move(event_data));
+  auto event = std::make_unique<Event>(
+      events::DEVELOPER_PRIVATE_ON_ITEM_STATE_CHANGED,
+      "developerPrivate.onItemStateChanged", std::move(args));
+  router->BroadcastEvent(std::move(event));
+}
+
 base::Value::Dict BuildProfileInfo(content::BrowserContext* context) {
   base::Value::Dict cfg;
   PrefService* prefs = ExtensionPrefs::Get(context)->pref_service();
@@ -391,6 +424,19 @@ DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction::Run() {
       registrar->DisableExtension(
           *id, /*disable_reasons=*/disable_reason::DISABLE_USER_ACTION);
     }
+    // Fire the event the UI listens for — without this the toggle flips back
+    // because Polymer never refetches state.
+    ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context());
+    if (registry) {
+      const Extension* ext =
+          registry->GetExtensionById(*id, ExtensionRegistry::EVERYTHING);
+      if (ext) {
+        const char* state = *enabled ? kStateEnabled : kStateDisabled;
+        BroadcastItemStateChanged(browser_context(),
+                                  *enabled ? "LOADED" : "UNLOADED", *id,
+                                  BuildExtensionInfo(*ext, state));
+      }
+    }
   }
 
   // Other flags (allowIncognito, fileAccess, hostAccess, showAccessRequests,
@@ -440,6 +486,9 @@ DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction::Run() {
       prefs->OnExtensionUninstalled(id, location,
                                     /*external_uninstall=*/false);
     }
+    // UI needs the event to drop the card without a manual reload.
+    BroadcastItemStateChanged(browser_context(), "UNINSTALLED", id,
+                              base::Value::Dict());
   }
   return RespondNow(NoArguments());
 }
@@ -466,6 +515,20 @@ DesktopAndroidDeveloperPrivateReloadFunction::Run() {
     return RespondNow(Error("ExtensionRegistrar unavailable"));
   }
   registrar->ReloadExtension(*id, ExtensionRegistrar::LoadErrorBehavior::kNoisy);
+  // The UI removes the card visually on reload start; the kLoaded event
+  // arriving after a successful reload re-adds it.
+  ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context());
+  if (registry) {
+    const Extension* ext =
+        registry->GetExtensionById(*id, ExtensionRegistry::EVERYTHING);
+    if (ext) {
+      BroadcastItemStateChanged(
+          browser_context(), "LOADED", *id,
+          BuildExtensionInfo(*ext, registry->enabled_extensions().Contains(*id)
+                                       ? kStateEnabled
+                                       : kStateDisabled));
+    }
+  }
   return RespondNow(NoArguments());
 }
 
@@ -522,6 +585,9 @@ void DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnInstalled(
     Respond(Error(error.empty() ? "Extension failed to load" : error));
     return;
   }
+  // Poke the UI so the new card appears without a manual reload.
+  BroadcastItemStateChanged(browser_context(), "INSTALLED", extension->id(),
+                            BuildExtensionInfo(*extension, kStateEnabled));
   Respond(NoArguments());
 }
 
