@@ -20,7 +20,7 @@
 #include "extensions/browser/extension_registrar.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_system.h"
-#include "extensions/browser/uninstall_reason.h"
+#include "extensions/browser/unloaded_extension_reason.h"
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_handlers/icons_handler.h"
@@ -379,8 +379,8 @@ DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction::Run() {
     if (*enabled) {
       registrar->EnableExtension(*id);
     } else {
-      registrar->DisableExtension(*id,
-                                  /*disable_reasons=*/{disable_reason::DISABLE_USER_ACTION});
+      registrar->DisableExtension(
+          *id, /*disable_reasons=*/disable_reason::DISABLE_USER_ACTION);
     }
   }
 
@@ -447,7 +447,7 @@ DesktopAndroidDeveloperPrivateReloadFunction::Run() {
   if (!registrar) {
     return RespondNow(Error("ExtensionRegistrar unavailable"));
   }
-  registrar->ReloadExtension(*id, LoadErrorBehavior::kNoisy);
+  registrar->ReloadExtension(*id, ExtensionRegistrar::LoadErrorBehavior::kNoisy);
   return RespondNow(NoArguments());
 }
 
