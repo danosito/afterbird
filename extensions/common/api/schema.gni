@@ -120,12 +120,13 @@ if (enable_desktop_android_extensions) {
 
   # Afterbird: runtime schemas needed for MV2 extension APIs (webRequest,
   # browserAction, etc.) to actually initialize their bindings without
-  # CHECK-failing in GetAPISchema.
+  # CHECK-failing in GetAPISchema. Excludes management.json because its
+  # ManagementGet* function implementations aren't compiled for
+  # desktop-android and would cause link errors.
   extensions_api_schema_files_ += [
     "events.json",
     "extension_types.json",
     "types.json",
-    "management.json",
     "metrics_private.json",
     "declarative_net_request.idl",
   ]
