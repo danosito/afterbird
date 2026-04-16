@@ -427,6 +427,24 @@ public class AppMenuPropertiesDelegateImpl implements AppMenuPropertiesDelegate 
             preparePageMenu(menu, currentTab, handler, isIncognito);
         }
         prepareCommonMenuItems(menu, menuGroup, isIncognito);
+
+        // Afterbird: append one menu item per running extension at the bottom.
+        // Tapping any of these opens the extension's browser_action popup URL.
+        if (menuGroup == MenuGroup.PAGE_MENU && currentTab != null) {
+            org.chromium.content_public.browser.WebContents webContents =
+                    currentTab.getWebContents();
+            if (webContents != null) {
+                org.chromium.chrome.browser.profiles.Profile profile =
+                        org.chromium.chrome.browser.profiles.Profile.fromWebContents(webContents);
+                if (profile != null) {
+                    org.chromium.chrome.browser.extensions.ExtensionMenuManager.populate(
+                            menu,
+                            isIncognito ? profile.getPrimaryOtrProfile(true)
+                                        : profile.getOriginalProfile(),
+                            webContents);
+                }
+            }
+        }
     }
 
     /** Prepare the menu items. Note: it is possible that currentTab is null. */

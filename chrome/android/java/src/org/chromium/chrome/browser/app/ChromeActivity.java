@@ -2420,6 +2420,39 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
         @BrowserProfileType
         int type = Profile.getBrowserProfileTypeFromProfile(getCurrentTabModel().getProfile());
 
+        // Afterbird: Extensions menu entry opens chrome://extensions in a new tab.
+        // (chrome://extensions WebUI is currently stubbed on Android but the URL
+        // will still navigate; see docs/EXTENSIONS.md for the current state.)
+        if (id == R.id.extensions_id) {
+            RecordUserAction.record("MobileMenuExtensions");
+            Tab activeTab = getActivityTab();
+            TabCreator tabCreator = getTabCreator(getCurrentTabModel().isIncognito());
+            if (tabCreator != null) {
+                tabCreator.createNewTab(
+                        new LoadUrlParams("chrome://extensions", PageTransition.LINK),
+                        TabLaunchType.FROM_CHROME_UI, activeTab);
+            }
+            return true;
+        }
+
+        // Afterbird: dynamic per-extension menu items. Tapping any of these
+        // opens the extension's browser_action popup URL in a new tab.
+        if (org.chromium.chrome.browser.extensions.ExtensionMenuManager
+                .isExtensionMenuItem(id)) {
+            String popupUrl =
+                    org.chromium.chrome.browser.extensions.ExtensionMenuManager
+                            .getPopupUrlForItem(id);
+            RecordUserAction.record("MobileMenuExtensionAction");
+            Tab activeTab = getActivityTab();
+            TabCreator tabCreator = getTabCreator(getCurrentTabModel().isIncognito());
+            if (popupUrl != null && !popupUrl.isEmpty() && tabCreator != null) {
+                tabCreator.createNewTab(
+                        new LoadUrlParams(popupUrl, PageTransition.LINK),
+                        TabLaunchType.FROM_CHROME_UI, activeTab);
+            }
+            return true;
+        }
+
         if (id == R.id.preferences_id) {
             SettingsNavigation settingsNavigation =
                     SettingsNavigationFactory.createSettingsNavigation();
