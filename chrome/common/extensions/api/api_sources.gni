@@ -41,6 +41,15 @@ if (enable_extensions_core) {
   ]
 }
 
+# Afterbird: chrome://extensions JS reaches for chrome.developerPrivate
+# (it reads HostAccess enums and calls getExtensionsInfo). Without the
+# schema the Polymer elements throw "Cannot read properties of undefined"
+# and never register, leaving the page blank. Only the schema types are
+# needed — the C++ function implementations stay inside ENABLE_EXTENSIONS.
+if (enable_desktop_android_extensions && !enable_extensions) {
+  schema_sources_ += [ "developer_private.idl" ]
+}
+
 if (enable_extensions) {
   schema_sources_ += [
     "accessibility_features.json",
