@@ -10,6 +10,7 @@ generate_jni("jni_headers") {
   sources = [
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/AppMenuBridge.java",
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionInstallBridge.java",
+    "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionInstallConfirmBridge.java",
   ]
 }
 
@@ -18,6 +19,8 @@ source_set("android") {
     "app_menu_bridge.cc",
     "extension_install_bridge.cc",
     "extension_install_bridge.h",
+    "extension_install_confirm_bridge.cc",
+    "extension_install_confirm_bridge.h",
   ]
 
   deps = [
@@ -35,6 +38,7 @@ android_library("java") {
   sources = [
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/AppMenuBridge.java",
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionInstallBridge.java",
+    "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionInstallConfirmBridge.java",
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionMenuManager.java",
   ]
 
