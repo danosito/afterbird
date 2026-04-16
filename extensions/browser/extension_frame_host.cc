@@ -156,7 +156,14 @@ void ExtensionFrameHost::OpenChannelToExtension(
   TRACE_EVENT("extensions", "ExtensionFrameHost::OpenChannelToExtension",
               ChromeTrackEvent::kRenderProcessHost, *process);
 
-  MessageServiceApi::GetMessageService()->OpenChannelToExtension(
+  // Afterbird: On desktop-android builds, MessageService is not compiled
+  // (messaging BUILD.gn asserts enable_extensions). Bail out gracefully.
+  MessageServiceApi* message_service = MessageServiceApi::GetMessageService();
+  if (!message_service) {
+    LOG(WARNING) << "[Afterbird] MessageService not available, dropping message channel";
+    return;
+  }
+  message_service->OpenChannelToExtension(
       render_frame_host->GetBrowserContext(), render_frame_host, port_id, *info,
       channel_type, channel_name, std::move(port), std::move(port_host));
 }
@@ -173,7 +180,11 @@ void ExtensionFrameHost::OpenChannelToNativeApp(
   TRACE_EVENT("extensions", "ExtensionFrameHost::OnOpenChannelToNativeApp",
               ChromeTrackEvent::kRenderProcessHost, *process);
 
-  MessageServiceApi::GetMessageService()->OpenChannelToNativeApp(
+  MessageServiceApi* message_service = MessageServiceApi::GetMessageService();
+  if (!message_service) {
+    return;
+  }
+  message_service->OpenChannelToNativeApp(
       render_frame_host->GetBrowserContext(), render_frame_host, port_id,
       native_app_name, std::move(port), std::move(port_host));
 }
@@ -194,7 +205,11 @@ void ExtensionFrameHost::OpenChannelToTab(
   TRACE_EVENT("extensions", "ExtensionFrameHost::OpenChannelToTab",
               ChromeTrackEvent::kRenderProcessHost, *process);
 
-  MessageServiceApi::GetMessageService()->OpenChannelToTab(
+  MessageServiceApi* message_service = MessageServiceApi::GetMessageService();
+  if (!message_service) {
+    return;
+  }
+  message_service->OpenChannelToTab(
       render_frame_host->GetBrowserContext(), render_frame_host, port_id,
       tab_id, frame_id, document_id ? *document_id : std::string(),
       channel_type, channel_name, std::move(port), std::move(port_host));
