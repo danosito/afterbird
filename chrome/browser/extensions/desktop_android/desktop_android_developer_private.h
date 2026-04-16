@@ -26,10 +26,7 @@
 
 #include "extensions/browser/extension_function.h"
 #include "extensions/browser/extension_function_histogram_value.h"
-
-// `ExtensionFunctionRegistry` is declared in the global namespace, so
-// forward-declare it there rather than inside `extensions::`.
-class ExtensionFunctionRegistry;
+#include "extensions/browser/extension_function_registry.h"
 
 namespace extensions {
 
