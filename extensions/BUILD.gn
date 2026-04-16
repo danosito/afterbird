@@ -202,7 +202,7 @@ static_library("test_support") {
   # TODO(https://crbug.com/356905053): The following files don't compile cleanly
   # with desktop-android. Either make them compile, or determine they should
   # not be included and place them under a more appropriate if-block.
-  if (enable_extensions) {
+  if (enable_extensions && !is_android) {
     sources += [
       "browser/test_runtime_api_delegate.cc",
       "browser/test_runtime_api_delegate.h",
@@ -255,7 +255,7 @@ repack("shell_and_test_pak") {
   ]
 
   # The following resources are not used by desktop-android build.
-  if (enable_extensions) {
+  if (enable_extensions && !is_android) {
     sources += [
       "$root_gen_dir/content/browser/devtools/devtools_resources.pak",
       "$root_gen_dir/device/bluetooth/strings/bluetooth_strings_en-US.pak",
@@ -324,12 +324,12 @@ test("extensions_unittests") {
 
   # TODO(https://crbug.com/356905053): Gradually include more of these sources
   # in the desktop-android build.
-  if (enable_extensions) {
+  if (enable_extensions && !is_android) {
     deps += [ "//extensions/shell:unit_tests" ]
   }
 }
 
-if (enable_extensions) {
+if (enable_extensions && !is_android) {
   # Browser tests are not currently supported in desktop-android builds.
   test("extensions_browsertests") {
     use_xvfb = use_xvfb_in_this_config

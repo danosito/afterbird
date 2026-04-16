@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+<if expr="not is_android">
 import 'chrome://resources/cr_components/managed_footnote/managed_footnote.js';
+</if>
 import './item.js';
 import './mv2_deprecation_panel.js';
 import './review_panel.js';

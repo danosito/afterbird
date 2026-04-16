@@ -13,9 +13,9 @@ exclude_unwind_tables = false
 
 use_unofficial_version_number = false
 android_default_version_code = "1"
-android_keystore_name = "dev"
-android_keystore_password = "public_password"
-android_keystore_path = "../../keystore.jks"
+android_keystore_name = "chromiumdebugkey"
+android_keystore_password = "chromium"
+android_keystore_path = "//build/android/chromium-debug.keystore"
 android_default_version_name = "Git"
 
 fieldtrial_testing_like_official_build = true
@@ -38,12 +38,18 @@ rtc_use_h264 = false
 v8_use_external_startup_data = true
 update_android_aar_prebuilts = true
 
-enable_extensions = true
+enable_extensions = false
+enable_desktop_android_extensions = true
+enable_guest_view = false
+enable_platform_apps = false
+chrome_pgo_phase = 0
 enable_pdf = false
 enable_plugins = false
+
+use_login_database_as_backend = true
 
 disable_android_lint = true
 treat_warnings_as_errors = false
 
 # Fast APK
-cc_wrapper = "ccache"
+cc_wrapper = ""

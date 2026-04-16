@@ -33,7 +33,9 @@ public interface TabList {
      */
     boolean isOffTheRecord();
 
-    int getLastNonExtensionActiveIndex();
+    default int getLastNonExtensionActiveIndex() {
+        return index();
+    }
 
     /**
      * Returns whether this tab model contains only incognito branded tabs or only normal tabs.

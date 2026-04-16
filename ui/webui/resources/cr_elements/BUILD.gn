@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//ui/webui/resources/tools/build_webui.gni")
+import("//extensions/buildflags/buildflags.gni")
 
 build_webui("build") {
   grd_prefix = "webui_cr_elements"
@@ -36,7 +37,7 @@ build_webui("build") {
     "cr_tabs/cr_tabs.css",
   ]
 
-  if (!is_android && !is_ios) {
+  if ((!is_android && !is_ios) || (is_android && enable_desktop_android_extensions)) {
     web_component_files += [ "cr_a11y_announcer/cr_a11y_announcer.ts" ]
 
     non_web_component_files += [
@@ -219,6 +220,7 @@ build_webui("build") {
     ]
   }
 
+
   html_to_wrapper_template = "detect"
 
   ts_tsconfig_base = "//tools/typescript/tsconfig_base_lit.json"
@@ -236,6 +238,15 @@ build_webui("build") {
     "//tools/typescript/definitions/pending.d.ts",
     "//tools/typescript/definitions/settings_private.d.ts",
   ]
+  if (is_android && enable_desktop_android_extensions) {
+    ts_definitions += [ "polymer_bundled_compat.d.ts" ]
+    ts_path_mappings = [
+      "//resources/polymer/v3_0/polymer/polymer_bundled.min.js|" +
+          rebase_path("polymer_bundled_compat.d.ts", target_gen_dir),
+      "chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js|" +
+          rebase_path("polymer_bundled_compat.d.ts", target_gen_dir),
+    ]
+  }
   webui_context_type = "relative"
   generate_grdp = true
   grd_resource_path_prefix = rebase_path(".", "//ui/webui/resources")

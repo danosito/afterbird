@@ -6,6 +6,7 @@ import("//build/config/chromeos/ui_mode.gni")
 import("//chrome/browser/buildflags.gni")
 import("//chrome/common/features.gni")
 import("//components/compose/features.gni")
+import("//extensions/buildflags/buildflags.gni")
 import("//pdf/features.gni")
 import("//printing/buildflags/buildflags.gni")
 import("//third_party/closure_compiler/compile_js.gni")
@@ -77,6 +78,10 @@ group("resources") {
     }
   }
 
+  if (is_android && enable_desktop_android_extensions) {
+    public_deps += [ ":component_extension_resources" ]
+  }
+
   if (is_chromeos_ash) {
     public_deps += [
       "ash/extended_updates:resources",
@@ -145,7 +150,7 @@ group("resources") {
     public_deps += [ "tab_strip:resources" ]
   }
 
-  if (enable_extensions) {
+  if (enable_extensions || enable_desktop_android_extensions) {
     public_deps += [ "extensions:resources" ]
   }
 
@@ -176,7 +181,7 @@ if (is_chromeos_ash && enable_js_type_check) {
   }
 }
 
-if (!is_android) {
+if (!is_android || enable_desktop_android_extensions) {
   grit("component_extension_resources") {
     source = "component_extension_resources.grd"
 
@@ -203,7 +208,8 @@ if (!is_android) {
     output_dir = "$root_gen_dir/chrome"
   }
 
-  grit("app_icon_resources") {
+  if (!is_android) {
+    grit("app_icon_resources") {
     source = "app_icon/app_icon_resources.grd"
     defines = chrome_grit_defines
     outputs = [
@@ -242,6 +248,7 @@ if (!is_android) {
       ]
       output_dir = "$root_gen_dir/chrome"
     }
+  }
   }
 }
 

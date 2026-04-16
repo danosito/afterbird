@@ -656,10 +656,10 @@ source_set("browser_sources") {
       "guest_view/web_view/web_view_renderer_state.h",
     ]
 
-    deps += [
-      "//components/guest_view/browser",
-      "//extensions/browser/guest_view/web_view/web_ui",
-    ]
+    deps += [ "//components/guest_view/browser" ]
+    if (enable_extensions) {
+      deps += [ "//extensions/browser/guest_view/web_view/web_ui" ]
+    }
   }
 
   # TODO(https://crbug.com/41407868): Platform Apps code should not be
@@ -691,7 +691,7 @@ source_set("browser_sources") {
   # TODO(https://crbug.com/356905053): The following files don't compile cleanly
   # with desktop-android. Either make them compile, or determine they should
   # not be included and place them under a more appropriate if-block.
-  if (enable_extensions) {
+  if (enable_extensions && !is_android) {
     sources += [
       "api/device_permissions_manager.cc",
       "api/device_permissions_manager.h",

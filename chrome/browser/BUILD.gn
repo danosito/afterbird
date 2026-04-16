@@ -7714,9 +7714,6 @@ static_library("browser") {
       "sync_file_system/task_logger.h",
     ]
     public_deps += [
-      "//chrome/browser/apps/platform_apps",
-      "//chrome/browser/apps/platform_apps/api",
-      "//chrome/browser/controlled_frame",
       "//chrome/browser/extensions",
       "//chrome/browser/extensions:keyed_service_factories",
       "//chrome/browser/extensions/api",
@@ -7727,50 +7724,62 @@ static_library("browser") {
     # Any circular includes must depend on the target
     # "browser_public_dependencies".
     allow_circular_includes_from += [
-      "//chrome/browser/apps/platform_apps",
-
-      # TODO(crbug.com/40593486): This is unfortunate, but not easy to
-      # fix. Ideally, //chrome/browser:browser shouldn't depend on these APIs
-      #(though the APIs likely will depend on //chrome/browser), but we need
-      # to pull them in here to allow registration of keyed services.
-      "//chrome/browser/apps/platform_apps/api",
-
       "//chrome/browser/extensions",
 
       # Has dependencies on notification code in //chrome/browser.
       "//chrome/browser/extensions/api/notifications",
-
-      # TODO(crbug.com/40761673): Remove cycles and simplify all dependencies.
-      "//chrome/browser/web_applications/extensions",
     ]
     deps += [
-      "//apps",
-
-      # This dependency should be removed when //chrome/browser/notifications
-      # is modularized.
-      "//chrome/browser/extensions/api/notifications",
-      "//chrome/browser/web_applications/extensions",
-      "//chrome/common/apps/platform_apps",
       "//chrome/common/extensions/api",
       "//chrome/common/extensions/api:extensions_features",
       "//components/app_constants",
-      "//components/drive",
       "//components/guest_view/browser",
       "//extensions/browser",
       "//extensions/browser/api/content_settings:content_settings",
       "//extensions/common:mojom",
-      "//media/cast:sender",
-
-      # TODO(crbug.com/41410773): mirroring shouldn't depend on enable_extensions.
-      "//components/mirroring/browser",
-      "//components/mirroring/mojom:service",
-      "//components/mirroring/service:mirroring_service",
       "//extensions/common:common_constants",
       "//extensions/components/javascript_dialog_extensions_client",
       "//google_apis/calendar",
       "//google_apis/common",
-      "//google_apis/drive",
+
+      # This dependency should be removed when //chrome/browser/notifications
+      # is modularized.
+      "//chrome/browser/extensions/api/notifications",
     ]
+
+    # Desktop-only deps that assert(!is_android).
+    if (!is_android) {
+      public_deps += [
+        "//chrome/browser/apps/platform_apps",
+        "//chrome/browser/apps/platform_apps/api",
+        "//chrome/browser/controlled_frame",
+      ]
+      allow_circular_includes_from += [
+        "//chrome/browser/apps/platform_apps",
+
+        # TODO(crbug.com/40593486): This is unfortunate, but not easy to
+        # fix. Ideally, //chrome/browser:browser shouldn't depend on these APIs
+        #(though the APIs likely will depend on //chrome/browser), but we need
+        # to pull them in here to allow registration of keyed services.
+        "//chrome/browser/apps/platform_apps/api",
+
+        # TODO(crbug.com/40761673): Remove cycles and simplify all dependencies.
+        "//chrome/browser/web_applications/extensions",
+      ]
+      deps += [
+        "//apps",
+        "//chrome/browser/web_applications/extensions",
+        "//chrome/common/apps/platform_apps",
+        "//components/drive",
+        "//media/cast:sender",
+
+        # TODO(crbug.com/41410773): mirroring shouldn't depend on enable_extensions.
+        "//components/mirroring/browser",
+        "//components/mirroring/mojom:service",
+        "//components/mirroring/service:mirroring_service",
+        "//google_apis/drive",
+      ]
+    }
     if (is_chromeos_ash) {
       sources += [
         "accessibility/accessibility_extension_api_ash.cc",

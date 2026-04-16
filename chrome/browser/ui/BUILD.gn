@@ -976,6 +976,14 @@ static_library("ui") {
       "//url",
     ]
 
+    # TODO: Enable extensions WebUI when string resources are available on Android
+    # if (enable_desktop_android_extensions) {
+    #   sources += [
+    #     "webui/extensions/extensions_ui.cc",
+    #     "webui/extensions/extensions_ui.h",
+    #   ]
+    # }
+
     # TODO(b/335257259): Resolve circular deps.
     # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
     allow_circular_includes_from += [ "//chrome/browser/facilitated_payments" ]
@@ -5291,17 +5299,9 @@ static_library("ui") {
 
   if (enable_extensions) {
     deps += [
-      "//apps",
-      "//chrome/browser/apps:icon_standardizer",
-      "//chrome/browser/apps/platform_apps",
-      "//chrome/browser/apps/platform_apps/api",
       "//chrome/browser/extensions",
       "//chrome/browser/extensions/api/omnibox",
-      "//chrome/browser/web_applications",
-      "//chrome/browser/web_applications/app_service",
-      "//chrome/browser/web_share_target",
       "//chrome/common/extensions/api",
-      "//components/drive",
       "//components/guest_view/browser",
       "//extensions/browser",
       "//extensions/browser/api/management",
@@ -5313,12 +5313,26 @@ static_library("ui") {
       "//ui/color:mixers",
     ]
 
+    if (!is_android) {
+      deps += [
+        "//apps",
+        "//chrome/browser/apps:icon_standardizer",
+        "//chrome/browser/apps/platform_apps",
+        "//chrome/browser/apps/platform_apps/api",
+        "//chrome/browser/web_applications",
+        "//chrome/browser/web_applications/app_service",
+        "//chrome/browser/web_share_target",
+        "//components/drive",
+      ]
+    }
     # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
-    allow_circular_includes_from += [
-      "//chrome/browser/apps/platform_apps",
-      "//chrome/browser/apps/platform_apps/api",
-      "//chrome/browser/extensions",
-    ]
+    allow_circular_includes_from += [ "//chrome/browser/extensions" ]
+    if (!is_android) {
+      allow_circular_includes_from += [
+        "//chrome/browser/apps/platform_apps",
+        "//chrome/browser/apps/platform_apps/api",
+      ]
+    }
 
     sources += [
       "extensions/accelerator_priority.h",
