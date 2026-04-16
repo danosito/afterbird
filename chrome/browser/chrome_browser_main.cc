@@ -1664,8 +1664,19 @@ int ChromeBrowserMainParts::PreMainMessageLoopRunImpl() {
   content::WebUIControllerFactory::RegisterFactory(
       ChromeWebUIControllerFactory::GetInstance());
   RegisterChromeWebUIConfigs();
-  // TODO: Register extensions WebUI when string resources are available on Android
-  // ExtensionsUIConfig registration removed - extensions_ui.cc not compiled on Android
+#if BUILDFLAG(IS_ANDROID) && BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+  // Afterbird: Desktop-Android extension mode does not register these by
+  // default. When full extensions support is disabled but the experimental
+  // desktop-android variant is on, add ExtensionsUIConfig so chrome://extensions
+  // works.
+  {
+    auto& webui_config_map = content::WebUIConfigMap::GetInstance();
+#if !BUILDFLAG(ENABLE_EXTENSIONS)
+    webui_config_map.AddWebUIConfig(
+        std::make_unique<extensions::ExtensionsUIConfig>());
+#endif
+  }
+#endif
   RegisterChromeUntrustedWebUIConfigs();
 
 #if BUILDFLAG(IS_ANDROID)

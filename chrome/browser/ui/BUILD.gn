@@ -976,13 +976,16 @@ static_library("ui") {
       "//url",
     ]
 
-    # TODO: Enable extensions WebUI when string resources are available on Android
-    # if (enable_desktop_android_extensions) {
-    #   sources += [
-    #     "webui/extensions/extensions_ui.cc",
-    #     "webui/extensions/extensions_ui.h",
-    #   ]
-    # }
+    # Afterbird: re-enable extensions WebUI. The IDS_CONTROLLED_SETTING_* and
+    # IDS_SEARCH_* strings referenced by extensions_ui.cc are already gated in
+    # generated_resources.grd by `<if expr="not is_android or
+    # enable_desktop_android_extensions">`, so they're generated for this build.
+    if (enable_desktop_android_extensions) {
+      sources += [
+        "webui/extensions/extensions_ui.cc",
+        "webui/extensions/extensions_ui.h",
+      ]
+    }
 
     # TODO(b/335257259): Resolve circular deps.
     # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
