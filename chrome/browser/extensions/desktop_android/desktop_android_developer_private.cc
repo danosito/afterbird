@@ -409,19 +409,28 @@ DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction::Run() {
   if (!registrar) {
     return RespondNow(Error("ExtensionRegistrar unavailable"));
   }
+  // Collect the ids first — registrar->RemoveExtension() may invalidate the
+  // Extension* we'd otherwise need to ask about its manifest location.
+  std::vector<ExtensionId> ids;
   for (const base::Value& id_val : args()[0].GetList()) {
-    if (!id_val.is_string()) {
-      continue;
+    if (id_val.is_string()) {
+      ids.push_back(id_val.GetString());
     }
-    const std::string& id = id_val.GetString();
-    // Registrar removes from registry; ExtensionPrefs entry cleanup happens
-    // on DeleteExtension in upstream flows. We'll also drop the on-disk
-    // install directory in phase 2 once Installer owns it; for now leave
-    // it on disk — it's harmless because registrar won't re-add without
-    // a corresponding prefs entry.
+  }
+  ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context());
+  ExtensionPrefs* prefs = ExtensionPrefs::Get(browser_context());
+  for (const ExtensionId& id : ids) {
+    // Capture the location before we remove the extension from the registry
+    // (afterwards GetInstalledExtension returns nullptr).
+    mojom::ManifestLocation location = mojom::ManifestLocation::kUnpacked;
+    if (const Extension* ext = registry->GetInstalledExtension(id)) {
+      location = ext->location();
+    }
     registrar->RemoveExtension(id, UnloadedExtensionReason::UNINSTALL);
-    ExtensionPrefs::Get(browser_context())->OnExtensionUninstalled(
-        id, mojom::ManifestLocation::kUnpacked, /*external_uninstall=*/false);
+    if (prefs) {
+      prefs->OnExtensionUninstalled(id, location,
+                                    /*external_uninstall=*/false);
+    }
   }
   return RespondNow(NoArguments());
 }
