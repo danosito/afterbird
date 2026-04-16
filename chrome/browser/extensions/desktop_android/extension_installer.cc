@@ -103,6 +103,14 @@ struct DesktopAndroidExtensionInstaller::UnpackedResult {
   std::string error;
 };
 
+DesktopAndroidExtensionInstaller::PreparedInstall::PreparedInstall() = default;
+DesktopAndroidExtensionInstaller::PreparedInstall::PreparedInstall(
+    PreparedInstall&&) = default;
+DesktopAndroidExtensionInstaller::PreparedInstall&
+DesktopAndroidExtensionInstaller::PreparedInstall::operator=(
+    PreparedInstall&&) = default;
+DesktopAndroidExtensionInstaller::PreparedInstall::~PreparedInstall() = default;
+
 DesktopAndroidExtensionInstaller::DesktopAndroidExtensionInstaller(content::BrowserContext* browser_context)
     : browser_context_(browser_context) {}
 
@@ -119,6 +127,44 @@ void DesktopAndroidExtensionInstaller::InstallFromFile(const base::FilePath& fil
                      install_root),
       base::BindOnce(&DesktopAndroidExtensionInstaller::OnUnpacked,
                      weak_factory_.GetWeakPtr(), std::move(cb)));
+}
+
+void DesktopAndroidExtensionInstaller::PrepareFromFile(
+    const base::FilePath& file_path,
+    PrepareCallback cb) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  const base::FilePath install_root =
+      browser_context_->GetPath().AppendASCII("Extensions");
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce(&DesktopAndroidExtensionInstaller::UnpackOnBlockingThread,
+                     file_path, install_root),
+      base::BindOnce(&DesktopAndroidExtensionInstaller::OnUnpackedForPrepare,
+                     weak_factory_.GetWeakPtr(), std::move(cb)));
+}
+
+void DesktopAndroidExtensionInstaller::CommitPrepared(
+    std::unique_ptr<PreparedInstall> prepared,
+    Callback cb) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  if (!prepared || !prepared->extension || prepared->staging_root.empty()) {
+    std::move(cb).Run(nullptr, "No prepared install to commit");
+    return;
+  }
+  // Hand-off: promote the staging dir via AddExtension.
+  FinishInstall(prepared->extension, prepared->staging_root, std::move(cb));
+}
+
+void DesktopAndroidExtensionInstaller::DiscardPrepared(
+    std::unique_ptr<PreparedInstall> prepared) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  if (!prepared || prepared->staging_root.empty()) {
+    return;
+  }
+  base::ThreadPool::PostTask(
+      FROM_HERE, {base::MayBlock()},
+      base::BindOnce(base::IgnoreResult(&base::DeletePathRecursively),
+                     prepared->staging_root));
 }
 
 // static
@@ -269,6 +315,46 @@ void DesktopAndroidExtensionInstaller::OnUnpacked(Callback cb, UnpackedResult re
     return;
   }
 
+  FinishInstall(extension, result.unpacked_root, std::move(cb));
+}
+
+void DesktopAndroidExtensionInstaller::OnUnpackedForPrepare(
+    PrepareCallback cb,
+    UnpackedResult result) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  auto prepared = std::make_unique<PreparedInstall>();
+  if (!result.error.empty() || result.unpacked_root.empty()) {
+    prepared->error =
+        result.error.empty() ? "Unpack failed" : result.error;
+    std::move(cb).Run(std::move(prepared));
+    return;
+  }
+  std::string load_error;
+  scoped_refptr<const Extension> extension = file_util::LoadExtension(
+      result.unpacked_root, mojom::ManifestLocation::kUnpacked,
+      Extension::NO_FLAGS, &load_error);
+  if (!extension) {
+    LOG(WARNING) << "[Afterbird] LoadExtension failed (prepare): "
+                 << load_error;
+    // Delete the staging dir since we're not going to use it.
+    base::ThreadPool::PostTask(
+        FROM_HERE, {base::MayBlock()},
+        base::BindOnce(base::IgnoreResult(&base::DeletePathRecursively),
+                       result.unpacked_root));
+    prepared->error = load_error;
+    std::move(cb).Run(std::move(prepared));
+    return;
+  }
+  prepared->extension = extension;
+  prepared->staging_root = result.unpacked_root;
+  std::move(cb).Run(std::move(prepared));
+}
+
+void DesktopAndroidExtensionInstaller::FinishInstall(
+    scoped_refptr<const Extension> extension,
+    const base::FilePath& unpacked_root,
+    Callback cb) {
+  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   auto* system = static_cast<DesktopAndroidExtensionSystem*>(
       ExtensionSystem::Get(browser_context_));
   if (!system) {
@@ -280,10 +366,14 @@ void DesktopAndroidExtensionInstaller::OnUnpacked(Callback cb, UnpackedResult re
                                 const_cast<Extension*>(extension.get())),
                             add_error)) {
     LOG(WARNING) << "[Afterbird] AddExtension failed: " << add_error;
+    base::ThreadPool::PostTask(
+        FROM_HERE, {base::MayBlock()},
+        base::BindOnce(base::IgnoreResult(&base::DeletePathRecursively),
+                       unpacked_root));
     std::move(cb).Run(nullptr, add_error);
     return;
   }
-  LOG(INFO) << "[Afterbird] Installed extension from " << result.unpacked_root;
+  LOG(INFO) << "[Afterbird] Installed extension from " << unpacked_root;
   std::move(cb).Run(extension, std::string());
 }
 
