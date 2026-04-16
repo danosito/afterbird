@@ -2,4 +2,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-include_polymer = !is_android && !is_ios
+import("//extensions/buildflags/buildflags.gni")
+
+# Afterbird: chrome://extensions on desktop-android needs Polymer resources
+# (polymer_bundled.min.js plus md_colors.css and the Polymer-based cr_elements)
+# to render at all. Upstream gated Polymer off every Android build because
+# mobile WebUIs use Lit; we selectively re-enable it when we're building
+# with the desktop-android-extensions variant.
+include_polymer = (!is_android && !is_ios) ||
+                  (is_android && enable_desktop_android_extensions)

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//crypto/features.gni")
+import("//extensions/buildflags/buildflags.gni")
 import("//ui/webui/resources/tools/generate_grd.gni")
 
 if (use_blink) {
@@ -49,6 +50,15 @@ generate_grd("build_grd") {
     "$target_gen_dir/js/resources.grdp",
     "$target_gen_dir/mojo/resources.grdp",
   ]
+
+  # Afterbird: pull in just the Polymer v3 resources on desktop-android, since
+  # the extensions WebUI still uses Polymer elements (the full cr_components
+  # below remain desktop-only — they reference APIs we don't have on Android).
+  if (is_android && enable_desktop_android_extensions) {
+    public_deps += [ "//third_party/polymer/v3_0:build_grdp" ]
+    grdp_files +=
+        [ "$root_gen_dir/third_party/polymer/v3_0/polymer_3_0_resources.grdp" ]
+  }
 
   if (!is_android && !is_ios) {
     public_deps += [
