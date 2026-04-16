@@ -1,6 +1,8 @@
-# The version to use for Kiwi Browser
+# Afterbird version
+# Versioning: MAJOR.MINOR.BUILD.PATCH
+# Bump MINOR for releases with new capabilities, PATCH for fixes.
 
-MAJOR=93
-MINOR=0
-BUILD=4577
-PATCH=21
+MAJOR=0
+MINOR=1
+BUILD=0
+PATCH=0

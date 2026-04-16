@@ -2,6 +2,51 @@
 
 All notable changes to this repository are documented in this file.
 
+## v0.1.0 - 2026-04-16
+
+### Added
+
+- First working Afterbird build for Android with extension loading support.
+- `--load-extension=/path` command-line flag now loads unpacked extensions at
+  startup (backport to `DesktopAndroidExtensionSystem::InitForRegularProfile`).
+- `components/guest_view/renderer/BUILD.gn` overlay allows GuestViews to build
+  on Android (removed `assert(!is_android)` as the original comment suggested).
+- Custom `extensions/browser/extension_frame_host.cc` and
+  `extensions/browser/service_worker/service_worker_host.cc` with null-safe
+  MessageService access to prevent SIGSEGV on desktop-android builds.
+- `chrome/browser/profiles/BUILD.gn`, `chrome/browser/BUILD.gn`,
+  `chrome/browser/extensions/BUILD.gn` overlay entries that gate desktop-only
+  dependencies (`//apps`, `platform_apps`, `web_applications`, `//components/drive`,
+  `//media/cast`, mirroring) behind `!is_android`.
+- `third_party/blink/renderer/build/scripts/gperf.py` fix for duplicate
+  fallthrough annotations on modern gperf builds.
+- `chrome/browser/resources/extensions/managed_footnote_stub.d.ts` plus gen-dir
+  JS stub to satisfy rollup bundling on Android (where managed_footnote is
+  desktop-only).
+
+### Changed
+
+- `.build/production_build_reference/args.gn`:
+  - `enable_extensions = false` (use `enable_desktop_android_extensions = true`
+    instead, which provides the core extension infrastructure without
+    triggering the ~100 `assert(!is_android)` failures the full flag would).
+  - `enable_guest_view = false`
+  - `enable_platform_apps = false`
+  - `chrome_pgo_phase = 0`
+  - `use_login_database_as_backend = true`
+- `chrome/browser/chrome_browser_main.cc`: removed `InspectUIConfig`
+  registration on Android (implementation is gated off Android).
+
+### Known Limitations
+
+- Extension messaging API is stubbed; extensions that depend on
+  `chrome.runtime.sendMessage` between background and content scripts
+  have limited functionality.
+- Extension popups are not supported (requires full `enable_guest_view`).
+- `chrome://extensions` WebUI page is disabled (extensions WebUI depends on
+  desktop-only string resources like `IDS_CONTROLLED_SETTING_*`, `IDS_SEARCH_*`).
+- No UI for runtime extension management yet.
+
 ## 2026-04-13
 
 ### Added

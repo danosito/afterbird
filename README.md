@@ -1,10 +1,40 @@
 # Afterbird
 
-Afterbird is a continuation-focused fork of the Kiwi `src.next` codebase.
-The project identity in this repository is now Afterbird.
+Afterbird is a continuation-focused fork of the Kiwi `src.next` codebase,
+bringing MV2 extension support to a modern Chromium baseline on Android.
 Repository owner/maintainer: `danosito` (`https://github.com/danosito`).
 
-This repository is currently a tracked source subset, not a complete standalone Chromium checkout. It contains selected Chromium/Kiwi directories and project automation files, and is now aligned to a Chromium 132 baseline (`132.0.6834.83`), but it does not include the full Chromium root tree or full build toolchain definitions needed for turnkey local builds.
+## Current Status
+
+**First working build with extension support available** — see [Releases](https://github.com/danosito/afterbird/releases).
+
+- Browser launches on Android 15+ (emulator and physical devices)
+- `--load-extension=/path/to/ext` loads unpacked extensions at startup
+- uBlock Origin loads successfully; content scripts execute
+- DNR (declarativeNetRequest) based ad blocking works
+- Built on Chromium 132.0.6834.83
+
+### Known Limitations in v0.1
+
+- Extension messaging API is stubbed (chrome.runtime.sendMessage drops silently) — extensions that rely on background ↔ content script messaging have limited functionality
+- Extension popups not available (no guest_view support yet)
+- `chrome://extensions` WebUI page is disabled (desktop-only string resources)
+- No UI to enable/disable/manage extensions at runtime
+
+### Roadmap
+
+- Enable full MessageService for extension messaging
+- Implement Kiwi-style extensions menu with per-extension entries
+- Re-enable `chrome://extensions` WebUI with Android-compatible resources
+- DevTools parity on mobile
+
+## What This Repository Contains
+
+This is a **tracked source subset + project automation**, not a complete
+standalone Chromium checkout. It contains selected Chromium/Kiwi directories
+and project automation files, aligned to Chromium 132 baseline (`132.0.6834.83`).
+
+Builds run against an external Chromium checkout; see the build instructions below.
 
 ## What This Repository Contains Today
 
