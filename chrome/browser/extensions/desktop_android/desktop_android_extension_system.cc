@@ -178,7 +178,8 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
   // Without this, staged extensions disappear on every restart.
   ExtensionPrefs* prefs = ExtensionPrefs::Get(browser_context_);
   if (prefs) {
-    ExtensionsInfo persisted = prefs->GetInstalledExtensionsInfo();
+    ExtensionPrefs::ExtensionsInfo persisted =
+        prefs->GetInstalledExtensionsInfo();
     LOG(INFO) << "[Afterbird] reloading " << persisted.size()
               << " persisted extension(s)";
     for (const ExtensionInfo& info : persisted) {
