@@ -328,6 +328,42 @@ We are **not** doing in v1.4:
   `chrome://extensions` (there isn't one today; the dev-mode
   "Load unpacked" flow covers local installs).
 
+## Known gap discovered during implementation
+
+Implementation committed on `feature/heavy-ext-and-install` (commits
+`55a8a5fa` → `6cdf8f4b`). Static source review found one runtime
+concern the spec missed:
+
+**Feature-availability gating.** Our shim registers the three
+`WebstorePrivate*Function` classes with `ExtensionFunctionRegistry`,
+but the renderer side (`extensions/renderer/native_extension_bindings_system.cc`)
+gates `chrome.webstorePrivate` exposure to page contexts on
+`script_context->GetAvailability("webstorePrivate").is_available()`.
+That availability check reads the compiled-in `_api_features.json`
+metadata. Desktop-android omits `webstorePrivate` from that metadata,
+so even with our browser-side handlers, the CWS page would see
+`chrome.webstorePrivate === undefined` and its Install button would
+throw.
+
+**Three remediation options** (pick at next session):
+
+1. Add `webstorePrivate` to an Afterbird-owned features JSON that gets
+   compiled into desktop-android. Smallest diff, but requires touching
+   the upstream feature-provider plumbing — maybe 50 LOC in
+   `extensions/common/api/_api_features.json` equivalent plus a GN
+   entry.
+2. Teach the CWS page's `Install` button to POST to an Afterbird-only
+   URL scheme (e.g. `afterbird-install://?id=...`) via an injected
+   content-script — dodges the feature system entirely but reintroduces
+   the "brittle content-script on store DOM" risk we listed earlier.
+3. Expose the function via `browser_context()->GetURLLoaderFactory()`
+   and a custom `mojo::Remote<>` bound only to the CWS origin,
+   bypassing the extensions dispatch pipeline. Clean but ~200 LOC of
+   Mojo boilerplate.
+
+Recommend option 1. Tracking the follow-up is out of scope for this
+session since the source work for options 2/3 diverges significantly.
+
 ## Open questions (for approval round)
 
 1. **Should the `+ (from store)` button be gated on dev-mode off?**
