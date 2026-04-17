@@ -18,61 +18,6 @@
 
 namespace extensions {
 
-namespace {
-
-// Recognises Chrome Web Store detail pages. Returns the 32-character
-// extension id on match, empty string otherwise. Supports both the current
-// host (chromewebstore.google.com) and the legacy one still seen in shared
-// links (chrome.google.com/webstore).
-std::string ExtractWebstoreExtensionId(const GURL& url) {
-  if (!url.SchemeIsHTTPOrHTTPS()) {
-    return std::string();
-  }
-  const std::string host = url.host();
-  const std::string path = url.path();
-  std::string id_candidate;
-  if (host == "chromewebstore.google.com") {
-    // /detail/<slug>/<id> or /detail/<id>
-    std::vector<std::string_view> parts = base::SplitStringPiece(
-        path, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    if (parts.size() >= 2 && parts[0] == "detail") {
-      id_candidate = std::string(parts.back());
-    }
-  } else if (host == "chrome.google.com" &&
-             base::StartsWith(path, "/webstore/detail/",
-                              base::CompareCase::SENSITIVE)) {
-    std::vector<std::string_view> parts = base::SplitStringPiece(
-        path, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    // /webstore/detail/<slug>/<id> or /webstore/detail/<id>
-    if (parts.size() >= 3) {
-      id_candidate = std::string(parts.back());
-    }
-  }
-  if (id_candidate.size() != 32) {
-    return std::string();
-  }
-  // Extension IDs are lowercase a-p (32 chars of the 16-letter alphabet
-  // used by ExtensionId::kAlphabet). Be lenient: just require [a-p].
-  for (char c : id_candidate) {
-    if (c < 'a' || c > 'p') {
-      return std::string();
-    }
-  }
-  return id_candidate;
-}
-
-// Builds the Chrome Web Store "get CRX" URL. This is the same endpoint the
-// omaha updater hits for autoupdates; it returns a 302 to a googleusercontent
-// CRX blob for any valid public extension ID.
-GURL BuildWebstoreCrxUrl(const std::string& extension_id) {
-  return GURL(
-      "https://clients2.google.com/service/update2/crx?response=redirect"
-      "&prodversion=128.0&acceptformat=crx2,crx3&x=id%3D" +
-      extension_id + "%26installsource%3Dondemand%26uc");
-}
-
-}  // namespace
-
 // static
 std::unique_ptr<ExtensionInstallNavigationThrottle>
 ExtensionInstallNavigationThrottle::MaybeCreate(
@@ -97,20 +42,16 @@ ExtensionInstallNavigationThrottle::~ExtensionInstallNavigationThrottle() =
 content::NavigationThrottle::ThrottleCheckResult
 ExtensionInstallNavigationThrottle::WillStartRequest() {
   const GURL& url = navigation_handle()->GetURL();
-  const std::string webstore_id = ExtractWebstoreExtensionId(url);
-  if (!webstore_id.empty()) {
-    const GURL crx_url = BuildWebstoreCrxUrl(webstore_id);
-    LOG(INFO) << "[Afterbird] webstore intercept id=" << webstore_id
-              << " crx=" << crx_url;
-    HandOffToCoordinator(crx_url);
-    return CANCEL_AND_IGNORE;
-  }
-  // Temporary: log CWS navigations we *didn't* intercept so we can see
-  // whether the URL layout changed, the host is different, or the throttle
-  // simply didn't run. Drop this once we're confident.
+  // Kiwi-style: let the Chrome Web Store detail page load normally and drive
+  // installs through its native "Add to Chrome" button (which calls
+  // chrome.webstorePrivate.beginInstallWithManifest3 — see
+  // chrome/browser/extensions/desktop_android/webstore_private/). The
+  // throttle used to intercept the URL and show a custom dialog; that wrapper
+  // UX is retired as of v1.6. We keep the throttle registered so raw
+  // redirect-to-.crx chains still reach the download layer.
   if (url.DomainIs("chromewebstore.google.com") ||
       url.DomainIs("chrome.google.com")) {
-    LOG(INFO) << "[Afterbird] throttle saw store URL but didn't match: " << url;
+    return PROCEED;
   }
   return PROCEED;
 }

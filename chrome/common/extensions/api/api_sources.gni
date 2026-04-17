@@ -47,7 +47,17 @@ if (enable_extensions_core) {
 # and never register, leaving the page blank. Only the schema types are
 # needed — the C++ function implementations stay inside ENABLE_EXTENSIONS.
 if (enable_desktop_android_extensions && !enable_extensions) {
-  schema_sources_ += [ "developer_private.idl" ]
+  schema_sources_ += [
+    "developer_private.idl",
+
+    # Native CWS install. The chromewebstore.google.com detail page's own
+    # "Add to Chrome" button calls chrome.webstorePrivate.* — we implement
+    # the three entry points in
+    # chrome/browser/extensions/desktop_android/webstore_private/. Without
+    # this schema the binding never materialises on the CWS page and
+    # clicking Install hangs.
+    "webstore_private.json",
+  ]
 }
 
 if (enable_extensions) {
