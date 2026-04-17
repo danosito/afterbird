@@ -7841,6 +7841,11 @@ static_library("browser") {
       # SimpleURLLoader, staging dir, and the JNI confirm-dialog bridge.
       "extensions/desktop_android/crx_install_coordinator.cc",
       "extensions/desktop_android/crx_install_coordinator.h",
+      # Afterbird v1.4: webstorePrivate shim + URL helpers. The detail
+      # page's own Install button calls into beginInstallWithManifest3,
+      # which hands off to CrxInstallCoordinator.
+      "extensions/desktop_android/webstore_private/webstore_url_util.cc",
+      "extensions/desktop_android/webstore_private/webstore_url_util.h",
     ]
     public_deps += [ "//extensions/browser" ]
     deps += [ "//extensions/browser/updater" ]
