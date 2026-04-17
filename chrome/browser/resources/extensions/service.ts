@@ -86,7 +86,15 @@ export class Service implements ServiceInterface {
   }
 
   recordUserAction(metricName: string): void {
-    chrome.metricsPrivate.recordUserAction(metricName);
+    // Afterbird: chrome.metricsPrivate isn't bound on desktop-android; guard
+    // every caller so the throw doesn't abort the surrounding handler (the
+    // toggle / Remove / Update buttons stayed silent in v1.1 because this
+    // threw before the real API call ran).
+    try {
+      chrome.metricsPrivate.recordUserAction(metricName);
+    } catch (_) {
+      // No-op — metrics are best-effort.
+    }
   }
 
   /**
@@ -166,7 +174,7 @@ export class Service implements ServiceInterface {
     if (this.isDeleting_) {
       return;
     }
-    chrome.metricsPrivate.recordUserAction('Extensions.RemoveExtensionClick');
+    this.recordUserAction('Extensions.RemoveExtensionClick');
     this.isDeleting_ = true;
     // Afterbird: route through developerPrivate.removeMultipleExtensions
     // because chrome.management.* isn't wired on desktop-android.
@@ -185,7 +193,7 @@ export class Service implements ServiceInterface {
    * Allows the consumer to call the API asynchronously.
    */
   uninstallItem(id: string): Promise<void> {
-    chrome.metricsPrivate.recordUserAction('Extensions.RemoveExtensionClick');
+    this.recordUserAction('Extensions.RemoveExtensionClick');
     // Afterbird: see deleteItem above.
     return chrome.developerPrivate.removeMultipleExtensions([id]);
   }
@@ -207,12 +215,12 @@ export class Service implements ServiceInterface {
   }
 
   setItemEnabled(id: string, isEnabled: boolean) {
-    chrome.metricsPrivate.recordUserAction(
-        isEnabled ? 'Extensions.ExtensionEnabled' :
-                    'Extensions.ExtensionDisabled');
+    this.recordUserAction(isEnabled ? 'Extensions.ExtensionEnabled' :
+                                      'Extensions.ExtensionDisabled');
     // Afterbird: chrome.management.setEnabled isn't wired on desktop-android;
     // route through developerPrivate.updateExtensionConfiguration which we
-    // handle in desktop_android_developer_private.cc.
+    // handle in desktop_android_developer_private.cc. The backend broadcasts
+    // onItemStateChanged so the UI refreshes the toggle/row state.
     chrome.developerPrivate.updateExtensionConfiguration({
       extensionId: id,
       isEnabled,
@@ -337,7 +345,7 @@ export class Service implements ServiceInterface {
      */
     return chrome.developerPrivate.autoUpdate().then(
         () => {
-          chrome.metricsPrivate.recordUserAction('Options_UpdateExtensions');
+          this.recordUserAction('Options_UpdateExtensions');
           return new Promise<void>((resolve, reject) => {
             const loadLocalExtensions = async () => {
               for (const extension of extensions) {

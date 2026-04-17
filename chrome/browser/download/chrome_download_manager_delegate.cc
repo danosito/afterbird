@@ -90,6 +90,13 @@
 #include "content/public/browser/service_process_host.h"
 #include "content/public/common/origin_util.h"
 #include "extensions/buildflags/buildflags.h"
+#if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+// Afterbird v1.2: hand extension-package downloads to our install
+// coordinator instead of dropping them into Downloads/. See
+// crx_install_coordinator.h.
+#include "base/strings/string_util.h"
+#include "chrome/browser/extensions/desktop_android/crx_install_coordinator.h"
+#endif
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "net/base/filename_util.h"
@@ -992,6 +999,34 @@ bool ChromeDownloadManagerDelegate::InterceptDownloadIfApplicable(
     int64_t content_length,
     bool is_transient,
     content::WebContents* web_contents) {
+#if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+  // Afterbird v1.2: recognise Chrome extension packages at download time,
+  // route them through the install-confirmation pipeline, and suppress the
+  // normal Downloads/ flow. Matches either:
+  //   * a response with a Chrome extension MIME type, or
+  //   * a URL whose path ends in `.crx` (case-insensitive).
+  // `.user.js` is intentionally NOT intercepted in v1.2 (deferred per spec
+  // non-goals); fall through to the stock download path.
+  if (!is_transient && profile_) {
+    const std::string mime_lower = base::ToLowerASCII(mime_type);
+    const bool mime_is_extension =
+        mime_lower == "application/x-chrome-extension" ||
+        mime_lower == "application/x-chromium-extension";
+    bool url_is_crx = false;
+    if (url.is_valid() && url.has_host()) {
+      const std::string path_lower = base::ToLowerASCII(url.path());
+      url_is_crx = base::EndsWith(path_lower, ".crx");
+    }
+    if (mime_is_extension || url_is_crx) {
+      LOG(INFO) << "[Afterbird] download intercept (mime=" << mime_type
+                << " url=" << url << ")";
+      extensions::CrxInstallCoordinator::StartFromDownload(profile_,
+                                                           web_contents, url);
+      return true;
+    }
+  }
+#endif  // BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+
 #if BUILDFLAG(ENABLE_OFFLINE_PAGES)
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   // For background service downloads we don't want offline pages backend to

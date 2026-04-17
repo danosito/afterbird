@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 
+#include "base/base64.h"
+#include "base/files/file_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
@@ -19,6 +21,8 @@
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/browser_context.h"
 #include "extensions/browser/disable_reason.h"
+#include "extensions/browser/event_router.h"
+#include "extensions/browser/extension_event_histogram_value.h"
 #include "extensions/browser/extension_function_registry.h"
 #include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/extension_registrar.h"
@@ -28,6 +32,7 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_handlers/icons_handler.h"
+#include "extensions/common/manifest_url_handlers.h"
 #include "extensions/common/mojom/manifest.mojom-shared.h"
 #include "url/gurl.h"
 
@@ -115,15 +120,42 @@ base::Value::Dict BuildExtensionInfo(const Extension& extension,
   info.Set("isCommandRegistrationHandledByChrome", false);
   info.Set("canUploadAsAccountExtension", false);
 
-  // Icons — build a chrome-extension:// icon URL for the default size.
+  // Icons. Upstream chrome://extensions uses chrome://extension-icon/<id>/
+  // <size>/<scale> URLs which are served by ExtensionIconSource — that URL
+  // data source isn't registered on desktop-android builds, so images come
+  // back broken. Read the icon file off disk right here and ship it as a
+  // `data:image/<type>;base64,...` URL. Icons are small (<50 KB) and this
+  // only runs when the user opens chrome://extensions; not a hot path.
   const ExtensionIconSet& icon_set = IconsInfo::GetIcons(&extension);
   std::string default_icon_url;
   base::Value::List icons;
   for (const auto& icon : icon_set.map()) {
     base::Value::Dict entry;
     entry.Set("size", icon.first);
-    const std::string url = "chrome://extension-icon/" + extension.id() + "/" +
-                            base::NumberToString(icon.first) + "/1";
+
+    std::string url;
+    const base::FilePath rel_path = base::FilePath::FromUTF8Unsafe(icon.second);
+    const base::FilePath abs_path = extension.path().Append(rel_path);
+    std::string bytes;
+    if (base::ReadFileToString(abs_path, &bytes) && !bytes.empty()) {
+      std::string_view ext_str = rel_path.Extension();
+      std::string mime = "image/png";
+      if (ext_str == ".svg") {
+        mime = "image/svg+xml";
+      } else if (ext_str == ".jpg" || ext_str == ".jpeg") {
+        mime = "image/jpeg";
+      } else if (ext_str == ".gif") {
+        mime = "image/gif";
+      } else if (ext_str == ".webp") {
+        mime = "image/webp";
+      }
+      url = "data:" + mime + ";base64," + base::Base64Encode(bytes);
+    } else {
+      // Fall back to the upstream URL form even though it 404s — at least
+      // the broken-image icon sits in a sensible place in layout.
+      url = "chrome://extension-icon/" + extension.id() + "/" +
+            base::NumberToString(icon.first) + "/1";
+    }
     entry.Set("url", url);
     if (default_icon_url.empty()) {
       default_icon_url = url;
@@ -191,6 +223,23 @@ base::Value::Dict BuildExtensionInfo(const Extension& extension,
   info.Set("runOnAllUrls", base::Value::Dict());
   info.Set("showAccessRequestsInToolbar", base::Value::Dict());
   info.Set("pinnedToToolbar", base::Value::Dict());
+  // The detail view reads `data.errorCollection.isEnabled` unconditionally;
+  // an absent dict crashes the Lit render. Present as an opted-out dict.
+  base::Value::Dict error_collection;
+  error_collection.Set("isEnabled", false);
+  error_collection.Set("isActive", false);
+  info.Set("errorCollection", std::move(error_collection));
+  // More detail-view hard-requireds: the Lit template reads `.length` on
+  // manifestHomePageUrl (and webStoreUrl, already set) for the "visit
+  // website" link-row, and prints `blocklistText` directly. Empty strings
+  // keep the template happy — the rows are hidden when length is 0.
+  const std::string homepage_url =
+      ManifestURL::GetHomepageURL(&extension).possibly_invalid_spec();
+  info.Set("manifestHomePageUrl", homepage_url);
+  info.Set("blocklistText", "");
+  // launchUrl is on `data.launchUrl` — queried by app-only UI rows but the
+  // template dereferences it unconditionally. Empty string is safe.
+  info.Set("launchUrl", "");
 
   // Size on disk: not computed here.
   info.Set("size", "");
@@ -232,6 +281,37 @@ base::Value::List BuildAllExtensionsInfo(content::BrowserContext* context) {
     list.Append(BuildExtensionInfo(*ext, kStateBlocklisted));
   }
   return list;
+}
+
+// Broadcasts developerPrivate.onItemStateChanged so chrome://extensions
+// refreshes its data when an extension's state changes from our backend.
+// Mirrors upstream DeveloperPrivateEventRouter::BroadcastItemStateChanged
+// but without the full KeyedService observer chain — we call this
+// imperatively from Run() handlers.
+void BroadcastItemStateChanged(content::BrowserContext* context,
+                               const std::string& event_type_name,
+                               const std::string& extension_id,
+                               base::Value::Dict extension_info) {
+  EventRouter* router = EventRouter::Get(context);
+  if (!router) {
+    return;
+  }
+  base::Value::Dict event_data;
+  event_data.Set("event_type", event_type_name);
+  event_data.Set("item_id", extension_id);
+  if (!extension_info.empty()) {
+    // IDL calls this field extensionInfo (camelCase, unlike its siblings).
+    // Using snake_case here silently fails on the JS side — manager.ts
+    // reads `eventData.extensionInfo`, so a snake_case key leaves the UI
+    // with `undefined` and the list-row never updates.
+    event_data.Set("extensionInfo", std::move(extension_info));
+  }
+  base::Value::List args;
+  args.Append(std::move(event_data));
+  auto event = std::make_unique<Event>(
+      events::DEVELOPER_PRIVATE_ON_ITEM_STATE_CHANGED,
+      "developerPrivate.onItemStateChanged", std::move(args));
+  router->BroadcastEvent(std::move(event));
 }
 
 base::Value::Dict BuildProfileInfo(content::BrowserContext* context) {
@@ -391,6 +471,19 @@ DesktopAndroidDeveloperPrivateUpdateExtensionConfigurationFunction::Run() {
       registrar->DisableExtension(
           *id, /*disable_reasons=*/disable_reason::DISABLE_USER_ACTION);
     }
+    // Fire the event the UI listens for — without this the toggle flips back
+    // because Polymer never refetches state.
+    ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context());
+    if (registry) {
+      const Extension* ext =
+          registry->GetExtensionById(*id, ExtensionRegistry::EVERYTHING);
+      if (ext) {
+        const char* state = *enabled ? kStateEnabled : kStateDisabled;
+        BroadcastItemStateChanged(browser_context(),
+                                  *enabled ? "LOADED" : "UNLOADED", *id,
+                                  BuildExtensionInfo(*ext, state));
+      }
+    }
   }
 
   // Other flags (allowIncognito, fileAccess, hostAccess, showAccessRequests,
@@ -440,6 +533,9 @@ DesktopAndroidDeveloperPrivateRemoveMultipleExtensionsFunction::Run() {
       prefs->OnExtensionUninstalled(id, location,
                                     /*external_uninstall=*/false);
     }
+    // UI needs the event to drop the card without a manual reload.
+    BroadcastItemStateChanged(browser_context(), "UNINSTALLED", id,
+                              base::Value::Dict());
   }
   return RespondNow(NoArguments());
 }
@@ -466,6 +562,20 @@ DesktopAndroidDeveloperPrivateReloadFunction::Run() {
     return RespondNow(Error("ExtensionRegistrar unavailable"));
   }
   registrar->ReloadExtension(*id, ExtensionRegistrar::LoadErrorBehavior::kNoisy);
+  // The UI removes the card visually on reload start; the kLoaded event
+  // arriving after a successful reload re-adds it.
+  ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context());
+  if (registry) {
+    const Extension* ext =
+        registry->GetExtensionById(*id, ExtensionRegistry::EVERYTHING);
+    if (ext) {
+      BroadcastItemStateChanged(
+          browser_context(), "LOADED", *id,
+          BuildExtensionInfo(*ext, registry->enabled_extensions().Contains(*id)
+                                       ? kStateEnabled
+                                       : kStateDisabled));
+    }
+  }
   return RespondNow(NoArguments());
 }
 
@@ -522,6 +632,9 @@ void DesktopAndroidDeveloperPrivateLoadUnpackedFunction::OnInstalled(
     Respond(Error(error.empty() ? "Extension failed to load" : error));
     return;
   }
+  // Poke the UI so the new card appears without a manual reload.
+  BroadcastItemStateChanged(browser_context(), "INSTALLED", extension->id(),
+                            BuildExtensionInfo(*extension, kStateEnabled));
   Respond(NoArguments());
 }
 

@@ -12,16 +12,23 @@
 
 namespace extensions {
 
-// Intercepts navigations that look like extension packages (URLs ending in
-// `.crx` or `.user.js`, or responses served as `application/x-chrome-extension`).
-// When matched, the navigation is cancelled silently and a helper
-// (CrxDownloadInstaller, private to the .cc) fetches the resource and hands
-// the cached path to DesktopAndroidExtensionInstaller.
+// Intercepts main-frame navigations to Chrome Web Store detail pages
+// (`chromewebstore.google.com/detail/...` or
+// `chrome.google.com/webstore/detail/...`) and, on match, hands the
+// synthesised clients2.google.com/service/update2/crx URL to
+// CrxInstallCoordinator, which runs the v1.2 fetch → confirm → install
+// pipeline.
+//
+// v1.1 also matched raw `.crx` / `.user.js` URLs and responses with MIME
+// `application/x-chrome-extension`. v1.2 moves that logic to the
+// ChromeDownloadManagerDelegate::InterceptDownloadIfApplicable hook, so
+// this throttle only deals with webstore store-detail URLs now. No download
+// intent, no dialog — just a URL shape match.
 class ExtensionInstallNavigationThrottle : public content::NavigationThrottle {
  public:
   // Returns a throttle for `handle` only when the request is a main-frame
-  // navigation to a potentially-extension URL. Returns nullptr otherwise so
-  // the MaybeAddThrottle path in ChromeContentBrowserClient can drop it.
+  // http(s) navigation. Returns nullptr otherwise so the MaybeAddThrottle
+  // path in ChromeContentBrowserClient can drop it.
   static std::unique_ptr<ExtensionInstallNavigationThrottle> MaybeCreate(
       content::NavigationHandle* handle);
 
@@ -36,13 +43,12 @@ class ExtensionInstallNavigationThrottle : public content::NavigationThrottle {
   // content::NavigationThrottle:
   ThrottleCheckResult WillStartRequest() override;
   ThrottleCheckResult WillRedirectRequest() override;
-  ThrottleCheckResult WillProcessResponse() override;
   const char* GetNameForLogging() override;
 
  private:
-  // Kicks off the out-of-band download/install. Does NOT block the navigation
-  // beyond this call — the helper is self-owned.
-  void StartDownload(const GURL& url);
+  // Cancels the navigation and hands off to the install coordinator. Safe
+  // to call once per throttle lifetime.
+  void HandOffToCoordinator(const GURL& crx_url);
 };
 
 }  // namespace extensions
