@@ -33,6 +33,9 @@
 #include "base/command_line.h"
 #include "base/strings/string_split.h"
 #include "extensions/common/constants.h"
+#include "extensions/common/manifest_handlers/permissions_parser.h"
+#include "extensions/common/permissions/permission_set.h"
+#include "extensions/common/permissions/permissions_data.h"
 #include "extensions/common/file_util.h"
 #include "extensions/common/switches.h"
 
@@ -148,6 +151,15 @@ bool DesktopAndroidExtensionSystem::AddExtension(
     return false;
   }
 
+  // Grant all manifest-declared permissions. On desktop Chrome this is done
+  // by PermissionsUpdater::InitializePermissions (in //chrome/browser/
+  // extensions, gated behind `enable_extensions=true`), which runs after the
+  // user accepts the install prompt. desktop-android doesn't link that code,
+  // so without this call `PermissionsData::active_permissions()` stays empty
+  // and `withheld_permissions()` holds every requested host. That makes
+  // `WebRequestPermissions::CanExtensionAccessURL` return kWithheld for every
+  // URL, and webRequest listeners never fire -> uBO blocks 0 ads. Granting
+  // here matches the behaviour of a user who already accepted the prompt.
   // This is normally handled by ExtensionService, and should likely be moved
   // to ExtensionRegistrar.
   ExtensionPrefs::Get(browser_context_)
@@ -156,7 +168,28 @@ bool DesktopAndroidExtensionSystem::AddExtension(
                              kInstallFlagInstallImmediately, std::string(),
                              std::move(index_result.value()));
 
+  ExtensionId added_id = extension->id();
   registrar_->AddExtension(std::move(extension));
+  // Grant required permissions via the registry-owned Extension instance.
+  // See the block comment above.
+  scoped_refptr<const Extension> registered =
+      ExtensionRegistry::Get(browser_context_)
+          ->enabled_extensions()
+          .GetByID(added_id);
+  if (registered) {
+    registered->permissions_data()->SetPermissions(
+        PermissionsParser::GetRequiredPermissions(registered.get()).Clone(),
+        std::make_unique<PermissionSet>());
+    LOG(INFO) << "[Afterbird] granted required permissions for "
+              << registered->id() << " hosts="
+              << registered->permissions_data()
+                     ->active_permissions()
+                     .explicit_hosts()
+                     .size();
+  } else {
+    LOG(WARNING) << "[Afterbird] granted: registered extension not found for "
+                 << added_id;
+  }
   return true;
 }
 
@@ -221,6 +254,28 @@ void DesktopAndroidExtensionSystem::InitForRegularProfile(
       // ExtensionRegistrar::AddExtension honours the disabled-bit stored in
       // prefs, so a previously-disabled extension stays disabled.
       registrar_->AddExtension(std::move(extension));
+      // Grant manifest-declared permissions AFTER registry insertion on the
+      // *registry-owned* Extension instance. ExtensionRegistrar may wrap or
+      // clone, so we can't rely on the pre-move pointer. Re-fetch by id.
+      scoped_refptr<const Extension> registered =
+          ExtensionRegistry::Get(browser_context_)
+              ->enabled_extensions()
+              .GetByID(info.extension_id);
+      if (registered) {
+        registered->permissions_data()->SetPermissions(
+            PermissionsParser::GetRequiredPermissions(registered.get()).Clone(),
+            std::make_unique<PermissionSet>());
+        LOG(INFO) << "[Afterbird] granted (reload) " << registered->id()
+                  << " hosts="
+                  << registered->permissions_data()
+                         ->active_permissions()
+                         .explicit_hosts()
+                         .size();
+      } else {
+        LOG(WARNING) << "[Afterbird] granted-reload: registered extension not "
+                        "found for "
+                     << info.extension_id;
+      }
       LOG(INFO) << "[Afterbird] reloaded persisted extension "
                 << info.extension_id;
     }
