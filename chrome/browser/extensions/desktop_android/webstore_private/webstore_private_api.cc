@@ -52,7 +52,43 @@ WebstorePrivateBeginInstallWithManifest3Function::
 
 ExtensionFunction::ResponseAction
 WebstorePrivateBeginInstallWithManifest3Function::Run() {
-  return RespondNow(Error("not_implemented_yet"));
+  // Origin gate: the function is only exposed to the CWS origin upstream.
+  // We replicate that check here.
+  if (!desktop_android::IsWebstoreOrigin(source_url())) {
+    LOG(WARNING) << "[Afterbird] webstorePrivate called from non-store origin: "
+                 << source_url();
+    return RespondNow(Error("unknown_extension"));
+  }
+  // Params: the first argument is a Details dict with at minimum `id`.
+  if (args().empty() || !args()[0].is_dict()) {
+    return RespondNow(Error("invalid_arguments"));
+  }
+  const std::string* id = args()[0].GetDict().FindString("id");
+  if (!id || id->size() != 32) {
+    return RespondNow(Error("invalid_id"));
+  }
+  // Id shape check: lowercase a-p only.
+  for (char c : *id) {
+    if (c < 'a' || c > 'p') {
+      return RespondNow(Error("invalid_id"));
+    }
+  }
+  // Hand off to the coordinator.
+  content::WebContents* web_contents = GetSenderWebContents();
+  content::BrowserContext* context = browser_context();
+  if (!web_contents || !context) {
+    return RespondNow(Error("no_web_contents"));
+  }
+  const GURL crx_url = desktop_android::BuildWebstoreCrxUrl(*id);
+  LOG(INFO) << "[Afterbird] webstorePrivate install id=" << *id
+            << " crx=" << crx_url;
+  CrxInstallCoordinator::StartFromWebstore(context, web_contents, crx_url,
+                                           "Chrome Web Store");
+  // The CWS page expects a result enum string. Returning an empty string
+  // for the success_code slot matches upstream's "" default.
+  base::Value::List result;
+  result.Append("");  // result_code
+  return RespondNow(ArgumentList(std::move(result)));
 }
 
 // -----------------------------------------------------------------------------
