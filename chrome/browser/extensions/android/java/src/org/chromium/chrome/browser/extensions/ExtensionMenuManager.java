@@ -4,9 +4,16 @@
 
 package org.chromium.chrome.browser.extensions;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.util.Base64;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.content_public.browser.WebContents;
@@ -63,6 +70,11 @@ public final class ExtensionMenuManager {
 
             int itemId = MENU_ITEM_ID_BASE + index;
             MenuItem item = menu.add(MENU_GROUP_ID, itemId, Menu.NONE, name);
+            String iconB64 = fields.length > 3 ? fields[3] : "";
+            Drawable icon = decodeIcon(iconB64);
+            if (icon != null) {
+                item.setIcon(icon);
+            }
             sItemIdToPopupUrl.put(itemId, popupUrl);
             sItemIdToExtensionId.put(itemId, id);
             index++;
@@ -86,5 +98,23 @@ public final class ExtensionMenuManager {
     /** Returns the extension id for a given menu item, or null. */
     public static String getExtensionIdForItem(int menuId) {
         return sItemIdToExtensionId.get(menuId);
+    }
+
+    /**
+     * Decodes a base64-encoded PNG icon into a drawable. Returns null if the
+     * string is empty or the bytes don't form a valid bitmap.
+     */
+    private static Drawable decodeIcon(String iconB64) {
+        if (iconB64 == null || iconB64.isEmpty()) return null;
+        try {
+            byte[] bytes = Base64.decode(iconB64, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (bitmap == null) return null;
+            Context ctx = ContextUtils.getApplicationContext();
+            return new BitmapDrawable(ctx.getResources(), bitmap);
+        } catch (Throwable t) {
+            Log.w(TAG, "[Afterbird] icon decode failed: " + t.getMessage());
+            return null;
+        }
     }
 }

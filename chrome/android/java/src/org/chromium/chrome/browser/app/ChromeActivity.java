@@ -2420,9 +2420,10 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
         @BrowserProfileType
         int type = Profile.getBrowserProfileTypeFromProfile(getCurrentTabModel().getProfile());
 
-        // Afterbird: Extensions menu entry opens chrome://extensions in a new tab.
-        // (chrome://extensions WebUI is currently stubbed on Android but the URL
-        // will still navigate; see docs/EXTENSIONS.md for the current state.)
+        // Afterbird: Extensions menu entry opens chrome://extensions in a new
+        // tab. Launch type FROM_LINK makes the new tab a child of the tab that
+        // opened it — so the back gesture closes the extensions tab and
+        // returns to the previous one instead of killing the app.
         if (id == R.id.extensions_id) {
             RecordUserAction.record("MobileMenuExtensions");
             Tab activeTab = getActivityTab();
@@ -2430,13 +2431,15 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
             if (tabCreator != null) {
                 tabCreator.createNewTab(
                         new LoadUrlParams("chrome://extensions", PageTransition.LINK),
-                        TabLaunchType.FROM_CHROME_UI, activeTab);
+                        TabLaunchType.FROM_LINK, activeTab);
             }
             return true;
         }
 
         // Afterbird: dynamic per-extension menu items. Tapping any of these
-        // opens the extension's browser_action popup URL in a new tab.
+        // opens the extension's browser_action popup URL in a new tab; same
+        // FROM_LINK launch type so back closes it and returns to the site
+        // that wanted the popup.
         if (org.chromium.chrome.browser.extensions.ExtensionMenuManager
                 .isExtensionMenuItem(id)) {
             String popupUrl =
@@ -2448,7 +2451,7 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
             if (popupUrl != null && !popupUrl.isEmpty() && tabCreator != null) {
                 tabCreator.createNewTab(
                         new LoadUrlParams(popupUrl, PageTransition.LINK),
-                        TabLaunchType.FROM_CHROME_UI, activeTab);
+                        TabLaunchType.FROM_LINK, activeTab);
             }
             return true;
         }
