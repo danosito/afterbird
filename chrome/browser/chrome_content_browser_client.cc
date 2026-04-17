@@ -698,12 +698,6 @@
 #include "extensions/browser/api/web_request/web_request_proxying_webtransport.h"
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
-#if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
-// Afterbird: throttle that turns .crx / .user.js navigations into an
-// install instead of a download / open-with prompt.
-#include "chrome/browser/extensions/desktop_android/extension_install_navigation_throttle.h"
-#endif
-
 #if BUILDFLAG(ENABLE_GUEST_VIEW)
 #include "extensions/browser/guest_view/web_view/web_view_guest.h"
 #include "extensions/browser/guest_view/web_view/web_view_permission_helper.h"
@@ -5469,15 +5463,6 @@ ChromeContentBrowserClient::CreateThrottlesForNavigation(
                          ->CreateNavigationThrottle(handle),
                      &throttles);
   }
-#endif
-
-#if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
-  // Afterbird: intercept .crx / .user.js navigations so clicking an
-  // extension link on any page installs through our pipeline instead of
-  // prompting an "open-with" dialog that Android can't satisfy.
-  MaybeAddThrottle(
-      extensions::ExtensionInstallNavigationThrottle::MaybeCreate(handle),
-      &throttles);
 #endif
 
   MaybeAddThrottle(
