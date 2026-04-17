@@ -30,38 +30,70 @@ Status legend:
 | `chrome.runtime.sendMessage` / `connect` (cross-extension) | full (since v0.7) | MessageService was null-stubbed pre-v0.7; now routes through the real service. Self-echo (SW → own SW) still fails because the service worker isn't treated as its own listener. |
 | `chrome.storage.local` | full | |
 | `chrome.storage.session` (MV3) | full | |
-| `chrome.contextMenus.create` | full (registration only) | The create call returns the id; the resulting menu entry is NOT surfaced anywhere because Android has no desktop context menu. Extensions that merely *register* menus to fan out to their own logic via `onClicked` are happy — nothing ever invokes them. |
+| `chrome.contextMenus.create` | stub-ok (moved to Stubbed section in v1.5) | The prior "full" label was inaccurate — no `ContextMenusCreateFunction` was registered on desktop-android; it logged `Unknown Extension API - contextMenus.create` (61 occurrences in the stability report). Now stubbed to accept the registration and return the id. No `onClicked` event ever fires. |
 | `chrome.webRequest` (MV2) | full | Blocking listeners work; see probe. |
 | `chrome.test` | full | Core extensions/browser API; present. |
 | `chrome.events` | full | |
 | `chrome.developerPrivate` | partial | Only the handlers chrome://extensions needs (`getExtensionsInfo`, `getProfileConfiguration`, `updateExtensionConfiguration`, `removeMultipleExtensions`, `reload`, `loadUnpacked`). Upstream has ~40 methods. Everything else returns "not implemented". |
 | `chrome.webstorePrivate.beginInstallWithManifest3` | partial | Shim that hands off to `CrxInstallCoordinator`. Other webstorePrivate methods are stubs. |
 
-## Stubbed (this branch, v1.4)
+## Stubbed (feature/api-coverage-v2, v1.5)
 
 All live in `chrome/browser/extensions/desktop_android/desktop_android_stub_apis.{cc,h}`.
+The intent of every stub is "return a valid-shape default so defensive
+`.filter()`/`.map()`/`await` chains don't throw". None of these produce real
+side effects. See `docs/superpowers/api-infeasible.md` for why each is
+stubbed-not-implemented.
 
 | API | Status | Rationale |
 | --- | --- | --- |
 | `chrome.permissions.getAll` | stub-ok | Reconstructs `{ permissions, origins }` from the extension's manifest. No runtime permission changes are tracked — granted-at-install is all we know. |
 | `chrome.permissions.contains` | stub-ok | Tests against the same manifest-reconstructed set. False for any runtime-requested addition. |
 | `chrome.commands.getAll` | stub-ok | Transcribes manifest `commands`. `shortcut` is always empty — desktop-android has no keyboard accelerator surface to bind them to. |
-| `chrome.notifications.create` | stub-ok | Echoes or synthesises an id and logs; no actual toast. `update`/`clear`/`getAll`/`getPermissionLevel` are not yet registered, so callers of those still see "Access to extension API denied". |
+| `chrome.notifications.create` | stub-ok | Echoes or synthesises an id and logs; no actual toast. |
+| `chrome.notifications.update/clear` | stub-ok (new in v1.5) | Return `true`. No-op; was "Access denied" pre-v1.5. |
+| `chrome.notifications.getAll` | stub-ok (new in v1.5) | Returns `{}` (no active notifications). |
+| `chrome.notifications.getPermissionLevel` | stub-ok (new in v1.5) | Returns `"granted"` so extensions don't short-circuit their setup. |
+| `chrome.tabs.query` | stub-ok (new in v1.5) | **Critical fix.** Returns `[]`. Was returning `undefined` via the generic "denied" path, which broke `.filter()` chains in Bitwarden's BadgeService. |
+| `chrome.tabs.create` | stub-ok (new in v1.5) | Returns a synthetic Tab dict with a millisecond-derived id. No tab is actually opened. |
+| `chrome.tabs.remove/reload/goBack/goForward/ungroup/highlight` | stub-ok (new in v1.5) | No-op; shape-correct callback. |
+| `chrome.tabs.update` | stub-ok (new in v1.5) | Returns a synthetic Tab dict. |
+| `chrome.tabs.duplicate` | stub-ok (new in v1.5) | Returns a synthetic Tab with id+1. |
+| `chrome.tabs.get` | stub-err (new in v1.5) | Returns an error ("Tab not found on desktop-android"). Extensions that check `lastError` behave correctly. |
+| `chrome.tabs.getCurrent` | stub-ok (new in v1.5) | Returns `null` — matches the upstream semantics when called from a non-tab context (service worker). |
+| `chrome.tabs.detectLanguage` | stub-ok (new in v1.5) | Returns `"und"` (undetermined). |
+| `chrome.tabs.group` | stub-ok (new in v1.5) | Returns `-1`. |
+| `chrome.tabs.discard` | stub-ok (new in v1.5) | Returns `null`. |
+| `chrome.windows.getAll/get/getCurrent/getLastFocused/create/update` | stub-ok (new in v1.5) | Returns a single synthetic Window dict with id=0. |
+| `chrome.windows.remove` | stub-ok (new in v1.5) | No-op. |
+| `chrome.action.*` (MV3) | stub-ok (new in v1.5) | All setters are no-ops; `getTitle/getBadgeText/getPopup` return `""`; `getBadgeBackgroundColor` returns `[0,0,0,255]`. No per-extension action state storage yet. |
+| `chrome.browserAction.*` (MV2) | stub-ok (new in v1.5) | Same shape as `action.*`. |
+| `chrome.contextMenus.create` | stub-ok (new in v1.5) | Accepts the registration, returns the id (from `createProperties.id` or a synthetic numeric id). **No `onClicked` event ever fires** — there's no contextual-menu surface on Android. |
+| `chrome.contextMenus.update/remove/removeAll` | stub-ok (new in v1.5) | No-op. |
+| `chrome.cookies.get/set/remove` | stub-ok (new in v1.5) | Returns `null` (not found / no-op set). |
+| `chrome.cookies.getAll` | stub-ok (new in v1.5) | Returns `[]`. |
+| `chrome.cookies.getAllCookieStores` | stub-ok (new in v1.5) | Returns one synthetic store (`id: "0"`). |
+| `chrome.types.ChromeSetting.get/set/clear` | stub-ok (new in v1.5) | `get` returns `{ value: null, levelOfControl: "not_controllable" }`; `set`/`clear` are no-ops. Used by `chrome.privacy.*`. |
+| `chrome.extension.isAllowedIncognitoAccess` | stub-ok (new in v1.5) | Returns `false` (matches the actual state — incognito extension access isn't surfaced). |
+| `chrome.extension.isAllowedFileSchemeAccess` | stub-ok (new in v1.5) | Returns `false`. |
 
-## Feasible follow-ups (schema-only today, should become `full`/`stub-ok`)
+## Feasible follow-ups (schema-only today, should become `full`)
 
-These have IDL bindings compiled but no C++ function registrations. Adding them is mechanical once we decide on the Android-side surface.
+These have IDL bindings compiled but no C++ function registrations, and
+unlike the shape-only stubs above, would benefit from a *real* backing
+implementation. See `docs/superpowers/api-infeasible.md` for the full
+rationale and estimated effort for each.
 
-| API | Difficulty | Plan |
+| API | Priority | One-line plan |
 | --- | --- | --- |
-| `chrome.tabs.query / create / remove / update` | medium | Need a `TabAndroid` → extension Tab dict mapper and a way to poke `TabModelSelector` from a non-UI thread (tab_strip_model_observer equivalent). Once in place, `tabs.onCreated/onRemoved/onActivated` events can be fired directly. Dark Reader and uBO both call `tabs.query` at startup; unblocking these unblocks a lot. |
-| `chrome.tabs.executeScript` (MV2) / `chrome.scripting.executeScript` (MV3) | medium | Requires a `ScriptExecutor` hookup per `WebContents`. Upstream `extensions/browser/script_executor.cc` exists but isn't reached because `WebContentsUserData` isn't bound to our `DesktopAndroidExtensionWebContentsObserver`. Once wired, most "modifies the page" extensions work. |
-| `chrome.action.setBadgeText / setIcon / setTitle / setPopup` (MV3) | small–medium | Currently denied. Needs per-extension toolbar state storage (we already drop their pinned-to-toolbar UI, but the state struct is ~20 getters/setters). No actual toolbar-icon rendering yet; state would be stored and read-back from the same getters. |
-| `chrome.browserAction.*` (MV2) | same as `chrome.action` | Same implementation shape as `action`; the two can share a helper class. `browserAction.setBadgeText` already works (present via CoreExtensionsBrowserAPIProvider? verify) — `setIcon` does not. |
-| `chrome.notifications.update / clear / getAll / getPermissionLevel` | small | Pairs with the existing `create` stub — all four should move together. |
-| `chrome.webNavigation` | medium | Has its own IDL and a clean `WebContentsObserver`-based implementation upstream. Mostly compiles out of the box if enabled. |
-| `chrome.cookies` | medium | Schema compiled (MV3 sources.gni lists it). No implementation. Would need a `CookieService` bridge on desktop-android. |
-| `chrome.history` / `chrome.bookmarks` / `chrome.downloads` | medium each | Android has history/bookmarks/downloads databases but the extension-side adapters are chrome-desktop-only. |
+| `chrome.tabs.*` (real backing) | high | Bridge `TabModelSelector` ↔ extension Tab dicts; see api-infeasible.md. Currently shape-only stubs. |
+| `chrome.scripting.executeScript / insertCSS` | high | Wire `ScriptExecutor` to `DesktopAndroidExtensionWebContentsObserver`. ~200 lines. Currently schema-only → unknown API denial. |
+| `chrome.cookies.*` (real backing) | medium | Plumb `StoragePartition::GetCookieManagerForBrowserProcess` through the extension permission gating. Currently shape-only stubs (`[]`/`null`). |
+| `chrome.action.*` state storage (MV3) | medium | Per-extension state store so getters returning setters' values round-trip. Currently stateless stubs. |
+| `chrome.browserAction.*` state storage (MV2) | medium | Same implementation as action.*. |
+| `chrome.webNavigation` (real events) | medium | Clean `WebContentsObserver`-based impl upstream. Currently schema-only; listener registration works via bindings layer but events don't fire. |
+| `chrome.history` / `chrome.bookmarks` | medium each | Android has the stores; extension adapters are desktop-only. |
+| `chrome.downloads` | medium | Android `DownloadManager` exists; adapter is desktop-only. |
 
 ## Likely infeasible on this build (at least near-term)
 
