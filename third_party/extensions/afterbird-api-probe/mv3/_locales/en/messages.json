@@ -1,0 +1,6 @@
+{
+  "extName": {
+    "message": "Afterbird API Probe (MV3)",
+    "description": "Extension display name, used to probe chrome.i18n.getMessage."
+  }
+}

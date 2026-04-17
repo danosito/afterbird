@@ -1,0 +1,43 @@
+{
+  "manifest_version": 2,
+  "name": "Afterbird API Probe (MV2)",
+  "version": "1.0.0",
+  "description": "Probes which chrome.* extension APIs are available and working in the current browser build.",
+  "default_locale": "en",
+  "background": {
+    "page": "background.html",
+    "persistent": false
+  },
+  "browser_action": {
+    "default_title": "Afterbird API Probe (MV2)",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16.png",
+      "48": "icons/48.png",
+      "128": "icons/128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/16.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "alarms",
+    "contextMenus",
+    "declarativeNetRequest",
+    "notifications",
+    "webRequest",
+    "<all_urls>"
+  ],
+  "commands": {
+    "probe-rerun": {
+      "suggested_key": {
+        "default": "Alt+Shift+P"
+      },
+      "description": "Re-run Afterbird API probes"
+    }
+  }
+}

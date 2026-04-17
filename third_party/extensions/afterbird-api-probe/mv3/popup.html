@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=360, initial-scale=1">
+  <title>Afterbird API Probe</title>
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body {
+      width: 360px;
+      font: 13px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #1f2328;
+      background: #ffffff;
+    }
+    header {
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid #d0d7de;
+      background: #f6f8fa;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    header .sub {
+      margin-top: 2px;
+      font-size: 11px;
+      color: #656d76;
+    }
+    .toolbar {
+      display: flex;
+      gap: 6px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #d0d7de;
+    }
+    .toolbar button {
+      font: inherit;
+      padding: 4px 10px;
+      border: 1px solid #d0d7de;
+      background: #f6f8fa;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .toolbar button:hover { background: #eaeef2; }
+    .toolbar .spacer { flex: 1; }
+    .toolbar .summary { font-size: 11px; color: #656d76; align-self: center; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #eaeef2;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f6f8fa;
+      font-weight: 600;
+      font-size: 11px;
+      color: #656d76;
+    }
+    td.icon { width: 14px; text-align: center; font-weight: 700; }
+    td.icon.pass { color: #1a7f37; }
+    td.icon.fail { color: #cf222e; }
+    td.icon.unavailable { color: #8c959f; }
+    td.icon.na { color: #8c959f; }
+    td.note { color: #656d76; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; word-break: break-word; }
+    td.ms { color: #8c959f; font-variant-numeric: tabular-nums; text-align: right; font-size: 11px; white-space: nowrap; }
+    .empty { padding: 16px; color: #656d76; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="title">Afterbird API Probe</h1>
+    <div class="sub" id="sub">loading...</div>
+  </header>
+  <div class="toolbar">
+    <button id="rerun" type="button">Re-run probes</button>
+    <span class="spacer"></span>
+    <span class="summary" id="summary"></span>
+  </div>
+  <div id="body">
+    <div class="empty" id="empty">No results yet.</div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
