@@ -5,6 +5,8 @@
     <string name="preferences_tabswitcher">Tab switcher</string>
     <!-- Afterbird: extensions menu -->
     <string name="main_menu_extensions">Extensions</string>
+    <!-- Afterbird: Kiwi-style on-device DevTools menu entry -->
+    <string name="main_menu_developer_tools">Developer tools</string>
     <!-- Afterbird: about page credits -->
     <string name="afterbird_about_title">Afterbird</string>
     <string name="afterbird_about_summary">A Chromium-based Android browser with MV2 extension support.</string>

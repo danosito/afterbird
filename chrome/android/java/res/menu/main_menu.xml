@@ -81,6 +81,12 @@ found in the LICENSE file.
         <item android:id="@+id/extensions_id"
             android:title="@string/main_menu_extensions"
             android:icon="@drawable/ic_extension_24dp" />
+        <!-- Afterbird: Kiwi-style on-device DevTools.
+             Taps lazily start the DevTools HTTP server on 127.0.0.1 and
+             open the bundled inspector frontend in a new tab. -->
+        <item android:id="@+id/developer_tools_id"
+            android:title="@string/main_menu_developer_tools"
+            android:icon="@drawable/ic_devtools" />
         <item android:id="@id/divider_line_id"
             android:title="@null" />
         <item android:id="@+id/page_zoom_id"

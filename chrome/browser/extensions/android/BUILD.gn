@@ -9,6 +9,7 @@ import("//third_party/jni_zero/jni_zero.gni")
 generate_jni("jni_headers") {
   sources = [
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/AppMenuBridge.java",
+    "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/DevToolsBridge.java",
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionInstallBridge.java",
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionInstallConfirmBridge.java",
   ]
@@ -17,6 +18,8 @@ generate_jni("jni_headers") {
 source_set("android") {
   sources = [
     "app_menu_bridge.cc",
+    "devtools_bridge.cc",
+    "devtools_bridge.h",
     "extension_install_bridge.cc",
     "extension_install_bridge.h",
     "extension_install_confirm_bridge.cc",
@@ -30,6 +33,7 @@ source_set("android") {
     "//content/public/browser",
     "//extensions/browser",
     "//extensions/common",
+    "//net",
     "//url",
   ]
 }
@@ -37,6 +41,7 @@ source_set("android") {
 android_library("java") {
   sources = [
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/AppMenuBridge.java",
+    "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/DevToolsBridge.java",
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionInstallBridge.java",
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionInstallConfirmBridge.java",
     "//chrome/browser/extensions/android/java/src/org/chromium/chrome/browser/extensions/ExtensionMenuManager.java",
