@@ -30,6 +30,8 @@
     "declarativeNetRequest",
     "notifications",
     "webRequest",
+    "webNavigation",
+    "cookies",
     "<all_urls>"
   ],
   "commands": {

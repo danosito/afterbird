@@ -37,6 +37,7 @@
   function fail(note) { return { status: 'fail', note: note || '' }; }
 
   var sharedProbes = [
+    // --- runtime ---
     {
       name: 'chrome.runtime.id',
       run: function () {
@@ -54,6 +55,29 @@
           var m = chrome.runtime.getManifest();
           return Promise.resolve(pass('mv=' + m.manifest_version + ' v=' + m.version));
         } catch (e) { return Promise.resolve(fail(String(e))); }
+      }
+    },
+    {
+      name: 'chrome.runtime.getURL()',
+      run: function () {
+        if (!has('runtime.getURL')) return Promise.resolve(unavailable());
+        try {
+          var u = chrome.runtime.getURL('popup.html');
+          if (typeof u === 'string' && u.indexOf('chrome-extension://') === 0) return Promise.resolve(pass(u.length + ' chars'));
+          return Promise.resolve(fail('unexpected url: ' + JSON.stringify(u)));
+        } catch (e) { return Promise.resolve(fail(String(e))); }
+      }
+    },
+    {
+      name: 'chrome.runtime.getPlatformInfo()',
+      run: function () {
+        if (!has('runtime.getPlatformInfo')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.runtime.getPlatformInfo(cb); })
+          .then(function (info) {
+            if (info && info.os && info.arch) return pass(info.os + '/' + info.arch);
+            return fail('missing fields: ' + JSON.stringify(info));
+          })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
       }
     },
     {
@@ -100,6 +124,8 @@
         });
       }
     },
+
+    // --- storage ---
     {
       name: 'chrome.storage.local set/get/remove',
       run: function () {
@@ -130,6 +156,8 @@
           .catch(function (e) { return fail(String(e && e.message || e)); });
       }
     },
+
+    // --- tabs ---
     {
       name: 'chrome.tabs.query({})',
       run: function () {
@@ -156,6 +184,34 @@
       }
     },
     {
+      name: 'chrome.tabs.getCurrent (undefined in bg)',
+      run: function () {
+        if (!has('tabs.getCurrent')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.tabs.getCurrent(cb); })
+          .then(function (tab) {
+            if (tab == null) return pass('null as expected');
+            return pass('tab id=' + (tab && tab.id));
+          })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- windows ---
+    {
+      name: 'chrome.windows.getAll()',
+      run: function () {
+        if (!has('windows.getAll')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.windows.getAll(cb); })
+          .then(function (wins) {
+            if (!Array.isArray(wins)) return fail('not an array');
+            return pass(wins.length + ' window(s)');
+          })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- alarms ---
+    {
       name: 'chrome.alarms.create + onAlarm fires',
       run: function () {
         if (!has('alarms.create') || !has('alarms.onAlarm')) return Promise.resolve(unavailable());
@@ -173,17 +229,56 @@
       }
     },
     {
+      name: 'chrome.alarms.getAll + clear',
+      run: function () {
+        if (!has('alarms.getAll') || !has('alarms.clear')) return Promise.resolve(unavailable());
+        var n = 'probe-getall-' + Date.now();
+        return callAsync(function (cb) { chrome.alarms.create(n, { delayInMinutes: 1 }); cb(); })
+          .then(function () { return callAsync(function (cb) { chrome.alarms.getAll(cb); }); })
+          .then(function (list) {
+            if (!Array.isArray(list)) throw new Error('not an array');
+            try { chrome.alarms.clear(n); } catch (e) { /* ignore */ }
+            return pass(list.length + ' alarm(s)');
+          })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- contextMenus ---
+    {
       name: 'chrome.contextMenus.create',
       run: function () {
         if (!has('contextMenus.create')) return Promise.resolve(unavailable());
         try {
           var id = 'probe-menu-' + Date.now();
           var created = chrome.contextMenus.create({ id: id, title: 'probe', contexts: ['all'] }, function () {
-            // ignore
+            var _ = chrome.runtime.lastError;
           });
           try { chrome.contextMenus.remove(id); } catch (e) {}
           return Promise.resolve(pass(String(created || id)));
         } catch (e) { return Promise.resolve(fail(String(e))); }
+      }
+    },
+    {
+      name: 'chrome.contextMenus.removeAll',
+      run: function () {
+        if (!has('contextMenus.removeAll')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.contextMenus.removeAll(cb); })
+          .then(function () { return pass(); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- declarativeNetRequest ---
+    {
+      name: 'chrome.declarativeNetRequest.getDynamicRules',
+      run: function () {
+        if (!has('declarativeNetRequest.getDynamicRules')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.declarativeNetRequest.getDynamicRules(cb); })
+          .then(function (rules) {
+            return Array.isArray(rules) ? pass(rules.length + ' rule(s)') : fail('not an array');
+          })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
       }
     },
     {
@@ -213,6 +308,8 @@
           .catch(function (e) { return fail(String(e && e.message || e)); });
       }
     },
+
+    // --- commands / permissions / i18n ---
     {
       name: 'chrome.commands.getAll()',
       run: function () {
@@ -232,6 +329,15 @@
             var nOrigins = (p && p.origins) ? p.origins.length : 0;
             return pass(nPerms + ' perm / ' + nOrigins + ' origin');
           })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
+      name: 'chrome.permissions.contains (declared)',
+      run: function () {
+        if (!has('permissions.contains')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.permissions.contains({ permissions: ['storage'] }, cb); })
+          .then(function (c) { return (c === true) ? pass('true') : fail('expected true, got ' + JSON.stringify(c)); })
           .catch(function (e) { return fail(String(e && e.message || e)); });
       }
     },
@@ -257,6 +363,17 @@
       }
     },
     {
+      name: 'chrome.i18n.getAcceptLanguages()',
+      run: function () {
+        if (!has('i18n.getAcceptLanguages')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.i18n.getAcceptLanguages(cb); })
+          .then(function (list) { return Array.isArray(list) ? pass(list.join(',')) : fail('not an array'); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- notifications ---
+    {
       name: 'chrome.notifications.create',
       run: function () {
         if (!has('notifications.create')) return Promise.resolve(unavailable());
@@ -270,6 +387,78 @@
         })
           .then(function (id) { return id ? pass(String(id)) : fail('no id'); })
           .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
+      name: 'chrome.notifications.getAll',
+      run: function () {
+        if (!has('notifications.getAll')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.notifications.getAll(cb); })
+          .then(function (obj) { return pass(obj ? Object.keys(obj).length + ' active' : 'null'); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
+      name: 'chrome.notifications.getPermissionLevel',
+      run: function () {
+        if (!has('notifications.getPermissionLevel')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.notifications.getPermissionLevel(cb); })
+          .then(function (level) { return pass(String(level)); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- cookies ---
+    {
+      name: 'chrome.cookies.getAll({})',
+      run: function () {
+        if (!has('cookies.getAll')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.cookies.getAll({}, cb); })
+          .then(function (list) { return Array.isArray(list) ? pass(list.length + ' cookie(s)') : fail('not an array'); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
+      name: 'chrome.cookies.getAllCookieStores',
+      run: function () {
+        if (!has('cookies.getAllCookieStores')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.cookies.getAllCookieStores(cb); })
+          .then(function (list) { return Array.isArray(list) ? pass(list.length + ' store(s)') : fail('not an array'); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- webNavigation ---
+    {
+      name: 'chrome.webNavigation.onBeforeNavigate.addListener',
+      run: function () {
+        if (!has('webNavigation.onBeforeNavigate')) return Promise.resolve(unavailable());
+        try {
+          var listener = function () { /* no-op */ };
+          chrome.webNavigation.onBeforeNavigate.addListener(listener);
+          try { chrome.webNavigation.onBeforeNavigate.removeListener(listener); } catch (e) {}
+          return Promise.resolve(pass());
+        } catch (e) { return Promise.resolve(fail(String(e))); }
+      }
+    },
+
+    // --- downloads ---
+    {
+      name: 'chrome.downloads.search (expected unavailable)',
+      run: function () {
+        if (!has('downloads.search')) return Promise.resolve(unavailable('chrome.downloads not wired'));
+        return callAsync(function (cb) { chrome.downloads.search({}, cb); })
+          .then(function (list) { return Array.isArray(list) ? pass(list.length + ' downloads') : fail('not an array'); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- identity ---
+    {
+      name: 'chrome.identity.getAuthToken (expected unavailable)',
+      run: function () {
+        if (!has('identity.getAuthToken')) return Promise.resolve(unavailable('chrome.identity not wired'));
+        return Promise.resolve(pass('present (unexpected)'));
       }
     }
   ];
@@ -287,11 +476,20 @@
       }
     },
     {
+      name: 'chrome.browserAction.setTitle',
+      run: function () {
+        if (!has('browserAction.setTitle')) return Promise.resolve(unavailable());
+        try {
+          chrome.browserAction.setTitle({ title: 'probe' });
+          return Promise.resolve(pass());
+        } catch (e) { return Promise.resolve(fail(String(e))); }
+      }
+    },
+    {
       name: 'chrome.browserAction.setIcon (canvas data URL)',
       run: function () {
         if (!has('browserAction.setIcon')) return Promise.resolve(unavailable());
         try {
-          // Background pages have DOM access — canvas is fine here.
           var canvas = document.createElement('canvas');
           canvas.width = 16; canvas.height = 16;
           var cx = canvas.getContext('2d');
@@ -301,6 +499,16 @@
           return callAsync(function (cb) { chrome.browserAction.setIcon({ imageData: img }, cb); })
             .then(function () { return pass('imageData'); })
             .catch(function (e) { return fail(String(e && e.message || e)); });
+        } catch (e) { return Promise.resolve(fail(String(e))); }
+      }
+    },
+    {
+      name: 'chrome.browserAction.setBadgeBackgroundColor',
+      run: function () {
+        if (!has('browserAction.setBadgeBackgroundColor')) return Promise.resolve(unavailable());
+        try {
+          chrome.browserAction.setBadgeBackgroundColor({ color: '#ff0000' });
+          return Promise.resolve(pass());
         } catch (e) { return Promise.resolve(fail(String(e))); }
       }
     },

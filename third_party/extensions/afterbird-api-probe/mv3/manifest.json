@@ -28,7 +28,9 @@
     "contextMenus",
     "declarativeNetRequest",
     "scripting",
-    "notifications"
+    "notifications",
+    "webNavigation",
+    "cookies"
   ],
   "host_permissions": [
     "<all_urls>"

@@ -52,6 +52,7 @@
 
   // Shared probes (MV2/MV3 both support).
   var sharedProbes = [
+    // --- runtime ---
     {
       name: 'chrome.runtime.id',
       run: function () {
@@ -74,12 +75,34 @@
       }
     },
     {
+      name: 'chrome.runtime.getURL()',
+      run: function () {
+        if (!has('runtime.getURL')) return Promise.resolve(unavailable());
+        try {
+          var u = chrome.runtime.getURL('popup.html');
+          if (typeof u === 'string' && u.indexOf('chrome-extension://') === 0) return Promise.resolve(pass(u.length + ' chars'));
+          return Promise.resolve(fail('unexpected url: ' + JSON.stringify(u)));
+        } catch (e) {
+          return Promise.resolve(fail(String(e)));
+        }
+      }
+    },
+    {
+      name: 'chrome.runtime.getPlatformInfo()',
+      run: function () {
+        if (!has('runtime.getPlatformInfo')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.runtime.getPlatformInfo(cb); })
+          .then(function (info) {
+            if (info && info.os && info.arch) return pass(info.os + '/' + info.arch);
+            return fail('missing fields: ' + JSON.stringify(info));
+          })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
       name: 'chrome.runtime.onMessage round-trip',
       run: function () {
         if (!has('runtime.onMessage')) return Promise.resolve(unavailable());
-        // The background is itself the listener — send a probe-echo message
-        // and confirm we hear back. In popup context we cannot do this check
-        // meaningfully, so we just report listener registered.
         if (typeof self !== 'undefined' && typeof window === 'undefined') {
           return new Promise(function (resolve) {
             try {
@@ -123,6 +146,8 @@
         });
       }
     },
+
+    // --- storage ---
     {
       name: 'chrome.storage.local set/get/remove',
       run: function () {
@@ -153,6 +178,8 @@
           .catch(function (e) { return fail(String(e && e.message || e)); });
       }
     },
+
+    // --- tabs ---
     {
       name: 'chrome.tabs.query({})',
       run: function () {
@@ -179,6 +206,35 @@
       }
     },
     {
+      name: 'chrome.tabs.getCurrent (undefined in SW)',
+      run: function () {
+        if (!has('tabs.getCurrent')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.tabs.getCurrent(cb); })
+          .then(function (tab) {
+            // In SW context, undefined/null is the expected result.
+            if (tab == null) return pass('null as expected');
+            return pass('tab id=' + (tab && tab.id));
+          })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- windows ---
+    {
+      name: 'chrome.windows.getAll()',
+      run: function () {
+        if (!has('windows.getAll')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.windows.getAll(cb); })
+          .then(function (wins) {
+            if (!Array.isArray(wins)) return fail('not an array');
+            return pass(wins.length + ' window(s)');
+          })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- alarms ---
+    {
       name: 'chrome.alarms.create + onAlarm fires',
       run: function () {
         if (!has('alarms.create') || !has('alarms.onAlarm')) return Promise.resolve(unavailable());
@@ -189,8 +245,6 @@
           function listener(alarm) { if (alarm && alarm.name === name) finish(pass()); }
           try {
             chrome.alarms.onAlarm.addListener(listener);
-            // whenMinutes minimum granularity is usually 1 min on Chrome
-            // but "when" with short delay tends to be honored for test extensions.
             chrome.alarms.create(name, { when: Date.now() + 500 });
             setTimeout(function () { finish(fail('alarm did not fire within 3s')); }, 3000);
           } catch (e) {
@@ -200,19 +254,58 @@
       }
     },
     {
+      name: 'chrome.alarms.getAll + clear',
+      run: function () {
+        if (!has('alarms.getAll') || !has('alarms.clear')) return Promise.resolve(unavailable());
+        var n = 'probe-getall-' + Date.now();
+        return callAsync(function (cb) { chrome.alarms.create(n, { delayInMinutes: 1 }); cb(); })
+          .then(function () { return callAsync(function (cb) { chrome.alarms.getAll(cb); }); })
+          .then(function (list) {
+            if (!Array.isArray(list)) throw new Error('not an array');
+            try { chrome.alarms.clear(n); } catch (e) { /* ignore */ }
+            return pass(list.length + ' alarm(s)');
+          })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- contextMenus ---
+    {
       name: 'chrome.contextMenus.create',
       run: function () {
         if (!has('contextMenus.create')) return Promise.resolve(unavailable());
         try {
           var id = 'probe-menu-' + Date.now();
           var created = chrome.contextMenus.create({ id: id, title: 'probe', contexts: ['all'] }, function () {
-            // callback only used to surface lastError; ignore return.
+            var _ = chrome.runtime.lastError; // swallow
           });
           try { chrome.contextMenus.remove(id); } catch (e) { /* ignore */ }
           return Promise.resolve(pass(String(created || id)));
         } catch (e) {
           return Promise.resolve(fail(String(e)));
         }
+      }
+    },
+    {
+      name: 'chrome.contextMenus.removeAll',
+      run: function () {
+        if (!has('contextMenus.removeAll')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.contextMenus.removeAll(cb); })
+          .then(function () { return pass(); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- declarativeNetRequest ---
+    {
+      name: 'chrome.declarativeNetRequest.getDynamicRules',
+      run: function () {
+        if (!has('declarativeNetRequest.getDynamicRules')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.declarativeNetRequest.getDynamicRules(cb); })
+          .then(function (rules) {
+            return Array.isArray(rules) ? pass(rules.length + ' rule(s)') : fail('not an array');
+          })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
       }
     },
     {
@@ -232,10 +325,9 @@
           }, cb);
         })
           .then(function () {
-            // Clean up best-effort.
             try {
               chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: [ruleId] }, function () {
-                var _ = chrome.runtime.lastError; // swallow
+                var _ = chrome.runtime.lastError;
               });
             } catch (e) { /* ignore */ }
             return pass();
@@ -243,6 +335,8 @@
           .catch(function (e) { return fail(String(e && e.message || e)); });
       }
     },
+
+    // --- commands / permissions / i18n ---
     {
       name: 'chrome.commands.getAll()',
       run: function () {
@@ -268,6 +362,15 @@
       }
     },
     {
+      name: 'chrome.permissions.contains (declared)',
+      run: function () {
+        if (!has('permissions.contains')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.permissions.contains({ permissions: ['storage'] }, cb); })
+          .then(function (c) { return (c === true) ? pass('true') : fail('expected true, got ' + JSON.stringify(c)); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
       name: 'chrome.i18n.getUILanguage()',
       run: function () {
         if (!has('i18n.getUILanguage')) return Promise.resolve(unavailable());
@@ -289,6 +392,17 @@
       }
     },
     {
+      name: 'chrome.i18n.getAcceptLanguages()',
+      run: function () {
+        if (!has('i18n.getAcceptLanguages')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.i18n.getAcceptLanguages(cb); })
+          .then(function (list) { return Array.isArray(list) ? pass(list.join(',')) : fail('not an array'); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- notifications ---
+    {
       name: 'chrome.notifications.create',
       run: function () {
         if (!has('notifications.create')) return Promise.resolve(unavailable());
@@ -302,6 +416,78 @@
         })
           .then(function (id) { return id ? pass(String(id)) : fail('no id'); })
           .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
+      name: 'chrome.notifications.getAll',
+      run: function () {
+        if (!has('notifications.getAll')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.notifications.getAll(cb); })
+          .then(function (obj) { return pass(obj ? Object.keys(obj).length + ' active' : 'null'); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
+      name: 'chrome.notifications.getPermissionLevel',
+      run: function () {
+        if (!has('notifications.getPermissionLevel')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.notifications.getPermissionLevel(cb); })
+          .then(function (level) { return pass(String(level)); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- cookies (expected stub on desktop-android) ---
+    {
+      name: 'chrome.cookies.getAll({})',
+      run: function () {
+        if (!has('cookies.getAll')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.cookies.getAll({}, cb); })
+          .then(function (list) { return Array.isArray(list) ? pass(list.length + ' cookie(s)') : fail('not an array'); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
+      name: 'chrome.cookies.getAllCookieStores',
+      run: function () {
+        if (!has('cookies.getAllCookieStores')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.cookies.getAllCookieStores(cb); })
+          .then(function (list) { return Array.isArray(list) ? pass(list.length + ' store(s)') : fail('not an array'); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- webNavigation ---
+    {
+      name: 'chrome.webNavigation.onBeforeNavigate.addListener',
+      run: function () {
+        if (!has('webNavigation.onBeforeNavigate')) return Promise.resolve(unavailable());
+        try {
+          var listener = function () { /* no-op */ };
+          chrome.webNavigation.onBeforeNavigate.addListener(listener);
+          try { chrome.webNavigation.onBeforeNavigate.removeListener(listener); } catch (e) {}
+          return Promise.resolve(pass());
+        } catch (e) { return Promise.resolve(fail(String(e))); }
+      }
+    },
+
+    // --- downloads ---
+    {
+      name: 'chrome.downloads.search (expected unavailable)',
+      run: function () {
+        if (!has('downloads.search')) return Promise.resolve(unavailable('chrome.downloads not wired'));
+        return callAsync(function (cb) { chrome.downloads.search({}, cb); })
+          .then(function (list) { return Array.isArray(list) ? pass(list.length + ' downloads') : fail('not an array'); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+
+    // --- identity ---
+    {
+      name: 'chrome.identity.getAuthToken (expected unavailable)',
+      run: function () {
+        if (!has('identity.getAuthToken')) return Promise.resolve(unavailable('chrome.identity not wired'));
+        return Promise.resolve(pass('present (unexpected)'));
       }
     }
   ];
@@ -333,10 +519,18 @@
       }
     },
     {
+      name: 'chrome.action.setTitle',
+      run: function () {
+        if (!has('action.setTitle')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) { chrome.action.setTitle({ title: 'probe' }, cb); })
+          .then(function () { return pass(); })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
       name: 'chrome.action.setIcon (data URL)',
       run: function () {
         if (!has('action.setIcon')) return Promise.resolve(unavailable());
-        // In a service worker we cannot use canvas; fall back to ImageData via OffscreenCanvas if present.
         try {
           if (typeof OffscreenCanvas === 'function') {
             var c = new OffscreenCanvas(16, 16);
@@ -376,6 +570,17 @@
                 return fail('unexpected result: ' + JSON.stringify(results));
               });
           })
+          .catch(function (e) { return fail(String(e && e.message || e)); });
+      }
+    },
+    {
+      name: 'chrome.scripting.insertCSS',
+      run: function () {
+        if (!has('scripting.insertCSS')) return Promise.resolve(unavailable());
+        return callAsync(function (cb) {
+          chrome.scripting.insertCSS({ target: { tabId: -1 }, css: 'body{}' }, cb);
+        })
+          .then(function () { return pass(); })
           .catch(function (e) { return fail(String(e && e.message || e)); });
       }
     },
