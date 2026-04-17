@@ -2456,6 +2456,31 @@ public abstract class ChromeActivity<C extends ChromeActivityComponent>
             return true;
         }
 
+        // Afterbird: Kiwi-style Developer Tools menu entry. The first tap
+        // lazily starts the DevTools HTTP server on 127.0.0.1 (see
+        // chrome/browser/extensions/android/devtools_bridge.cc); subsequent
+        // taps reuse it. The returned URL points at the bundled inspector
+        // frontend and is opened in a new tab.
+        if (id == R.id.developer_tools_id) {
+            RecordUserAction.record("MobileMenuDeveloperTools");
+            Tab activeTab = getActivityTab();
+            if (activeTab != null && activeTab.getWebContents() != null) {
+                org.chromium.chrome.browser.profiles.Profile profile =
+                        org.chromium.chrome.browser.profiles.Profile.fromWebContents(
+                                activeTab.getWebContents());
+                String frontendUrl =
+                        org.chromium.chrome.browser.extensions.DevToolsBridge.open(
+                                profile, activeTab.getWebContents());
+                TabCreator tabCreator = getTabCreator(getCurrentTabModel().isIncognito());
+                if (frontendUrl != null && !frontendUrl.isEmpty() && tabCreator != null) {
+                    tabCreator.createNewTab(
+                            new LoadUrlParams(frontendUrl, PageTransition.LINK),
+                            TabLaunchType.FROM_LINK, activeTab);
+                }
+            }
+            return true;
+        }
+
         if (id == R.id.preferences_id) {
             SettingsNavigation settingsNavigation =
                     SettingsNavigationFactory.createSettingsNavigation();
