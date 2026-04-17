@@ -7,6 +7,8 @@
 #include "base/android/jni_android.h"
 #include "base/android/jni_string.h"
 #include "base/android/scoped_java_ref.h"
+#include "base/base64.h"
+#include "base/files/file_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/browser/extension_registry.h"
@@ -94,9 +96,34 @@ static std::string JNI_AppMenuBridge_GetRunningExtensions(
     // popup URL (may be empty)
     result += GetPopupUrlForExtension(extension.get());
     result += kFieldSeparator;
-    // icon (base64) - omitted for now; Java uses a generic puzzle-piece
-    // fallback when this is empty. See TODO below.
-    result += "";
+    // icon (base64). Pick a small size (24–32 px) so the decoded BitmapDrawable
+    // fits the menu icon slot without needing a resample. Falls back to the
+    // smallest available, then the first available, then empty (Java shows a
+    // generic entry with no icon).
+    {
+      const ExtensionIconSet& icon_set = IconsInfo::GetIcons(extension.get());
+      std::string icon_b64;
+      std::string chosen_rel;
+      // icon_set is sorted by size ascending; pick the first >= 24, else last.
+      for (const auto& icon : icon_set.map()) {
+        if (chosen_rel.empty() || icon.first < 32) {
+          chosen_rel = icon.second;
+        }
+        if (icon.first >= 24 && icon.first <= 64) {
+          chosen_rel = icon.second;
+          break;
+        }
+      }
+      if (!chosen_rel.empty()) {
+        base::FilePath abs =
+            extension->path().Append(base::FilePath::FromUTF8Unsafe(chosen_rel));
+        std::string bytes;
+        if (base::ReadFileToString(abs, &bytes) && !bytes.empty()) {
+          icon_b64 = base::Base64Encode(bytes);
+        }
+      }
+      result += icon_b64;
+    }
     result += kFieldSeparator;
     // active/inactive state (in incognito) - always "active" for now
     result += "active";
