@@ -2,6 +2,47 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.4.0 - 2026-04-18
+
+### Added
+
+- **API coverage matrix** at `docs/superpowers/api-coverage.md` mapping
+  every `chrome.*` surface to full / stub / schema-only / unavailable /
+  infeasible, with rationale for the infeasible ones.
+- **Four API stubs** in new `desktop_android_stub_apis.{cc,h}`:
+  `chrome.permissions.getAll`, `chrome.permissions.contains`,
+  `chrome.commands.getAll`, `chrome.notifications.create`.
+  `permissions.getAll` reconstructs `{permissions, origins}` directly
+  from the manifest; `contains` tests against it. The four stubs move
+  the MV3 probe from 8 pass → 12 pass, MV2 from 8 → 13.
+- **`+ (from store)` button** in the chrome://extensions toolbar
+  (always visible — not dev-mode gated). Opens the Chrome Web Store
+  extensions category page in a new child tab.
+- **`webstorePrivate` shim** (functions + URL helpers) under
+  `chrome/browser/extensions/desktop_android/webstore_private/` as
+  scaffolding for a Kiwi-style install flow where the CWS page's own
+  Install button drives the install via
+  `chrome.webstorePrivate.beginInstallWithManifest3`. **Not yet wired
+  through to the CWS page context** — the features JSON would need
+  `webstorePrivate` exposed before the CWS page can see the binding.
+  WIP preserved on `feature/install-webstore-private-wip`.
+- Install-flow diagnostic + design spec + execution plan under
+  `docs/superpowers/`.
+- Popup-lifecycle diagnostic pinning the 'uBO filter button doesn't
+  work + flicker' symptoms to missing `chrome.tabs` / `chrome.windows`
+  API bindings (not to the popup hosting model).
+
+### Known Limitations
+
+- CWS install still flows through the v1.1 `ExtensionInstallNavigationThrottle`.
+  The Kiwi-style cutover is preserved on
+  `feature/install-webstore-private-wip` and depends on exposing
+  `webstorePrivate` in an Afterbird-owned features JSON.
+- `chrome.tabs.query` / `chrome.windows.*` are not yet implemented.
+  uBlock Origin's filter engine doesn't boot without them; Dark Reader
+  can't inject themes without `chrome.scripting.executeScript`.
+  Tracked as v1.5 follow-ups in `api-coverage.md`.
+
 ## v1.3.0 - 2026-04-17
 
 ### Added
