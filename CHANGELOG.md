@@ -2,6 +2,41 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.8.0 - 2026-04-18
+
+### Fixed
+
+- **Grant manifest permissions on extension load.** On desktop-android,
+  `chrome/browser/extensions/` (where `PermissionsUpdater::InitializePermissions`
+  lives) is not linked because `enable_extensions=false`. Without it, every
+  extension loaded rules `active_permissions` empty and the manifest's
+  host_permissions never reached the active set, so
+  `WebRequestPermissions::CanExtensionAccessURL` returned `kWithheld`/`kDenied`
+  for every URL. Extensions could register listeners but the event router
+  dropped events before dispatching — uBlock Origin matched 0 ads.
+  The fix reaches back into the registry-owned `Extension` after
+  `ExtensionRegistrar::AddExtension` and calls
+  `permissions_data()->SetPermissions(required, empty_withheld)` using the
+  manifest-declared required permissions. This matches what
+  `InitializePermissions` does on desktop. Both code paths (`AddExtension`
+  for fresh installs, `reload-persisted` for restart recovery) are
+  covered. Verified: uBO's `active_hosts=2`, `withheld_hosts=0`;
+  `CanExtensionAccessURL` returns `kAllowed`.
+
+### Known limitations
+
+- uBlock Origin ad-blocking is still not fully end-to-end. With the grant
+  fix, the URL permission check passes (`access=kAllowed`), but the
+  webRequest event router still returns `net::OK` instead of
+  `ERR_IO_PENDING` from `OnBeforeRequest` — the blocking dispatch chain
+  is broken somewhere between `GetMatchingListeners` and the renderer
+  reply. Diagnostic in
+  `docs/superpowers/diagnostics/2026-04-18-webrequest-blocking.md`.
+  Ready-to-go probe on `feature/v1.8-webrequest-trace`. Will land in
+  v1.9.
+- DevTools frontend still fetched from appspot (see v1.6 notes).
+- Store-install ID rewriting unchanged.
+
 ## v1.7.0 - 2026-04-18
 
 ### Added
