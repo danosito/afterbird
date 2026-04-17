@@ -10,6 +10,7 @@
 #include "base/files/file_path.h"
 #include "base/logging.h"
 #include "base/strings/stringprintf.h"
+#include "chrome/browser/profiles/profile.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/devtools_socket_factory.h"
 #include "content/public/browser/web_contents.h"
