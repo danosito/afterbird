@@ -16,47 +16,50 @@ Grab the latest APK from
 [Releases](https://github.com/danosito/afterbird/releases) and install it.
 Android 15+ is supported (emulator and physical devices).
 
-## What works in v1.1
+## What works in v1.2
 
-- **Install from the Chrome Web Store.** Navigate to a
-  `chromewebstore.google.com/detail/<slug>/<id>` URL — Afterbird
-  intercepts the navigation, fetches the signed `.crx` from Google's
-  update endpoint, and installs it.
-- **Install from any `.crx` / `.user.js` link on the web.** Same
-  throttle, same installer pipeline. No Android "open with" dialog.
-- **Load Unpacked picker** for `.zip`, `.crx`, `.user.js`, or a
-  directory. Packages are staged under
-  `<profile>/Extensions/afterbird_install_<rand>/`.
-- `chrome://extensions` renders the real Chromium extensions manager
-  (Polymer WebUI) and the cards populate properly.
+- **Extension install confirmation.** Clicking a `.crx` / `.user.js` link,
+  navigating to a Chrome Web Store detail URL, or following a store→CDN
+  redirect pops a dialog with the extension's name, version, source,
+  manifest permissions, and a fine-print warning. Only after Accept does
+  the extension actually register.
+- **Install triggered on download, not navigation.** Navigation throttle
+  narrowed to Chrome Web Store detail URLs only; `.crx` downloads are
+  now caught at `DownloadManagerDelegate::InterceptDownloadIfApplicable`
+  (the same primitive desktop Chrome uses).
+- `chrome://extensions` is fully functional: Enable toggle disables the
+  real extension, Remove drops the card + unregisters, Details opens the
+  per-extension panel (version, size, ID, permissions, source, toggles),
+  icons render from the extension's own image bytes, dev-mode toggle
+  exposes Load Unpacked / Pack / Update.
+- Load Unpacked picker still works for `.zip` / `.crx` / `.user.js` /
+  directory installs (auto-confirms; the dialog is only shown when the
+  flow starts from a network download).
 - Installed extensions persist across restart.
-- **Extension messaging.** `chrome.runtime.sendMessage` and
-  `chrome.runtime.connect` port-based channels route between extension
-  frames, so dashboards and popups (e.g. uBlock Origin Settings) render
-  populated instead of blank.
-- DNR (declarativeNetRequest) based ad blocking via uBlock Origin.
+- `chrome.runtime.sendMessage` + port-based messaging between extension
+  frames (so dashboards and popups render populated).
+- DNR-based ad blocking via uBlock Origin.
 - Main app menu exposes `Extensions` plus one entry per running extension.
 
-No command-line `--load-extension` hack needed for any end-user flow.
+No command-line `--load-extension` hack needed.
 
-Smoke-tested on device: Dark Reader installs via the CWS detail URL,
-uBlock Origin installs via the Load Unpacked picker *and* via a raw
-`.crx` URL download, both survive restart, uBO Settings panel renders,
-DNR blocks ads.
+Smoke-tested on device: installing Dark Reader from a Chrome Web Store
+URL and Honey from a different store URL now show the confirm dialog;
+Accept registers + runs, Cancel deletes the cached CRX. chrome://extensions
+list + details both render and stay live-synced with toggle changes.
 
 ## Known limitations
 
-- Only a couple of extensions have been exercised end-to-end. Extensions
-  that rely on APIs still stubbed in the desktop-android extension
-  system (parts of `chrome.management`, `browserAction.setIcon`,
-  `tabs.query`, etc.) may misbehave.
-- Extension icons on `chrome://extensions` render as broken images —
-  `chrome://extension-icon/` is not yet wired up on desktop-android.
+- Only a few extensions have been exercised end-to-end. Extensions that
+  rely on APIs still stubbed in the desktop-android extension system
+  (parts of `chrome.management`, `browserAction.setIcon`, `tabs.query`,
+  etc.) may misbehave.
 - Re-installing the same extension produces a new staging dir + new
-  unpacked-location ID, so the list accumulates duplicates.
-- The install flow is silent — no permission confirmation sheet yet.
-- Enable toggle, Remove, Details, Pack, and the dev-mode toggle on
-  `chrome://extensions` still need polish.
+  unpacked-location ID — the list still accumulates duplicates instead
+  of dedup-by-public-key.
+- App menu "Extensions" entry opens inline instead of in a new tab;
+  extension submenu entries don't yet have icons.
+- DevTools UX is not yet wired up the Kiwi way.
 
 ## Repository layout and build
 

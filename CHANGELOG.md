@@ -2,6 +2,50 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.2.0 - 2026-04-17
+
+### Added
+
+- **Install confirmation dialog.** Every extension install — whether from
+  a Chrome Web Store detail URL, a `.crx` link, or a store→CDN redirect —
+  now routes through a `CrxInstallCoordinator` that fetches the package,
+  unpacks it into a staging dir, and shows a `ModalDialogManager`-driven
+  dialog with the extension's name, version, source label, raw manifest
+  permission list, and a fine-print risk warning. Accept promotes; Cancel
+  deletes the staging + the cached CRX.
+- **Install triggered on download, not navigation.** The navigation throttle
+  is narrowed to only the Chrome Web Store detail-page case.
+  `.crx` / `application/x-chrome-extension` responses are now caught at
+  `DownloadManagerDelegate::InterceptDownloadIfApplicable`, matching the
+  desktop Chrome primitive — the browser recognises an extension download
+  and hands it to the coordinator instead of writing to the Downloads
+  folder.
+- `DesktopAndroidExtensionInstaller` split into `PrepareFromFile` (unpack +
+  read manifest + stage) and `CommitPrepared` (promote + register), so the
+  confirm dialog can display manifest data before the install commits.
+
+### Fixed
+
+- **chrome://extensions Enable toggle now actually disables the extension.**
+  `chrome.metricsPrivate` isn't bound on desktop-android; every
+  `service.ts` method that starts with `recordUserAction(...)` used to
+  throw before reaching the real API call. The toggle, Remove, and
+  Update buttons all exited early. Guard `recordUserAction` with a
+  single try/catch and route every call site through it.
+- **chrome://extensions list refreshes after state changes.** Previously
+  flipping the toggle or removing an extension left the UI showing stale
+  data. `developerPrivate.onItemStateChanged` is now broadcast from
+  `updateExtensionConfiguration`, `removeMultipleExtensions`, `reload`,
+  and `loadUnpacked` handlers, with the correct `extensionInfo`
+  (camelCase) payload the Polymer manager expects.
+- **Card icons render.** `chrome://extension-icon/` isn't served on
+  desktop-android builds. `developerPrivate.getExtensionsInfo` now
+  inlines the icon bytes as a `data:image/<type>;base64,...` URL.
+- **Details panel renders.** The Lit template dereferences several fields
+  (`errorCollection.isEnabled`, `manifestHomePageUrl.length`,
+  `blocklistText`) unconditionally; emit them in the payload so the
+  render doesn't throw.
+
 ## v1.1.0 - 2026-04-17
 
 ### Added
