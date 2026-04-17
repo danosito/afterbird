@@ -2,6 +2,51 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.6.0 - 2026-04-18
+
+### Added
+
+- **Broad `chrome.*` defensive stubs.** tabs / windows / action / browserAction
+  / contextMenus / cookies / notifications / types.ChromeSetting / extension.
+  API-probe pass count: MV3 9 → 30, MV2 9 → 31. "Unknown Extension API"
+  logcat spam 187 → 2. Fixes the Bitwarden service-worker wake crash
+  (`tabs.query` was returning `undefined` → the BadgeService `.filter()`
+  call blew up on every alarm).
+- **Native Chrome Web Store install.** The CWS detail page loads normally
+  and its own "Add to Chrome" button drives the install via
+  `chrome.webstorePrivate.beginInstallWithManifest3`. The old
+  `ExtensionInstallNavigationThrottle`-based wrapper dialog is retired.
+  Throttle registration is kept so raw redirect-to-`.crx` chains still
+  reach the download layer unchanged.
+- **`webstorePrivate` schema exposed on desktop-android.** Hoisted
+  `webstore_private.json` out of the `enable_extensions`-gated schema set
+  into the sibling `enable_desktop_android_extensions && !enable_extensions`
+  block next to `developer_private.idl`. Verified in generated
+  `generated_schemas.cc`.
+
+### Fixed
+
+- **DevTools frontend 404.** `CHROMIUM_GIT_REVISION` already embeds the
+  `@` prefix (`"@03d5…"`); the previous format string `.../serve_rev/@%s/...`
+  double-stamped it, producing `@@<sha>` which 404s on appspot. Dropped
+  the literal `@` so the URL matches what Chromium's own
+  `DevToolsHttpHandler::GetFrontendURLInternal` emits in `/json/list`.
+
+### Known limitations
+
+- DevTools frontend is still fetched from `chrome-devtools-frontend.appspot.com`.
+  Local bundling of the `devtools_resources` pak on Android would add
+  ~30-40 MB to the APK; tracked as a follow-up. Today's hotfix unblocks
+  the menu entry without the size cost.
+- uBlock Origin still reports 0/133 ads blocked on the parity test page.
+  The API-denied log noise is gone, but the DNR/webRequest engine
+  integration needs a separate pass — stubs prevent crashes but don't
+  provide real rule application. Tracked for v1.7.
+- CRX key/signature isn't pinned through `CrxInstallCoordinator` yet, so
+  store-installed extensions get local IDs that differ from their CWS
+  IDs (Bitwarden `nngc…` → `fciin…`). Visible in the install confirm
+  dialog. Parity-report P2; tracked for v1.7.
+
 ## v1.5.0 - 2026-04-18
 
 ### Added

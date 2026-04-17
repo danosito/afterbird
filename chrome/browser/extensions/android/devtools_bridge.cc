@@ -128,12 +128,12 @@ std::string DevToolsBridge::BuildFrontendUrlFor(
   // so `DevToolsManagerDelegateAndroid::HasBundledFrontendResources()`
   // returns false and `/devtools/inspector.html` 404s locally. Use the
   // public Chromium-hosted frontend pinned to the current Chromium git
-  // revision — same pattern `DevToolsHttpHandler::GetFrontendURLInternal`
-  // uses for its `/json/list` `devtoolsFrontendUrl`. `@HEAD` / `@latest`
-  // are rejected by the appspot service; only a real Chrome-stable
-  // revision hash is accepted.
+  // revision — same URL Chromium's own `DevToolsHttpHandler` emits as
+  // `devtoolsFrontendUrl` in `/json/list`. NOTE: `CHROMIUM_GIT_REVISION`
+  // already embeds the `@` prefix (`"@03d5…"`) — don't add another one
+  // or the appspot 404s on `@@`.
   return base::StringPrintf(
-      "https://chrome-devtools-frontend.appspot.com/serve_rev/@%s/"
+      "https://chrome-devtools-frontend.appspot.com/serve_rev/%s/"
       "inspector.html?ws=%s:%u/devtools/page/%s",
       content::GetChromiumGitRevision().c_str(), kLoopback, port,
       host->GetId().c_str());
