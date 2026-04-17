@@ -62,6 +62,75 @@ class WebstorePrivateCompleteInstallFunction : public ExtensionFunction {
   ResponseAction Run() override;
 };
 
+// Returns the full `132.0.6834.83` version string; CWS uses it to decide
+// which extension variant to serve. Previously unregistered → the page
+// would log "Unknown Extension API" and fall back to a no-op, leaving
+// the Install button in an indeterminate state on some extensions.
+class WebstorePrivateGetFullChromeVersionFunction : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("webstorePrivate.getFullChromeVersion",
+                             WEBSTOREPRIVATE_GETFULLCHROMEVERSION)
+  WebstorePrivateGetFullChromeVersionFunction();
+
+ protected:
+  ~WebstorePrivateGetFullChromeVersionFunction() override;
+  ResponseAction Run() override;
+};
+
+// Returns MV2 deprecation phase info. We're on MV3-soft-deprecation, so
+// answer with the "inactive" state — MV2 extensions still install and run.
+class WebstorePrivateGetMV2DeprecationStatusFunction
+    : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("webstorePrivate.getMV2DeprecationStatus",
+                             WEBSTOREPRIVATE_GETMV2DEPRECATIONSTATUS)
+  WebstorePrivateGetMV2DeprecationStatusFunction();
+
+ protected:
+  ~WebstorePrivateGetMV2DeprecationStatusFunction() override;
+  ResponseAction Run() override;
+};
+
+// Returns an empty referrer chain. CWS uses this for spam/abuse signals;
+// we have no SafeBrowsing integration on desktop-android so empty is fine.
+class WebstorePrivateGetReferrerChainFunction : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("webstorePrivate.getReferrerChain",
+                             WEBSTOREPRIVATE_GETREFERRERCHAIN)
+  WebstorePrivateGetReferrerChainFunction();
+
+ protected:
+  ~WebstorePrivateGetReferrerChainFunction() override;
+  ResponseAction Run() override;
+};
+
+// Returns whether the current window is incognito. Drives the "open in
+// incognito" affordance on the CWS detail page.
+class WebstorePrivateIsInIncognitoModeFunction : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("webstorePrivate.isInIncognitoMode",
+                             WEBSTOREPRIVATE_ISININCOGNITOMODEFUNCTION)
+  WebstorePrivateIsInIncognitoModeFunction();
+
+ protected:
+  ~WebstorePrivateIsInIncognitoModeFunction() override;
+  ResponseAction Run() override;
+};
+
+// Returns the install state for a given extension id: "installable",
+// "installed", "enabled", etc. CWS uses it to swap between the "Add to
+// Chrome" and "Remove from Chrome" button text.
+class WebstorePrivateGetExtensionStatusFunction : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("webstorePrivate.getExtensionStatus",
+                             WEBSTOREPRIVATE_GETEXTENSIONSTATUS)
+  WebstorePrivateGetExtensionStatusFunction();
+
+ protected:
+  ~WebstorePrivateGetExtensionStatusFunction() override;
+  ResponseAction Run() override;
+};
+
 }  // namespace extensions
 
 #endif  // CHROME_BROWSER_EXTENSIONS_DESKTOP_ANDROID_WEBSTORE_PRIVATE_WEBSTORE_PRIVATE_API_H_
