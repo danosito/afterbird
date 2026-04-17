@@ -32,6 +32,7 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_handlers/icons_handler.h"
+#include "extensions/common/manifest_url_handlers.h"
 #include "extensions/common/mojom/manifest.mojom-shared.h"
 #include "url/gurl.h"
 
@@ -222,6 +223,23 @@ base::Value::Dict BuildExtensionInfo(const Extension& extension,
   info.Set("runOnAllUrls", base::Value::Dict());
   info.Set("showAccessRequestsInToolbar", base::Value::Dict());
   info.Set("pinnedToToolbar", base::Value::Dict());
+  // The detail view reads `data.errorCollection.isEnabled` unconditionally;
+  // an absent dict crashes the Lit render. Present as an opted-out dict.
+  base::Value::Dict error_collection;
+  error_collection.Set("isEnabled", false);
+  error_collection.Set("isActive", false);
+  info.Set("errorCollection", std::move(error_collection));
+  // More detail-view hard-requireds: the Lit template reads `.length` on
+  // manifestHomePageUrl (and webStoreUrl, already set) for the "visit
+  // website" link-row, and prints `blocklistText` directly. Empty strings
+  // keep the template happy — the rows are hidden when length is 0.
+  const std::string homepage_url =
+      ManifestURL::GetHomepageURL(&extension).possibly_invalid_spec();
+  info.Set("manifestHomePageUrl", homepage_url);
+  info.Set("blocklistText", "");
+  // launchUrl is on `data.launchUrl` — queried by app-only UI rows but the
+  // template dereferences it unconditionally. Empty string is safe.
+  info.Set("launchUrl", "");
 
   // Size on disk: not computed here.
   info.Set("size", "");
