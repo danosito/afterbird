@@ -14,6 +14,37 @@ function runProbes() {
   return self.AfterbirdProbes.runAll(self.AfterbirdProbes.allMv2).then(function (results) {
     LAST.results = results;
     LAST.finishedAt = Date.now();
+    try {
+      var counts = { pass: 0, fail: 0, unavailable: 0 };
+      var failed = [];
+      for (var i = 0; i < results.length; i++) {
+        var s = results[i].status;
+        if (counts[s] == null) counts[s] = 0;
+        counts[s]++;
+        if (s === 'fail') {
+          failed.push(results[i].name + ' :: ' + (results[i].note || ''));
+        }
+      }
+      var summary = 'pass=' + counts.pass + ' fail=' + counts.fail +
+        ' unavailable=' + counts.unavailable + ' in ' + (LAST.finishedAt - LAST.startedAt) + 'ms';
+      console.log('[afterbird-probe mv2] ' + summary);
+      if (failed.length) {
+        console.log('[afterbird-probe mv2] failures:');
+        for (var j = 0; j < failed.length; j++) console.log('  - ' + failed[j]);
+      }
+      try {
+        chrome.storage.local.set({
+          __afterbird_probe_last: {
+            mv: 2,
+            startedAt: LAST.startedAt,
+            finishedAt: LAST.finishedAt,
+            counts: counts,
+            failed: failed,
+            results: results
+          }
+        });
+      } catch (e) { /* ignore */ }
+    } catch (e) { /* ignore */ }
     return results;
   });
 }

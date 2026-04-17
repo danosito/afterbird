@@ -27,6 +27,42 @@ function runProbes() {
   return self.AfterbirdProbes.runAll(self.AfterbirdProbes.allMv3).then(function (results) {
     LAST.results = results;
     LAST.finishedAt = Date.now();
+    // Emit a compact one-line summary to the console so logcat can pick it up
+    // — useful for headless probe runs where no popup is opened.
+    try {
+      var counts = { pass: 0, fail: 0, unavailable: 0 };
+      var failed = [];
+      for (var i = 0; i < results.length; i++) {
+        var s = results[i].status;
+        if (counts[s] == null) counts[s] = 0;
+        counts[s]++;
+        if (s === 'fail') {
+          failed.push(results[i].name + ' :: ' + (results[i].note || ''));
+        }
+      }
+      var summary = 'pass=' + counts.pass + ' fail=' + counts.fail +
+        ' unavailable=' + counts.unavailable + ' in ' + (LAST.finishedAt - LAST.startedAt) + 'ms';
+      console.log('[afterbird-probe mv3] ' + summary);
+      if (failed.length) {
+        console.log('[afterbird-probe mv3] failures:');
+        for (var j = 0; j < failed.length; j++) console.log('  - ' + failed[j]);
+      }
+      // Also persist to storage.local so a headless harness can pull results
+      // without opening DevTools. The storage backend round-trips through the
+      // profile's LevelDB extensions store.
+      try {
+        chrome.storage.local.set({
+          __afterbird_probe_last: {
+            mv: 3,
+            startedAt: LAST.startedAt,
+            finishedAt: LAST.finishedAt,
+            counts: counts,
+            failed: failed,
+            results: results
+          }
+        });
+      } catch (e) { /* ignore */ }
+    } catch (e) { /* ignore */ }
     return results;
   });
 }
