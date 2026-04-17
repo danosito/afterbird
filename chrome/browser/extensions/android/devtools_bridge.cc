@@ -5,8 +5,12 @@
 #include "chrome/browser/extensions/android/devtools_bridge.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
+#include "base/android/jni_android.h"
+#include "base/android/jni_string.h"
+#include "base/android/scoped_java_ref.h"
 #include "base/files/file_path.h"
 #include "base/logging.h"
 #include "base/strings/stringprintf.h"
