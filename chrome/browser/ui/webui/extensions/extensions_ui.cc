@@ -449,6 +449,12 @@ content::WebUIDataSource* CreateAndAddExtensionsSource(Profile* profile,
   source->AddString("mv2DeprecationMessageWarningHeader", "");
   source->AddString("mv2DeprecationMessageWarningSubtitle", "");
   source->AddString("mv2DeprecationUnsupportedExtensionOffText", "");
+  // Afterbird v1.4: + (from store) button in the extensions toolbar.
+  // These keys aren't referenced by any upstream strings file, so always
+  // fall back to plain-English text here.
+  source->AddString("toolbarLoadFromStore", "+ (from store)");
+  source->AddString("toolbarLoadFromStoreTooltip",
+                    "Open the Chrome Web Store to find new extensions");
 #endif
 
   // Add localized generic strings that need '&' to be removed from them.

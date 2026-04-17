@@ -47,6 +47,7 @@ export interface ExtensionsToolbarElement {
   $: {
     devDrawer: HTMLElement,
     devMode: CrToggleElement,
+    loadFromStore: HTMLElement,
     loadUnpacked: HTMLElement,
     packExtensions: HTMLElement,
     toolbar: CrToolbarElement,
@@ -176,6 +177,11 @@ export class ExtensionsToolbarElement extends ExtensionsToolbarElementBase {
       });
     }
     this.expanded_ = !this.expanded_;
+  }
+
+  protected onLoadFromStoreClick_() {
+    chrome.metricsPrivate.recordUserAction('Options_OpenExtensionsWebStore');
+    window.open('https://chromewebstore.google.com/category/extensions');
   }
 
   protected onLoadUnpackedClick_() {

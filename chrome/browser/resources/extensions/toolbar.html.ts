@@ -15,6 +15,11 @@ export function getHtml(this: ToolbarElement) {
     @narrow-changed="${this.onNarrowChanged_}" narrow-threshold="1000"
     ?show-menu="${this.narrow}">
   <div class="more-actions">
+    <cr-button id="loadFromStore"
+        @click="${this.onLoadFromStoreClick_}"
+        title="$i18n{toolbarLoadFromStoreTooltip}">
+      $i18n{toolbarLoadFromStore}
+    </cr-button>
     <span id="devModeLabel">$i18n{toolbarDevMode}</span>
     <cr-tooltip-icon ?hidden="${!this.shouldDisableDevMode_()}"
         tooltip-text="${this.getTooltipText_()}" icon-class="${this.getIcon_()}"
