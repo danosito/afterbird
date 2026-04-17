@@ -33,33 +33,50 @@ The turtlecute test reports **4 / 133 blocked (3 %)** — identical to the
 pre-v1.7 state. Kiwi 137 on the same test page under the same uBO 1.62
 blocks ~130 / 133.
 
-## Hypotheses to chase next
+## Narrowed root cause
 
-(Ordered by cheapness.)
+Added `LOG(INFO)` to
+`WebRequestProxyingURLLoaderFactory::InProgressRequest::RestartInternal`
+at the `WebRequestEventRouter::OnBeforeRequest()` call site. Observed:
 
-1. **The proxy is installed but events never reach uBO's JS.** A single
-   `LOG(INFO)` in `WebRequestProxyingURLLoaderFactory::InProgressRequest::
-   OnBeforeRequest` would confirm whether the router dispatches. If it
-   does, the gap is in the renderer-side binding. If it doesn't, the gap
-   is in the dispatch path.
-2. **Permission check fails at event-delivery time.** The listener is
-   registered, but when the proxy fires `OnBeforeRequest`,
-   `WebRequestPermissions::CanExtensionAccessURL` might return false
-   because the active-tab / host-permissions path on desktop-android
-   doesn't know about the loaded extension's hosts. Check
-   `web_request_permissions.cc::CanExtensionAccessURL`.
-3. **Renderer-side webRequest binding is wired to
-   `WebRequestInternalEventHandledFunction` but the renderer never replies
-   with `cancel=true`.** Instrument
-   `WebRequestInternalEventHandledFunction::Run` to see if it ever fires
-   for uBO events. If not, the render-side JS is running but the reply
-   never ships back.
-4. **Process-type gating.** `extensions/browser/process_map.cc` decides
-   whether a given render-process can host an extension. If the extension
-   SW / background for uBO isn't running in a process the event-router
-   trusts, dispatch is silently dropped.
+- **`OnBeforeRequest` fires 263 times** across a single cold-launch pass
+  for extension-internal URLs AND every turtlecute sub-resource.
+- **Every single call returns `net::OK`.** Not one returns
+  `ERR_BLOCKED_BY_CLIENT` (synchronous cancel) or `ERR_IO_PENDING`
+  (async pending for listener reply).
 
-Any of these would be 10–50 LOC to instrument. Not a one-line fix.
+Means the router path runs, but `GetMatchingListeners(...)` returns an
+empty vector for every request, so nothing is dispatched to uBO — the
+router falls through to `net::OK` without asking the listener.
+
+## Why `GetMatchingListeners` returns empty
+
+Next-pass hypothesis — the listener IS registered (`success=1`,
+`extra_info_spec=BLOCKING`) but at dispatch time one of these rejects:
+
+1. **`CanExtensionAccessURL`** inside `GetMatchingListeners` checks host
+   permissions. If `permissions_data()` on desktop-android doesn't
+   populate effective host permissions for `--load-extension` extensions,
+   every URL is denied.
+2. **Event name keying.** uBO registered for
+   `sub_event_name=webRequest.onBeforeRequest/g1` (sub-event with
+   `/g<seq>` suffix). If the router is keyed on the base event name but
+   matches on sub-event, or vice-versa, listeners never match.
+3. **`data_[ctx_id].active_listeners`** may be segregated by
+   `ExtensionsBrowserClient::GetOriginalContext` and the dispatch site
+   looks up the wrong bucket.
+
+To confirm: instrument `GetMatchingListeners` with:
+
+    LOG(INFO) << "GetMatchingListeners url=" << request->url
+              << " listeners_total=" << <all_listeners_count>
+              << " listeners_matched=" << result.size();
+
+and a per-reject `LOG(INFO)` on the filter-in predicate inside that
+function. Then we can see which check rejects.
+
+Any of (1)-(3) is a targeted fix (10–30 LOC). Not shipping a fix in
+v1.7; logged for v1.8.
 
 ## Diagnostic instrumentation left in tree
 
