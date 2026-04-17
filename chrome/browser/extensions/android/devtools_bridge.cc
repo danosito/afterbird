@@ -18,6 +18,7 @@
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/devtools_socket_factory.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/user_agent.h"
 #include "net/base/ip_endpoint.h"
 #include "net/base/net_errors.h"
 #include "net/log/net_log_source.h"
@@ -122,13 +123,20 @@ std::string DevToolsBridge::BuildFrontendUrlFor(
     return std::string();
   }
 
-  // The bundled frontend on Android is served at /devtools/inspector.html
-  // (see content/browser/devtools/devtools_http_handler.cc
-  //  GetFrontendURLInternal, when delegate_->HasBundledFrontendResources()
-  //  is true). The ?ws= parameter wires it to the per-page WebSocket.
+  // Bundled frontend resources aren't linked on Android (see
+  // content/browser/devtools/BUILD.gn: `if (!is_android && !is_ios)`),
+  // so `DevToolsManagerDelegateAndroid::HasBundledFrontendResources()`
+  // returns false and `/devtools/inspector.html` 404s locally. Use the
+  // public Chromium-hosted frontend pinned to the current Chromium git
+  // revision — same pattern `DevToolsHttpHandler::GetFrontendURLInternal`
+  // uses for its `/json/list` `devtoolsFrontendUrl`. `@HEAD` / `@latest`
+  // are rejected by the appspot service; only a real Chrome-stable
+  // revision hash is accepted.
   return base::StringPrintf(
-      "http://%s:%u/devtools/inspector.html?ws=%s:%u/devtools/page/%s",
-      kLoopback, port, kLoopback, port, host->GetId().c_str());
+      "https://chrome-devtools-frontend.appspot.com/serve_rev/@%s/"
+      "inspector.html?ws=%s:%u/devtools/page/%s",
+      content::GetChromiumGitRevision().c_str(), kLoopback, port,
+      host->GetId().c_str());
 }
 
 // JNI entry point: Java passes (Profile*, WebContents*), but profile is
