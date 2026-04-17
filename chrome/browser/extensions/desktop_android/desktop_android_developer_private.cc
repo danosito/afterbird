@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 
+#include "base/base64.h"
+#include "base/files/file_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/values.h"
@@ -117,15 +119,42 @@ base::Value::Dict BuildExtensionInfo(const Extension& extension,
   info.Set("isCommandRegistrationHandledByChrome", false);
   info.Set("canUploadAsAccountExtension", false);
 
-  // Icons — build a chrome-extension:// icon URL for the default size.
+  // Icons. Upstream chrome://extensions uses chrome://extension-icon/<id>/
+  // <size>/<scale> URLs which are served by ExtensionIconSource — that URL
+  // data source isn't registered on desktop-android builds, so images come
+  // back broken. Read the icon file off disk right here and ship it as a
+  // `data:image/<type>;base64,...` URL. Icons are small (<50 KB) and this
+  // only runs when the user opens chrome://extensions; not a hot path.
   const ExtensionIconSet& icon_set = IconsInfo::GetIcons(&extension);
   std::string default_icon_url;
   base::Value::List icons;
   for (const auto& icon : icon_set.map()) {
     base::Value::Dict entry;
     entry.Set("size", icon.first);
-    const std::string url = "chrome://extension-icon/" + extension.id() + "/" +
-                            base::NumberToString(icon.first) + "/1";
+
+    std::string url;
+    const base::FilePath rel_path = base::FilePath::FromUTF8Unsafe(icon.second);
+    const base::FilePath abs_path = extension.path().Append(rel_path);
+    std::string bytes;
+    if (base::ReadFileToString(abs_path, &bytes) && !bytes.empty()) {
+      std::string_view ext_str = rel_path.Extension();
+      std::string mime = "image/png";
+      if (ext_str == ".svg") {
+        mime = "image/svg+xml";
+      } else if (ext_str == ".jpg" || ext_str == ".jpeg") {
+        mime = "image/jpeg";
+      } else if (ext_str == ".gif") {
+        mime = "image/gif";
+      } else if (ext_str == ".webp") {
+        mime = "image/webp";
+      }
+      url = "data:" + mime + ";base64," + base::Base64Encode(bytes);
+    } else {
+      // Fall back to the upstream URL form even though it 404s — at least
+      // the broken-image icon sits in a sensible place in layout.
+      url = "chrome://extension-icon/" + extension.id() + "/" +
+            base::NumberToString(icon.first) + "/1";
+    }
     entry.Set("url", url);
     if (default_icon_url.empty()) {
       default_icon_url = url;
