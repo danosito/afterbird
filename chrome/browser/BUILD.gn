@@ -7832,9 +7832,13 @@ static_library("browser") {
       # developerPrivate.loadUnpacked and the webstore URL interceptor.
       "extensions/desktop_android/extension_installer.cc",
       "extensions/desktop_android/extension_installer.h",
-      # Afterbird v1.2 / v1.4: orchestrates fetch → unpack → confirm →
-      # install. Triggered by ShouldInterceptDownload (raw .crx URL) and
-      # webstorePrivate.beginInstallWithManifest3 (CWS detail page).
+      # Afterbird v1.1: NavigationThrottle that turns direct .crx /
+      # .user.js navigations into an install.
+      "extensions/desktop_android/extension_install_navigation_throttle.cc",
+      "extensions/desktop_android/extension_install_navigation_throttle.h",
+      # Afterbird v1.2: orchestrates fetch → unpack → confirm → install,
+      # replacing the v1.1 silent-install CrxDownloadInstaller. Owns the
+      # SimpleURLLoader, staging dir, and the JNI confirm-dialog bridge.
       "extensions/desktop_android/crx_install_coordinator.cc",
       "extensions/desktop_android/crx_install_coordinator.h",
       # Afterbird v1.4: webstorePrivate shim + URL helpers. The detail

@@ -29,10 +29,9 @@
 //       — called from the download interceptor when a response we
 //         recognise (MIME or .crx suffix) is about to hit Downloads/.
 //   * StartFromWebstore(crx_url, web_contents, source_label)
-//       — called from the webstorePrivate.beginInstallWithManifest3
-//         shim when the CWS detail page's Install button is pressed.
-//         The shim synthesises the "/service/update2/crx" endpoint
-//         from the extension id it receives.
+//       — called from ExtensionInstallNavigationThrottle after it
+//         recognises a Chrome Web Store detail URL and synthesises the
+//         "/service/update2/crx" endpoint.
 
 #ifndef CHROME_BROWSER_EXTENSIONS_DESKTOP_ANDROID_CRX_INSTALL_COORDINATOR_H_
 #define CHROME_BROWSER_EXTENSIONS_DESKTOP_ANDROID_CRX_INSTALL_COORDINATOR_H_
