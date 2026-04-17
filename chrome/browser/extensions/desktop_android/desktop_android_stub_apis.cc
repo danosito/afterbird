@@ -530,22 +530,13 @@ DesktopAndroidBrowserActionDisableFunction::Run() {
 
 ExtensionFunction::ResponseAction
 DesktopAndroidContextMenusCreateFunction::Run() {
-  // create(createProperties, callback?) — returns the menu item id. Accept
-  // either `id` from createProperties (string) or the JS-bound generatedId
-  // (int) that context_menus_custom_bindings.js injects.
-  if (!args().empty() && args()[0].is_dict()) {
-    const base::Value::Dict& d = args()[0].GetDict();
-    if (const std::string* id = d.FindString("id")) {
-      return RespondNow(ArgumentList(OneArgList(base::Value(*id))));
-    }
-    if (std::optional<int> gid = d.FindInt("generatedId")) {
-      return RespondNow(ArgumentList(OneArgList(base::Value(*gid))));
-    }
-  }
-  // Synthesise a numeric id.
-  int gid = static_cast<int>(
-      base::Time::Now().InMillisecondsSinceUnixEpoch() & 0x7FFFFFFF);
-  return RespondNow(ArgumentList(OneArgList(base::Value(gid))));
+  // Upstream ContextMenusCreateFunction returns NoArguments() — the JS
+  // binding in extensions/renderer/resources/context_menus_handlers.js
+  // derives the id from createProperties.id or .generatedId on the
+  // request side, so the function itself doesn't need to return one.
+  // Returning an id here confused the custom-callback chain and produced
+  // "extensionCallback is not a function" errors in the renderer.
+  return RespondNow(NoArguments());
 }
 
 ExtensionFunction::ResponseAction
