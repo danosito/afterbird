@@ -2,6 +2,39 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.5.0 - 2026-04-18
+
+### Added
+
+- **On-device DevTools.** New main-menu entry "Developer tools" opens
+  the current tab's DevTools frontend in a new tab. The remote-debugging
+  HTTP server binds to 127.0.0.1:<ephemeral> lazily on first use and is
+  pinned to the process lifetime (no teardown path — once started,
+  stays up).
+- **DevToolsBridge** (`chrome/browser/extensions/android/devtools_bridge.{cc,h}`)
+  — lazy loopback server + frontend URL builder. JNI entry point
+  `DevToolsBridge.open(Profile, WebContents)` returns the URL that
+  Chromium itself emits in `/json/list` (`devtoolsFrontendUrl`) so the
+  appspot-hosted frontend loads reliably.
+
+### Fixed
+
+- **DevTools frontend no longer 404s.** The appspot service
+  (`chrome-devtools-frontend.appspot.com`) requires a real Chromium git
+  revision pin returned by `content::GetChromiumGitRevision()`, not
+  `@HEAD` or `@latest`. The bridge now uses the same URL pattern as
+  Chromium's own `DevToolsHttpHandler::GetFrontendURLInternal`, pinned
+  to the build's `LASTCHANGE` revision.
+
+### Known Limitations
+
+- DevTools frontend is fetched from `chrome-devtools-frontend.appspot.com`
+  — network required on first use. Bundled resources aren't linked on
+  Android (see `content/browser/devtools/BUILD.gn:13`:
+  `if (!is_android && !is_ios)`); serving the frontend locally would
+  need `debug_frontend_dir` wired to the build tree or the `front_end`
+  bundle packaged into APK assets. Deferred.
+
 ## v1.4.0 - 2026-04-18
 
 ### Added
