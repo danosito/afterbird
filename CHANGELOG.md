@@ -2,6 +2,46 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.3.0 - 2026-04-17
+
+### Added
+
+- **API probe extension.** `third_party/extensions/afterbird-api-probe/`
+  ships as two unpacked extensions (MV2 and MV3) that exercise the
+  important `chrome.*` APIs — `runtime.sendMessage` round-trips, ports,
+  storage.local/session/sync, tabs.query/create/remove, alarms,
+  action / browserAction badges and icons, contextMenus, DNR updates,
+  MV3 `scripting.executeScript`, commands, permissions, i18n,
+  notifications, plus `webRequest` on MV2. Each popup shows a per-API
+  pass / fail / unavailable table so the compatibility surface is
+  visible at a glance.
+
+### Fixed
+
+- **Extensions menu tabs are now proper child tabs.** The main-menu
+  "Extensions" entry and every per-extension entry launched with
+  `TabLaunchType.FROM_CHROME_UI`, which left the tab parent-less —
+  back-swipe from the new tab killed the activity instead of going
+  back. Switched to `FROM_LINK` with the active tab as parent. On
+  device, the swipe now closes only the extensions tab and returns to
+  the previous page.
+
+### Changed
+
+- **Per-extension menu entries carry the extension's icon.**
+  `app_menu_bridge.cc` now picks a 24–64 px icon, base64-encodes it,
+  and hands it through to the Java side. `ExtensionMenuManager`
+  decodes into a `BitmapDrawable` and calls `MenuItem.setIcon`, so the
+  entries are visually distinguishable instead of all sharing a
+  generic puzzle piece.
+
+### Known Limitations
+
+- DevTools is still not wired up the Kiwi way — deferred to v1.4.
+- Extensions without a `browser_action.default_popup` (or MV3
+  equivalent with an empty popup) don't appear in the per-extension
+  menu list. Intentional for v1.3.
+
 ## v1.2.0 - 2026-04-17
 
 ### Added

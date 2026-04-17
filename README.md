@@ -16,50 +16,41 @@ Grab the latest APK from
 [Releases](https://github.com/danosito/afterbird/releases) and install it.
 Android 15+ is supported (emulator and physical devices).
 
-## What works in v1.2
+## What works in v1.3
 
-- **Extension install confirmation.** Clicking a `.crx` / `.user.js` link,
-  navigating to a Chrome Web Store detail URL, or following a store→CDN
-  redirect pops a dialog with the extension's name, version, source,
-  manifest permissions, and a fine-print warning. Only after Accept does
-  the extension actually register.
-- **Install triggered on download, not navigation.** Navigation throttle
-  narrowed to Chrome Web Store detail URLs only; `.crx` downloads are
-  now caught at `DownloadManagerDelegate::InterceptDownloadIfApplicable`
-  (the same primitive desktop Chrome uses).
+- **Extension install confirmation dialog** for every network-triggered
+  install (Chrome Web Store detail URLs, `.crx` links, redirect chains).
+  Install only commits after Accept. Cancel wipes the cached CRX.
+- Install triggered at the download layer
+  (`DownloadManagerDelegate::InterceptDownloadIfApplicable`) for raw
+  `.crx` links; the navigation throttle handles Chrome Web Store
+  detail URLs.
 - `chrome://extensions` is fully functional: Enable toggle disables the
-  real extension, Remove drops the card + unregisters, Details opens the
-  per-extension panel (version, size, ID, permissions, source, toggles),
-  icons render from the extension's own image bytes, dev-mode toggle
-  exposes Load Unpacked / Pack / Update.
-- Load Unpacked picker still works for `.zip` / `.crx` / `.user.js` /
-  directory installs (auto-confirms; the dialog is only shown when the
-  flow starts from a network download).
+  real extension, Remove drops the card, Details opens the per-extension
+  panel, icons render from inline bytes, dev-mode toggle works.
+- Load Unpacked picker for `.zip` / `.crx` / `.user.js` / directory.
 - Installed extensions persist across restart.
 - `chrome.runtime.sendMessage` + port-based messaging between extension
-  frames (so dashboards and popups render populated).
+  frames so dashboards / popups render populated.
 - DNR-based ad blocking via uBlock Origin.
-- Main app menu exposes `Extensions` plus one entry per running extension.
+- **Main app menu opens extensions in a proper child tab.** Back-swipe
+  from the new tab returns to the page the user came from instead of
+  killing the app. Per-extension entries now carry the extension's own
+  icon.
+- **MV2 + MV3 API probe extensions** under
+  `third_party/extensions/afterbird-api-probe/` for compatibility
+  testing. Load via chrome://extensions → Load Unpacked.
 
 No command-line `--load-extension` hack needed.
 
-Smoke-tested on device: installing Dark Reader from a Chrome Web Store
-URL and Honey from a different store URL now show the confirm dialog;
-Accept registers + runs, Cancel deletes the cached CRX. chrome://extensions
-list + details both render and stay live-synced with toggle changes.
-
 ## Known limitations
 
-- Only a few extensions have been exercised end-to-end. Extensions that
-  rely on APIs still stubbed in the desktop-android extension system
-  (parts of `chrome.management`, `browserAction.setIcon`, `tabs.query`,
-  etc.) may misbehave.
-- Re-installing the same extension produces a new staging dir + new
-  unpacked-location ID — the list still accumulates duplicates instead
-  of dedup-by-public-key.
-- App menu "Extensions" entry opens inline instead of in a new tab;
-  extension submenu entries don't yet have icons.
-- DevTools UX is not yet wired up the Kiwi way.
+- Only a handful of extensions have been exercised end-to-end.
+- Re-installing the same extension still produces duplicate rows (no
+  dedup by public key yet).
+- DevTools UX is not wired up the Kiwi way yet.
+- Extensions without a `browser_action.default_popup` don't surface as
+  per-extension menu entries.
 
 ## Repository layout and build
 
