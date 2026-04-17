@@ -753,6 +753,44 @@ class DesktopAndroidExtensionIsAllowedFileSchemeAccessFunction
   ResponseAction Run() override;
 };
 
+// ---- scripting (shape-only) -----------------------------------------------
+//
+// uBlock Origin calls insertCSS during its cosmetic-filter bootstrap; if it
+// errors the bootstrap short-circuits before the network-filter engine
+// compiles. Returning NoArguments() lets uBO proceed. Cosmetic filtering
+// still won't apply because no CSS is injected, but network-filter blocking
+// via webRequest begins to flow.
+
+class DesktopAndroidScriptingInsertCSSFunction : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("scripting.insertCSS", SCRIPTING_INSERTCSS)
+  DesktopAndroidScriptingInsertCSSFunction() = default;
+
+ protected:
+  ~DesktopAndroidScriptingInsertCSSFunction() override = default;
+  ResponseAction Run() override;
+};
+
+class DesktopAndroidScriptingRemoveCSSFunction : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("scripting.removeCSS", SCRIPTING_REMOVECSS)
+  DesktopAndroidScriptingRemoveCSSFunction() = default;
+
+ protected:
+  ~DesktopAndroidScriptingRemoveCSSFunction() override = default;
+  ResponseAction Run() override;
+};
+
+class DesktopAndroidScriptingExecuteScriptFunction : public ExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("scripting.executeScript", SCRIPTING_EXECUTESCRIPT)
+  DesktopAndroidScriptingExecuteScriptFunction() = default;
+
+ protected:
+  ~DesktopAndroidScriptingExecuteScriptFunction() override = default;
+  ResponseAction Run() override;
+};
+
 }  // namespace extensions
 
 #endif  // CHROME_BROWSER_EXTENSIONS_DESKTOP_ANDROID_DESKTOP_ANDROID_STUB_APIS_H_

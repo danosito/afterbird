@@ -2,6 +2,38 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.7.0 - 2026-04-18
+
+### Added
+
+- **Last-mile `chrome.*` stubs so "Unknown Extension API" drops to zero**
+  on a fresh launch. All the bootstrap calls that the CWS detail page
+  and uBlock Origin / Dark Reader make on startup are now registered.
+
+  `webstorePrivate` (five new shape-only stubs on the v1.4 scaffolding):
+  `getFullChromeVersion` (returns the real version string),
+  `getMV2DeprecationStatus` → `"inactive"`,
+  `getReferrerChain` → `""`,
+  `isInIncognitoMode` (delegates to `browser_context()->IsOffTheRecord()`),
+  `getExtensionStatus` → `"installable"`.
+
+  `scripting`: `insertCSS`, `removeCSS`, `executeScript`. uBO's
+  cosmetic-filter bootstrap short-circuited when `insertCSS` threw, and
+  the short-circuit prevented the network-filter engine from compiling
+  on the same startup pass.
+
+### Known limitations
+
+- uBlock Origin still reports ~3 % blocked on the parity test page even
+  though the Unknown-API noise is gone. The `WebRequestAPI` keyed
+  service is registered and the URL-loader proxy installs on
+  desktop-android, but something downstream of
+  `onBeforeRequest` + `{cancel: true}` isn't being honoured
+  end-to-end. Needs deeper tracing — separate v1.8 task.
+- DevTools frontend still appspot-hosted. Local bundling deferred.
+- Store-installed extensions get local IDs differing from their CWS
+  IDs. CRX key still not pinned through `CrxInstallCoordinator`.
+
 ## v1.6.0 - 2026-04-18
 
 ### Added

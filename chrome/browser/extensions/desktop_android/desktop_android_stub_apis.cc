@@ -639,6 +639,32 @@ DesktopAndroidExtensionIsAllowedFileSchemeAccessFunction::Run() {
 }
 
 // ----------------------------------------------------------------------------
+// scripting — shape-only.
+//
+// insertCSS: return `{}` so the callback gets a truthy result. uBO gates
+// further work on a non-error response here.
+// removeCSS / executeScript: NoArguments() success.
+// ----------------------------------------------------------------------------
+
+ExtensionFunction::ResponseAction
+DesktopAndroidScriptingInsertCSSFunction::Run() {
+  return RespondNow(NoArguments());
+}
+
+ExtensionFunction::ResponseAction
+DesktopAndroidScriptingRemoveCSSFunction::Run() {
+  return RespondNow(NoArguments());
+}
+
+ExtensionFunction::ResponseAction
+DesktopAndroidScriptingExecuteScriptFunction::Run() {
+  // callback(injectionResult[]): return an empty array so uBO's `.map`
+  // over the results doesn't blow up.
+  base::Value::List results;
+  return RespondNow(ArgumentList(OneArgList(base::Value(std::move(results)))));
+}
+
+// ----------------------------------------------------------------------------
 
 void RegisterDesktopAndroidStubApiFunctions(
     ExtensionFunctionRegistry* registry) {
@@ -729,6 +755,10 @@ void RegisterDesktopAndroidStubApiFunctions(
       DesktopAndroidExtensionIsAllowedIncognitoAccessFunction>();
   registry->RegisterFunction<
       DesktopAndroidExtensionIsAllowedFileSchemeAccessFunction>();
+  // scripting (MV3 — cosmetic-filter bootstrap needs it)
+  registry->RegisterFunction<DesktopAndroidScriptingInsertCSSFunction>();
+  registry->RegisterFunction<DesktopAndroidScriptingRemoveCSSFunction>();
+  registry->RegisterFunction<DesktopAndroidScriptingExecuteScriptFunction>();
 }
 
 }  // namespace extensions
