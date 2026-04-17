@@ -13,6 +13,8 @@
 #include "chrome/browser/extensions/desktop_android/desktop_android_extension_system.h"
 #include "chrome/browser/extensions/desktop_android/desktop_android_extension_web_contents_observer.h"
 #include "chrome/browser/extensions/desktop_android/desktop_android_runtime_api_delegate.h"
+#include "chrome/browser/extensions/desktop_android/desktop_android_stub_apis.h"
+#include "chrome/browser/extensions/desktop_android/webstore_private/webstore_private_api.h"
 #include "extensions/browser/extension_function_registry.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -96,6 +98,8 @@ class AfterbirdChromeExtensionsBrowserAPIProvider
   void RegisterExtensionFunctions(
       ExtensionFunctionRegistry* registry) override {
     RegisterDesktopAndroidDeveloperPrivateFunctions(registry);
+    RegisterDesktopAndroidStubApiFunctions(registry);
+    RegisterDesktopAndroidWebstorePrivateFunctions(registry);
   }
 };
 
