@@ -1,5 +1,20 @@
 # M151 stock + 1-line MV2 patch — strategy validated on device
 
+> **CORRECTION (2026-07-17).** Several numbers/claims below were measured on a
+> broken emulator GPU and are wrong. Re-measured on `-gpu swiftshader_indirect`:
+> - The "68 % blocked" figure is not reproducible — uBO network blocking is
+>   ~**14 %** on turtlecute. Network (webRequest) blocking is **mostly still
+>   broken**, not "done" (§5 below is wrong on this point).
+> - The "68 %→97 % gap is cosmetic filtering / content scripts" framing (§5) is
+>   backwards. **Content scripts WORK** (JS+CSS injection proven on device); the
+>   real remaining gap is the webRequest-blocking dispatch, the same v1.8 track.
+> - The "fix GPU abort with `--use-gl=angle --use-angle=swiftshader`" advice (§
+>   Test-environment) is wrong — forcing in-process SwiftShader is itself a crash
+>   source. The fix is to run the **emulator** with `-gpu swiftshader_indirect`.
+>
+> See `docs/superpowers/diagnostics/2026-07-16-m151-content-scripts.md`.
+
+
 Date: 2026-07-16
 Tree: `~/afterbird-chromium-151` @ tag 151.0.7922.38, `is_desktop_android=true`,
 `is_official_build=false` (debuggable), `-j 40`, `symbol_level=0`.
