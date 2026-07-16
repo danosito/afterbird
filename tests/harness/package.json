@@ -1,0 +1,13 @@
+{
+  "name": "afterbird-harness",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Afterbird desktop-parity test harness (Playwright Android + adb)",
+  "type": "module",
+  "scripts": {
+    "probe": "node probe-android.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

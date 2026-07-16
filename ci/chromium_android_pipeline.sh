@@ -20,6 +20,9 @@ GCLIENT_BACKOFF_SECONDS="${AFTERBIRD_GCLIENT_BACKOFF_SECONDS:-20}"
 GCLIENT_NO_HISTORY="${AFTERBIRD_GCLIENT_NO_HISTORY:-1}"
 GCLIENT_EXTRA_ARGS="${AFTERBIRD_GCLIENT_EXTRA_ARGS:-}"
 FORCE_WORKSPACE_CONFIG="${AFTERBIRD_FORCE_WORKSPACE_CONFIG:-0}"
+# 0 disables git's stall detector; googlesource pack preparation can stall >60s.
+GIT_LOW_SPEED_LIMIT="${AFTERBIRD_GIT_LOW_SPEED_LIMIT:-0}"
+GIT_LOW_SPEED_TIME="${AFTERBIRD_GIT_LOW_SPEED_TIME:-300}"
 TIMEOUT_WARNING_EMITTED=0
 
 usage() {
@@ -220,7 +223,8 @@ fetch_required_tag() {
   run_with_retries "${FETCH_RETRIES}" "${FETCH_BACKOFF_SECONDS}" "Chromium tag fetch (${tag}) from ${CHROMIUM_SRC_GIT_URL}" \
     run_with_timeout "${FETCH_TIMEOUT_SECONDS}" \
     env GIT_TERMINAL_PROMPT=0 \
-    git -c protocol.version=2 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 \
+    git -c protocol.version=2 \
+      -c "http.lowSpeedLimit=${GIT_LOW_SPEED_LIMIT}" -c "http.lowSpeedTime=${GIT_LOW_SPEED_TIME}" \
       -C "${WORKDIR}/src" fetch --no-tags --depth=1 origin "${refspec}"
 }
 
