@@ -4,22 +4,39 @@ Goal: measure **desktop parity** — does an extension/DevTools behave on Afterb
 (Android) the way it does on desktop Chrome? Same spec, multiple targets, the
 result is a diff.
 
-## Engine (chosen after evaluating options)
+## Engine — split by whether the test needs an extension loaded
 
-**Playwright `_android` over CDP** is the core. Proven working against Chrome on
-the emulator (`lib/target.mjs::openAndroid`). Rejected alternatives:
+Two engines, because Playwright and extension-loading are mutually exclusive on
+Android (learned the hard way — see the content-scripts diagnostic):
 
-- *Appium/uiautomator only* — drives native UI but can't read page/JS state
-  cleanly; too coarse for extension-behavior assertions.
-- *adb + screenshot scraping* — brittle, already how the old manual flow worked.
-  Kept only as a thin fallback layer for native-only surfaces (install confirm
-  dialog, app menu) that CDP can't reach.
+1. **Extension tests → adb driver (`lib/android.mjs`).** Playwright
+   `_android.launchBrowser` **rewrites** `/data/local/tmp/chrome-command-line`
+   on launch: it DROPS any `--load-extension` and ADDS `--disable-extensions`.
+   So the extension under test never loads under Playwright. The adb driver does
+   a plain `am start` with a command line we control and reads results from
+   logcat `chromium: [INFO:CONSOLE]` markers — no CDP socket required (that
+   socket is created in a *deferred* startup task and isn't reliably up on a
+   manual launch).
+2. **Extension-less page parity → Playwright `_android` over CDP**
+   (`lib/target.mjs::openAndroid`). Fine when no extension is involved.
 
-CDP requires the target build to expose the `chrome_devtools_remote` socket.
-**Verified: the release (non-debuggable) v1.8 build does NOT expose it even with
-`--remote-debugging-socket-name`.** Therefore the Afterbird **test/dev build must
-enable remote debugging** (debuggable + CDP socket); release builds keep it shut.
-This is a build-args requirement for the M151 test variant.
+### HARD REQUIREMENT: emulator must run `-gpu swiftshader_indirect`
+
+On the host-GPU (Metal) path, Chromium's GPU process on desktop-android is
+unstable: `eglCreateContext ES 3.0 -> EGL_BAD_ATTRIBUTE`, the GPU process
+crashes, and after 3 crashes the whole browser hard-aborts (`"GPU process isn't
+usable. Goodbye."`; desktop-android can't fall back to `--disable-gpu`). This is
+silent at the test level — pages just fail to render — and it produced a
+**multi-session false negative** (content-script injection looked broken; it
+wasn't). `lib/android.mjs::preflightGpu()` asserts a software GPU before running.
+
+Relaunch the AVD cleanly:
+
+    adb emu kill
+    emulator -avd <name> -gpu swiftshader_indirect -no-snapshot -no-boot-anim
+
+CDP (Playwright path) still needs the test/dev build to expose
+`chrome_devtools_remote` (debuggable build); release builds keep it shut.
 
 ## Reference strategy — split by manifest version
 
@@ -49,10 +66,15 @@ extension because it uses an unsupported manifest version`); the
     node run-parity.mjs desktop            # reference side
     AB_PKG=com.danosito.afterbird node run-parity.mjs android   # needs CDP-enabled build
 
-## Status
+## Status (M151 stock overlay + MV2 patch, on swiftshader_indirect)
 
-- Android CDP path: proven against stock Chrome.
+- **Content scripts / cosmetic filtering: WORKING.** Proven end-to-end on device
+  (JS runs, CSS applies) with the adb driver. The earlier "content scripts don't
+  inject" finding was a host-GPU emulator artifact, now designed out.
+- **uBO network (webRequest) blocking: ~14% on turtlecute — mostly broken.** This
+  is the separate, known-hard webRequest-dispatch bug (see the v1.8 webRequest
+  diagnostic), NOT the content-script path. Next real target.
+- adb driver (`lib/android.mjs`): proven against the M151 build.
 - Desktop path + adblock spec: proven.
 - MV2 desktop reference: proven impossible on Chrome 149 (documented above).
-- Next: point `android` target at the M151 CDP-enabled Afterbird build; add MV3
-  specs + extension-install and DevTools specs.
+- Next: fix webRequest blocking dispatch; add MV3 specs + install/DevTools specs.

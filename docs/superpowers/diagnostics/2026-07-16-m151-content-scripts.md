@@ -1,93 +1,98 @@
-# M151 content-script injection gap — precisely localized
+# M151 content scripts — RESOLVED: they work; the "bug" was the emulator GPU
 
-Date: 2026-07-16. Build: M151 desktop-android debuggable + MV2 patch.
+Date: 2026-07-16, corrected 2026-07-17. Build: M151 desktop-android debuggable + MV2 patch.
 
-## Symptom
+## TL;DR
 
-uBlock Origin blocks 68 % on adblock.turtlecute.org (network filtering works) but
-not ~97 % — the missing part is **cosmetic filtering** (element hiding), which
-needs content scripts. Direct probe (a minimal MV3 extension with a
-`content_scripts` entry setting `document.documentElement` attribute + injecting
-CSS) confirmed: **content scripts do not inject at all** on desktop-android
-M151. Both JS and CSS injection fail, on first load and after reload.
+Content-script injection (JS **and** CSS) works correctly on stock upstream
+M151 desktop-android with only the one-line MV2 patch. Cosmetic filtering is not
+broken in Chromium. The prior conclusions in this file — first a
+"renderer-startup race", then a "withheld host-permissions" theory — were **both
+wrong**. Every "content scripts don't inject" observation was an artifact of the
+local emulator's GPU: Chromium's GPU process kept crashing mid-render, which
+corrupted or aborted real-page rendering. Switching the emulator to
+`-gpu swiftshader_indirect` made the crashes vanish and content scripts inject
+perfectly.
 
-## What IS wired (ruled out by static read)
+## How it was proven
 
-- `ContentScriptsHandler` registered unconditionally
-  (`extensions/common/common_manifest_handlers.cc:69`) → manifest `content_scripts`
-  are parsed.
-- Browser `UserScriptManager` created unconditionally
-  (`chrome/browser/extensions/chrome_extension_system.cc:229`).
-- Renderer `UserScriptSetManager` + `ScriptInjectionManager` created
-  (`extensions/renderer/dispatcher.cc:307-310`).
-- Desktop-android uses the SAME `ChromeExtensionSystem` (no separate android
-  extension system exists in M151).
+Reliable, CDP-free repro (see harness notes): manual launch with
+`--load-extension`, then read `chromium: [INFO:CONSOLE]` markers from logcat. A
+minimal MV3 probe (`content_scripts` matching `<all_urls>`, `run_at:
+document_start`) that (a) `console.log`s a marker and (b) sets
+`html,body{background:magenta}` via CSS.
 
-## Root cause — a renderer-startup RACE (proven with 5 instrumented builds)
-
-NOTE: an earlier draft of this doc blamed extension *activation*. Instrumentation
-disproved that — activation is not required for content-script injection (on
-desktop it only fires for extension frames, yet content scripts inject fine).
-The real cause is timing.
-
-`LOG(ERROR)` traces were added along the injection path (incremental rebuilds
-~40-70 s each) and correlated by renderer pid. For the web renderer that loaded
-`example.com` (pid 27982), logcat ordering was:
+With the emulator on host GPU (Apple Metal), the GPU process crashed with:
 
 ```
-pid=27982 [AB-CS] OnRenderFrameCreated
-pid=27982 [AB-CS] InjectScripts loc=1 (document_start)  -> injcount 0
-pid=27982 [AB-CS] InjectScripts loc=2 (document_end)    -> injcount 0
-pid=27982 [AB-CS] InjectScripts loc=3 (document_idle)   -> injcount 0
-pid=27982 [AB-CS OnUpdate] host=<probe-id>   <-- scripts arrive AFTER all 3
+ui/gl/gl_context_egl.cc  eglCreateContext ES 3.0 failed with error EGL_BAD_ATTRIBUTE
+gpu/config/gpu_info_collector.cc  Could not create context for info collection
+content/browser/gpu/gpu_process_host.cc  GPU process exited unexpectedly
 ```
 
-Ruled out along the way (all fire correctly): `OnRenderFrameCreated`,
-`ScriptInjectionManager::InjectScripts` at every run location, `ExtensionFrameHelper`
-present (`efh_null=0`). The injection machinery runs; it just finds an **empty
-user-script set** (`UserScriptSetManager::scripts_` has no entry for the host
-yet), because `OnUpdateUserScripts` — which populates it — is delivered to this
-web renderer only *after* the page has already passed document_start / _end /
-_idle.
+After 3 GPU-process crashes Chromium hard-aborts the whole browser
+(`gpu_data_manager_impl_private.cc:417 "GPU process isn't usable. Goodbye."`,
+and desktop-android cannot fall back to `--disable-gpu` — that path
+NOTREACHED-aborts at `:525 "GPU acceleration is required"`). These crashes
+happened while rendering real pages (about:blank survived), so the browser was
+dying exactly when a content script would have taken visible effect.
 
-### Why the scripts arrive late
+After `adb emu kill` + relaunch with `-gpu swiftshader_indirect`, the same probe
+on the same build produced, for `https://example.com/`:
 
-Browser side: `UserScriptLoader::OnRenderProcessHostCreated` →
-`SendUpdateIfNeeded` pushes the script shared-memory to a new renderer **only if
-`initial_load_complete()`** (`extensions/browser/user_script_loader.cc:295-306`).
-When the `example.com` renderer was created, the extension's manifest
-content-script load (`UserScriptManager::OnExtensionLoaded` →
-`ExtensionUserScriptLoader::AddScriptsForExtensionLoad`, async disk read) had not
-completed, so nothing was sent at creation. The load finished later and
-broadcast to all hosts (`user_script_loader.cc:483` AllHostsIterator) — that is
-the late `OnUpdate`, arriving after injection was already over.
+```
+[AB-INJ] GetInjections url=https://example.com/ runloc=1 nscripts=1
+[AB-INJ] candidate inject_css=1 inject_js=1 script_runloc=1 runloc=1
+[AB-TRY] enter cur=1 runloc=1 reqid=-1 host_ok=1
+[AB-TRY] branch=ALLOWED            <-- host access ALLOWED, not withheld
+[AB-INJECT] should_js=1 should_css=1
+[INFO:CONSOLE] "AB-CS-INJECTED at loading url=https://example.com/"  (cs.js)
+```
 
-On desktop the manifest-script load completes well before the user navigates, so
-new renderers get scripts at creation and injection works. On desktop-android the
-initial load is not complete in time — the load appears to start late / not be
-driven eagerly at extension load.
+…and the page rendered fully magenta. JS ran, CSS applied, 0 GPU crashes.
 
-## Fix direction (next task)
+## What the instrumentation established along the way (all correct, all fine)
 
-Make the manifest content-script load ready before web renderers commit a
-navigation. Candidates:
-1. Confirm (next instrumented check) whether `UserScriptManager::OnExtensionLoaded`
-   fires at extension-load time on desktop-android or lazily; if late/lazy, drive
-   the `ExtensionUserScriptLoader` initial load eagerly at extension load so
-   `initial_load_complete()` is true before the first navigation.
-2. If the load is inherently async, have a newly-created web renderer re-run
-   content-script injection when the pending user-script update for already-loaded
-   extensions arrives (`OnUpdate`), instead of only at the initial run-locations.
+Instrumented `user_script_loader.cc`, `user_script_set.cc`, `script_injection.cc`
+(reverted after — only the MV2 one-liner remains in the tree):
 
-Cross-check against Cromite's `Experimental-support-for-extensions-on-Android`
-patch (GPL-2.0, read-as-map only) — cosmetic filtering works there, so it
-addresses this timing.
+- Browser sends content scripts to **web** renderers on desktop-android:
+  `SendUpdateIfNeeded`/`SendUpdate` fire for the example.com render process
+  (`RPHCreated same=1 ilc=1 -> SENT`). Not just the extension's own process.
+- The web renderer receives them: `UserScriptSet` has `nscripts=1`.
+- `GetInjectionForScript` matches `<all_urls>` against the http URL and
+  `CanExecuteOnFrame` returns **allowed** (not denied, not withheld), so a
+  `ScriptInjection` is created at document_start.
+- `ScriptInjection::TryToInject` takes the **ALLOWED** branch and `Inject()`
+  runs both JS and CSS.
 
-All instrumentation was reverted from the serv tree; only the MV2 one-liner
-remains.
+None of this is desktop-android-specific breakage. `enable_extensions=false` +
+`enable_extensions_core=true` (this build) still routes `--load-extension`
+through `UnpackedInstaller`, which calls `PermissionsUpdater::InitializePermissions`
+(that class lives in `extensions/browser/`, available under
+`enable_extensions_core`), so host permissions are promoted to active and
+`GetEffectivePermissionsToGrant` does not withhold for a freshly-loaded
+extension. (This differs from the v1.8 custom-layer world, where
+`chrome/browser/extensions/` was fully unlinked; that fix is not needed on the
+stock overlay.)
 
-## Test-harness note
+## Consequence for uBO / adblock parity
 
-This whole diagnosis ran over the Playwright `_android` CDP harness + a series of
-instrumented incremental builds (~40-70 s each). The harness makes this loop
-fast: patch → 1-min build → install → probe → logcat.
+The earlier "uBO only 68 %, cosmetic filtering missing" number was measured under
+the crashing-GPU emulator and is not trustworthy. Re-measure on
+`swiftshader_indirect`. Expectation: cosmetic filtering (which is exactly
+content-script injection) now works, so uBO should approach desktop parity.
+
+## The real lesson — this was a test-pipeline defect
+
+The "terrible test pipeline" the project set out to replace produced a
+multi-session false-negative. Root causes to design out of the new harness:
+
+1. **Emulator GPU must be `swiftshader_indirect`.** Host GPU (Metal) gives an
+   unstable Chromium GPU process on desktop-android; the failure is silent
+   (renders die, no test-level error).
+2. **Playwright `_android.launchBrowser` is unusable for extension tests** — it
+   rewrites `/data/local/tmp/chrome-command-line`, dropping `--load-extension`
+   and adding `--disable-extensions`. Use a manual `am start` launch instead.
+3. **Prefer a non-GPU-dependent signal** (logcat `INFO:CONSOLE` markers) over
+   screenshots when the GPU path is in question.
