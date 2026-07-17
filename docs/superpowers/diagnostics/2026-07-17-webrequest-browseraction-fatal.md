@@ -5,9 +5,10 @@ swiftshader_indirect`. uBlock Origin 1.62.0 (MV2) via `--load-extension`.
 
 ## Result
 
-uBO on `adblock.turtlecute.org`: **113 / 133 blocked = 85 %** (was 14 %, and 3 %
-on the old v1.8 132 layer). Near desktop/Kiwi parity (~97 %). One targeted GN
-fix; no C++.
+uBO on `adblock.turtlecute.org`: **126 / 133 blocked = 95 %** on the clean
+(non-instrumented) build once filter lists finish compiling (85 % on the first
+pass before lists settle). Was 14 %, and 3 % on the old v1.8 132 layer. At
+desktop/Kiwi parity (~97 %). One targeted GN fix; no C++.
 
 ## The real root cause (the v1.8 "GetMatchingListeners empty" theory was a symptom)
 
