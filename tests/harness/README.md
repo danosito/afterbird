@@ -71,9 +71,12 @@ extension because it uses an unsupported manifest version`); the
 - **Content scripts / cosmetic filtering: WORKING.** Proven end-to-end on device
   (JS runs, CSS applies) with the adb driver. The earlier "content scripts don't
   inject" finding was a host-GPU emulator artifact, now designed out.
-- **uBO network (webRequest) blocking: ~14% on turtlecute — mostly broken.** This
-  is the separate, known-hard webRequest-dispatch bug (see the v1.8 webRequest
-  diagnostic), NOT the content-script path. Next real target.
+- **uBO network (webRequest) blocking: ~85% on turtlecute (113/133) — FIXED.**
+  Was 14%. Root cause was not webRequest dispatch: uBO's MV2 background page
+  FATAL-crashed at `GetAPISchema("browserAction")` before registering its
+  blocking listener. Fix bundles the browserAction/pageAction schema on
+  desktop-android (`patches/m151/0002-*`). See the 2026-07-17 webRequest
+  diagnostic.
 - adb driver (`lib/android.mjs`): proven against the M151 build.
 - Desktop path + adblock spec: proven.
 - MV2 desktop reference: proven impossible on Chrome 149 (documented above).
