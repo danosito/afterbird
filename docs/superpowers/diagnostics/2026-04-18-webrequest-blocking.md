@@ -1,5 +1,15 @@
 # webRequest blocking doesn't block (uBO 3–4 % vs 97 % on Kiwi)
 
+> **RESOLVED (2026-07-17) on M151.** The listener-matching theories below were
+> symptoms. The real cause: uBO's MV2 background page FATAL-crashed at
+> `GetAPISchema("browserAction")` before it ever registered its blocking
+> listener, so `active_listeners` was always empty. The `browserAction`/
+> `pageAction` schemas were bundled only under `enable_extensions` (false on
+> desktop-android) while their features stayed available. Fix: bundle the
+> schemas unconditionally (`patches/m151/0002-*`). uBO went 14 % → **85 %**.
+> See `docs/superpowers/diagnostics/2026-07-17-webrequest-browseraction-fatal.md`.
+
+
 Followed-up on the parity-audit P1 blocker (`ab_adtest2.png`, 2 %).
 
 ## What we can confirm works

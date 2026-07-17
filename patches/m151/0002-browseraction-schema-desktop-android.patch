@@ -1,0 +1,33 @@
+diff --git a/chrome/common/extensions/api/api_sources.gni b/chrome/common/extensions/api/api_sources.gni
+index 5357482de4..757eb88bb0 100644
+--- a/chrome/common/extensions/api/api_sources.gni
++++ b/chrome/common/extensions/api/api_sources.gni
+@@ -61,9 +61,18 @@ if (enable_guest_view) {
+ # registration. These do not generate the strong C++ types.
+ uncompiled_sources_ = [
+   "action.json",
++  # afterbird: browser_action/page_action are MV2 toolbar APIs. Their *features*
++  # (_api_features.json) are available to any extension with the matching
++  # manifest key, including on desktop-android (enable_extensions=false). Keep
++  # their schemas in the always-bundled list so the native bindings system can
++  # resolve them; otherwise chrome.browserAction access from an MV2 extension
++  # (e.g. uBlock Origin) FATALs at GetAPISchema("browserAction") and the
++  # extension's background never finishes loading (no webRequest listener).
++  "browser_action.json",
+   "browsing_data.json",
+   "commands.json",
+   "extension.json",
++  "page_action.json",
+   "top_sites.json",
+ ]
+ 
+@@ -165,9 +174,7 @@ if (enable_extensions) {
+   }
+ 
+   uncompiled_sources_ += [
+-    "browser_action.json",
+     "idltest.idl",
+-    "page_action.json",
+   ]
+ 
+   if (is_chromeos) {
