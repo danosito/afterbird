@@ -34,6 +34,23 @@ All notable changes to this repository are documented in this file.
   `chrome_pgo_phase=0`, experimental/unvalidated).
 - `patches/m151/0001-mv2-reenable.patch` regenerated as a valid
   git-apply-able unified diff (was prose hunk header).
+- **Unpacked extensions no longer need the developer-mode toggle**
+  (`patches/m151/0004`). M151 admits `--load-extension` / Load Unpacked
+  extensions and then disables them with
+  `DISABLE_UNSUPPORTED_DEVELOPER_EXTENSION`, so they register no listeners
+  and filter nothing. Store-installed extensions were unaffected.
+- **Emulator suite fixed for M151** (`ci/android_emulator_test.sh`): correct
+  package default, `--disable-fre` (the browser otherwise parks in
+  `FirstRunActivity`), and explicit-component navigation (M151 registers no
+  `chrome://` intent filter).
+- **Adblock spec rewritten** to read uBO's own counter instead of the
+  turtlecute probe's verdict, which scores a fully-filtering uBO at 1-2%
+  because uBO answers its HEAD probes with `redirect-rule=nooptext`. New
+  `tests/harness/checks/adblock-device.mjs` drives the device over adb + CDP.
+  Measured on the patched build: 101 requests blocked, 42% of attempted.
+- Build hosts get a memory-aware ninja job cap
+  (`-j min(cores, RAM_GiB/2)`); the unbounded default OOM'd the 80-core
+  build server.
 
 ### Removed
 
@@ -45,8 +62,9 @@ All notable changes to this repository are documented in this file.
 
 ### Known limitations
 
-- Remaining ~5–15% uBO gap: filter-list download variance on emulator,
-  cosmetic-only entries, MV2 action functions no-oping (schema-only).
+- Desktop Chromium can no longer serve as the adblock parity reference: it
+  refuses to load MV2 extensions outright, which is the enforcement
+  `patches/m151/0001` removes on Afterbird. That target reports `skipped`.
 - `release` args variant not yet validated end-to-end.
 - Store-install (CWS) UX on the phone form factor not re-verified on M151.
 
