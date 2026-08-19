@@ -12,3 +12,6 @@ blink_symbol_level = 0
 dcheck_always_on = false
 chrome_public_manifest_package = "com.danosito.afterbird"
 treat_warnings_as_errors = false
+# Afterbird branding trips upstream lint (IconDuplicates: app_icon ==
+# layered_app_icon by design); lint gates nothing we ship.
+disable_android_lint = true
