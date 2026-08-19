@@ -35,3 +35,8 @@ jspm_packages/
 artifacts/
 tests/artifacts/
 third_party/extensions/*.zip
+# Fetched extension packages (ci/fetch_ublock_chromium.sh output)
+third_party/extensions/ublock/
+
+# macOS
+.DS_Store
