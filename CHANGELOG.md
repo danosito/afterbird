@@ -2,17 +2,19 @@
 
 All notable changes to this repository are documented in this file.
 
-## v1.9.0 - 2026-08-19
+## v1.9.0 - 2026-08-20
 
 ### Changed
 
 - **Chromium baseline bumped 132.0.6834.83 → 151.0.7922.38.** The build now
   uses the upstream desktop-android extension stack
   (`is_desktop_android=true`) instead of the custom 132-era
-  `desktop_android` layer. Validated on device: uBlock Origin network
-  blocking ~85–95% on adblock.turtlecute.org vs 3% on the old layer
-  (see `docs/superpowers/reports/2026-07-16-m151-stock-plus-mv2patch.md`
-  and `docs/superpowers/diagnostics/2026-07-17-webrequest-browseraction-fatal.md`).
+  `desktop_android` layer. Verified on device 2026-08-20: uBlock Origin
+  loads, registers blocking `webRequest` listeners, and blocks 101 requests
+  (42% of attempted) on the parity page, versus effectively nothing on the
+  old layer. Earlier turtlecute-percentage figures in the July reports are
+  not comparable — see
+  `docs/superpowers/diagnostics/2026-08-20-m151-devmode-gate-and-adblock-metric.md`.
 - **Repository restructured to a delta model.** Pruned the ~9.8k-file
   132/Kiwi tracked-source subset (`base/`, `chrome/`, `components/`,
   `content/`, `extensions/`, `net/`, `remoting/`, `services/`,
