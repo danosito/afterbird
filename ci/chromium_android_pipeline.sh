@@ -51,6 +51,7 @@ Behavior:
 
 Environment overrides:
   AFTERBIRD_ARGS_VARIANT           GN args variant: 'test' (debuggable, CDP for harness) or 'release' (default: test)
+  AFTERBIRD_NINJA_JOBS             Parallel ninja jobs for --full-build (default: min(cores, RAM_GiB/2))
   AFTERBIRD_CHROMIUM_SRC_GIT_URL   Chromium git remote (default: chromium.googlesource.com)
   AFTERBIRD_FETCH_RETRIES          Retries for tag fetch (default: 3)
   AFTERBIRD_FETCH_BACKOFF_SECONDS  Backoff base for fetch retries (default: 10)
@@ -350,10 +351,38 @@ run_gn_checks() {
   popd >/dev/null
 }
 
+ninja_jobs() {
+  if [[ -n "${AFTERBIRD_NINJA_JOBS:-}" ]]; then
+    printf '%s\n' "${AFTERBIRD_NINJA_JOBS}"
+    return 0
+  fi
+
+  # Memory-aware default. Plain autoninja picks j from core count alone;
+  # on a many-core box without swap that OOMs the host (observed: 80 cores /
+  # 94 GiB / swapless => global OOM, machine wedged). Budget ~2 GiB per job,
+  # capped by core count.
+  local cores mem_kb mem_jobs jobs
+  cores="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 8)"
+  if [[ -r /proc/meminfo ]]; then
+    mem_kb="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
+    mem_jobs=$((mem_kb / 1024 / 1024 / 2))
+  else
+    mem_jobs="${cores}"
+  fi
+  jobs="${cores}"
+  if [[ "${mem_jobs}" -lt "${jobs}" ]]; then
+    jobs="${mem_jobs}"
+  fi
+  [[ "${jobs}" -ge 1 ]] || jobs=1
+  printf '%s\n' "${jobs}"
+}
+
 run_full_build() {
+  local jobs
+  jobs="$(ninja_jobs)"
   pushd "${WORKDIR}/src" >/dev/null
-  log "Running full build target ${TARGET}"
-  autoninja -C "${OUT_DIR}" "${TARGET}"
+  log "Running full build target ${TARGET} (-j ${jobs})"
+  autoninja -C "${OUT_DIR}" -j "${jobs}" "${TARGET}"
   popd >/dev/null
 }
 
