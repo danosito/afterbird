@@ -1,0 +1,16 @@
+# Afterbird M151 release build — EXPERIMENTAL, not yet validated end-to-end.
+# = test.gn + is_official_build. Official builds are non-debuggable: no
+# chrome_devtools_remote socket (by design), so the Playwright/CDP harness
+# path won't attach; adb-driver specs still work.
+# chrome_pgo_phase=0 avoids the PGO-profile fetch/lookup failure mode.
+target_os = "android"
+target_cpu = "arm64"
+is_desktop_android = true
+is_debug = false
+is_official_build = true
+chrome_pgo_phase = 0
+symbol_level = 0
+blink_symbol_level = 0
+dcheck_always_on = false
+chrome_public_manifest_package = "com.danosito.afterbird"
+treat_warnings_as_errors = false

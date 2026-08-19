@@ -1,0 +1,14 @@
+# Afterbird M151 test build — stock upstream desktop-android + debuggable.
+# Validated on device 2026-07-17 (uBO 95% blocking, CDP harness attaches).
+# Non-official build keeps the APK debuggable, which exposes the
+# chrome_devtools_remote CDP socket the Playwright harness needs.
+target_os = "android"
+target_cpu = "arm64"
+is_desktop_android = true
+is_debug = false
+is_official_build = false
+symbol_level = 0
+blink_symbol_level = 0
+dcheck_always_on = false
+chrome_public_manifest_package = "com.danosito.afterbird"
+treat_warnings_as_errors = false
