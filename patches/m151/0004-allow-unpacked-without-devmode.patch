@@ -1,0 +1,28 @@
+Afterbird: allow unpacked extensions without the developer-mode toggle.
+
+M151 gates unpacked extensions behind the `kExtensionsUIDeveloperMode` pref
+(extensions_features::kExtensionDisableUnsupportedDeveloper). Anything loaded
+via --load-extension or Afterbird's Load Unpacked picker is admitted, then
+immediately disabled with DISABLE_UNSUPPORTED_DEVELOPER_EXTENSION: the
+extension appears in chrome://extensions but registers no listeners and
+filters nothing. On desktop the user flips the toggle in the extensions page;
+Afterbird treats sideloading as a first-class flow, so the check is dropped.
+
+Store-installed extensions are unaffected — their location is not kUnpacked,
+so this predicate already returned true for them.
+
+diff --git a/chrome/browser/extensions/extension_management.cc b/chrome/browser/extensions/extension_management.cc
+index 0000000000..0000000001 100644
+--- a/chrome/browser/extensions/extension_management.cc
++++ b/chrome/browser/extensions/extension_management.cc
+@@ -398,6 +398,10 @@ bool ExtensionManagement::IsAllowedByUnpublishedAvailabilityPolicy(
+
+ bool ExtensionManagement::IsAllowedByUnpackedDeveloperModePolicy(
+     const Extension& extension) {
++  // Afterbird: sideloading (--load-extension / Load Unpacked) is a supported
++  // flow, so unpacked extensions are not gated behind the developer-mode
++  // pref the desktop UI exposes.
++  return true;
+   if (!base::FeatureList::IsEnabled(
+           extensions_features::kExtensionDisableUnsupportedDeveloper)) {
+     return true;
