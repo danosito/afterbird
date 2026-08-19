@@ -2,6 +2,54 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.9.0 - 2026-08-19
+
+### Changed
+
+- **Chromium baseline bumped 132.0.6834.83 → 151.0.7922.38.** The build now
+  uses the upstream desktop-android extension stack
+  (`is_desktop_android=true`) instead of the custom 132-era
+  `desktop_android` layer. Validated on device: uBlock Origin network
+  blocking ~85–95% on adblock.turtlecute.org vs 3% on the old layer
+  (see `docs/superpowers/reports/2026-07-16-m151-stock-plus-mv2patch.md`
+  and `docs/superpowers/diagnostics/2026-07-17-webrequest-browseraction-fatal.md`).
+- **Repository restructured to a delta model.** Pruned the ~9.8k-file
+  132/Kiwi tracked-source subset (`base/`, `chrome/`, `components/`,
+  `content/`, `extensions/`, `net/`, `remoting/`, `services/`,
+  `third_party/` sans `extensions/`, `ui/`, Chromium root meta files).
+  The repo now carries only: branding
+  (`chrome/android/java/res_chromium_base/**`), `patches/m151/*.patch`,
+  API probe extensions, args variants, automation, docs. History and the
+  `chromium`/`kiwi` branches preserve the old subset.
+- **Pipeline (`ci/chromium_android_pipeline.sh`):** overlay switched from
+  exclude-list (everything tracked) to include-list (branding only); new
+  `apply_patches` step (`git apply` with --check / --reverse / --3way
+  gates, dir derived from `CHROMIUM_MAJOR`); GN args variant selection
+  via `AFTERBIRD_ARGS_VARIANT=test|release`; `~/depot_tools` auto-added
+  to PATH when `gclient` is absent.
+- **GN args:** `.build/production_build_reference/args.gn` (132/Kiwi-era
+  flags) replaced by `.build/args/test.gn` (validated M151 set,
+  debuggable, CDP socket for the harness — default) and
+  `.build/args/release.gn` (`is_official_build=true`,
+  `chrome_pgo_phase=0`, experimental/unvalidated).
+- `patches/m151/0001-mv2-reenable.patch` regenerated as a valid
+  git-apply-able unified diff (was prose hunk header).
+
+### Removed
+
+- Kiwi/132-era custom behaviors superseded by upstream M151
+  desktop-android: custom install dialog + navigation throttle,
+  `chrome://extensions` bridges, DevTools bridge, permission-grant fix
+  (v1.8), API stubs (v1.4–v1.7). Re-porting anything still missing on the
+  phone form factor is explicit follow-up work.
+
+### Known limitations
+
+- Remaining ~5–15% uBO gap: filter-list download variance on emulator,
+  cosmetic-only entries, MV2 action functions no-oping (schema-only).
+- `release` args variant not yet validated end-to-end.
+- Store-install (CWS) UX on the phone form factor not re-verified on M151.
+
 ## v1.8.0 - 2026-04-18
 
 ### Fixed

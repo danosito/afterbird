@@ -1,7 +1,7 @@
 # Afterbird
 
 Afterbird is a Chromium-based Android browser with MV2 extension support,
-built on Chromium 132 and inspired by
+built on Chromium 151 (desktop-android extension stack) and inspired by
 [Kiwi Browser](https://github.com/kiwibrowser/src.next) by
 [Arnaud Granal](https://github.com/arnaudgranal).
 
@@ -54,21 +54,35 @@ No command-line `--load-extension` hack needed.
 
 ## Repository layout and build
 
-This repo is a **tracked source subset + project automation**, not a
-standalone Chromium checkout. Top-level source coverage: `base/`,
-`chrome/`, `components/`, `content/`, `extensions/`, `net/`, `remoting/`,
-`services/`, `third_party/`, `ui/`. Builds run against an external
-Chromium 132 checkout overlaid by this repo.
+This repo is a **delta over stock Chromium + project automation**, not a
+standalone Chromium checkout. Builds run against an external Chromium
+checkout pinned to the tag in `CHROMIUM_VERSION` (currently
+`151.0.7922.38`). The delta is deliberately tiny:
 
-- Build pipeline: `ci/chromium_android_pipeline.sh` (smoke by default,
-  `--full-build` for `chrome_public_apk`).
-- Emulator automation: `ci/android_emulator_test.sh`.
-- Pinned reference GN args: `.build/production_build_reference/args.gn`.
-- Branch roles:
-  - `afterbird` — main integration branch for this fork.
-  - `chromium` — upstream Chromium tracking baseline
-    (`CHROMIUM_VERSION=132.0.6834.83`).
-  - `kiwi` — legacy Kiwi reference branch.
+- `chrome/android/java/res_chromium_base/**` — branding (icons, app name),
+  rsynced over the checkout by the pipeline.
+- `patches/m151/*.patch` — source patches applied with `git apply`:
+  MV2 re-enable, browserAction/pageAction schema bundling, extensions-menu
+  phone-form-factor NPE fix.
+- `.build/args/{test,release}.gn` — GN args variants. `test` (default) is
+  debuggable and exposes the CDP socket for the Playwright harness;
+  `release` is `is_official_build=true` (experimental).
+- `third_party/extensions/**` — MV2/MV3 API probe extensions; uBlock
+  Origin zip is fetched by `ci/fetch_ublock_chromium.sh` (not tracked).
+
+Build pipeline: `ci/chromium_android_pipeline.sh` (smoke by default,
+`--full-build` for `chrome_public_apk`). Emulator automation:
+`ci/android_emulator_test.sh`. Parity harness: `tests/harness/`.
+
+Branch roles:
+- `afterbird` — main integration branch for this fork.
+- `chromium` — historical upstream import baseline (132-era; no longer
+  used by the build).
+- `kiwi` — legacy Kiwi reference branch.
+
+Bumping Chromium = edit `CHROMIUM_VERSION` + rebase `patches/m<major>/`
+against the new tag; the pipeline's `git apply --check` gate fails loudly
+on drift.
 
 ## More
 
