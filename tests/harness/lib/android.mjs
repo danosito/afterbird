@@ -32,18 +32,28 @@ async function adb(args, { timeout = 30000 } = {}) {
 }
 async function shell(cmd) { return adb(['shell', cmd]); }
 
-// Assert the emulator is on a software GPU. Chromium's GPU process is stable
-// there; on host GPU it crashes and corrupts results.
+async function isEmulator() {
+  const [chars, hw] = await Promise.all([
+    shell('getprop ro.build.characteristics').catch(() => ''),
+    shell('getprop ro.hardware').catch(() => ''),
+  ]);
+  return /emulator/i.test(chars) || /goldfish|ranchu/i.test(hw);
+}
+
+// The emulator must run a software GPU: on the host-GPU path Chromium's GPU
+// process crashes and the browser hard-aborts, which reads as a silent test
+// failure. Physical devices have a real driver and are exempt.
 export async function preflightGpu() {
-  const gl = await shell('dumpsys SurfaceFlinger | grep -i "GLES:" | head -1').catch(() => '');
-  const swiftshader = /swiftshader|swrast|softwarepipe/i.test(gl);
-  if (!swiftshader) {
+  const gl = (await shell('dumpsys SurfaceFlinger | grep -i "GLES:" | head -1').catch(() => '')).trim();
+  if (!(await isEmulator())) return gl;
+
+  if (!/swiftshader|swrast|softwarepipe/i.test(gl)) {
     throw new Error(
       'Emulator GPU is not software-rendered. Relaunch the AVD with ' +
       '`-gpu swiftshader_indirect` — the host-GPU path crashes Chromium and ' +
-      'produces false negatives. Detected: ' + gl.trim());
+      'produces false negatives. Detected: ' + gl);
   }
-  return gl.trim();
+  return gl;
 }
 
 export async function forceStop() { await shell(`am force-stop ${PKG}`); }

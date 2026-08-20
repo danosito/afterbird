@@ -30,14 +30,47 @@ const SETTLE_MS = Number(process.env.AB_UBO_SETTLE_MS || 60000);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// The plain `chrome_devtools_remote` name is first-come-first-served: on a
+// device that already has another Chromium browser running (a stock Kiwi, say)
+// it belongs to that browser, and forwarding to it silently drives the wrong
+// app. Prefer our process's own `chrome_devtools_remote_<pid>` socket.
+async function cdpSocketName({ timeoutMs = 30000 } = {}) {
+  const pkg = process.env.AB_PKG || 'com.danosito.afterbird';
+  const deadline = Date.now() + timeoutMs;
+  // The socket is opened from a deferred startup task, so it appears a little
+  // after the process does.
+  while (Date.now() < deadline) {
+    const { stdout: pidOut } = await pexec('adb', ['shell', 'pidof', pkg]).catch(() => ({ stdout: '' }));
+    const pid = pidOut.trim().split(/\s+/)[0];
+    if (pid) {
+      const { stdout } = await pexec('adb', ['shell', 'cat /proc/net/unix']).catch(() => ({ stdout: '' }));
+      if (stdout.includes(`@chrome_devtools_remote_${pid}`)) return `chrome_devtools_remote_${pid}`;
+    }
+    await sleep(2000);
+  }
+  return 'chrome_devtools_remote';
+}
+
 async function forwardCdp() {
-  await pexec('adb', ['forward', `tcp:${PORT}`, 'localabstract:chrome_devtools_remote']);
+  const socket = await cdpSocketName();
+  await pexec('adb', ['forward', `tcp:${PORT}`, `localabstract:${socket}`]);
   const deadline = Date.now() + 30000;
   while (Date.now() < deadline) {
     try {
       const res = await fetch(`http://localhost:${PORT}/json/version`);
-      if (res.ok) return (await res.json())['Browser'];
-    } catch {}
+      if (res.ok) {
+        const info = await res.json();
+        const pkg = process.env.AB_PKG || 'com.danosito.afterbird';
+        if (info['Android-Package'] && info['Android-Package'] !== pkg) {
+          throw new Error(
+            `CDP socket ${socket} belongs to ${info['Android-Package']}, not ${pkg} — ` +
+            'another Chromium browser owns the unnamed socket on this device');
+        }
+        return `${info['Browser']} via ${socket}`;
+      }
+    } catch (e) {
+      if (/belongs to/.test(e.message)) throw e;
+    }
     await sleep(2000);
   }
   throw new Error('CDP socket did not come up — is this a debuggable (test-variant) build?');
