@@ -145,7 +145,43 @@ the emulator; the runner then skips installation on a checksum match.
 loaded: 3000 events injected, same PID afterwards, zero crashes and zero ANRs in
 the package-scoped logcat.
 
-## Ad blocking: the turtlecute number was measuring the wrong thing
+## Ad blocking: 100% once the filter lists match the device locale
+
+**Result: `adblock.turtlecute.org` reports 132/132 = 100% blocked** on a clean
+profile with uBlock Origin 1.73, no bypass flags.
+
+Getting there took a wrong turn worth recording. On an `en-US` emulator the same
+setup scored **1%**, and the first explanation — that uBO answers the page's HEAD
+probes with `redirect-rule=nooptext` so the page misreads them — was only half
+right. The network-level truth on that run was: 102 requests redirected to an
+inert `data:` URL, 0 cancelled, and **24 ad/tracker requests reaching their
+servers**. Those 24 were the real problem, and the logger showed uBO applying no
+filter at all to them: appmetrica.yandex.ru, ads-api.tiktok.com, udcm.yahoo.com,
+*-analytics-events.apple.com, and similar.
+
+The cause is filter-list selection, not the browser. uBO auto-selects regional
+lists from `navigator.language`. The emulator ran `en-US`, so `RUS-0` was never
+enabled while turtlecute probes a large number of RU/CN/regional hosts. Kiwi on
+the (Russian) test phone had 16 lists selected against our 11 — that is the
+entire difference between its 99% and our 1%.
+
+Verified both directions:
+
+| Configuration | turtlecute | ad requests reaching network |
+|---|---|---|
+| `en-US`, 11 lists (uBO default for that locale) | 1% | 24 |
+| `en-US`, lists added manually (RUS-0, annoyances) | 100% | 0 |
+| `ru-RU`, clean profile, uBO auto-selects RUS-0 | 100% | 0 |
+
+The locale plumbing is correct: with the system set to `ru-RU`,
+`navigator.language` reports `ru-RU` (after a device reboot — `setprop` alone
+does not apply it) and uBO picks up `RUS-0` on its own.
+
+Takeaway for testing: a low turtlecute score means "check which lists are
+enabled" before suspecting the browser. Compare `µBlock.selectedFilterLists`
+against the reference browser's before drawing any conclusion.
+
+## Historical note: why the earlier turtlecute numbers disagreed
 
 `adblock.turtlecute.org` probes with HEAD xhr requests. uBO answers most of them
 with `redirect-rule=nooptext`, which sends the request to
