@@ -28,6 +28,40 @@ goes. Presence must be read from `chrome://extensions-internals`, not from
 `/json/list` — the first version of the matrix reported a false failure for
 Stylus MV3 on exactly this.
 
+## declarativeNetRequest needs a writable extension directory
+
+Loading uBO Lite (MV3, DNR-based) from `/data/local/tmp` fails:
+
+```
+Failed to load extension from: /data/local/tmp/ext/ubolite.
+ublock-filters.json: Internal error while parsing rules.
+```
+
+The message is misleading. That string is `kErrorPersisting`
+(`extensions/browser/api/declarative_net_request/constants.cc`), and
+`file_backed_ruleset_source.cc` emits it when `PersistIndexedRuleset` fails —
+after indexing succeeded. Chromium writes the indexed ruleset into a
+`_metadata/generated_indexed_rulesets` directory **next to the unpacked
+extension**, and the browser process cannot write to `/data/local/tmp`
+(`drwxrwx--x shell shell`).
+
+Confirmed with a one-rule probe extension: it fails from `/data/local/tmp` and
+loads from an app-writable directory, where `_metadata` then appears. Same for
+uBO Lite with its 5414-rule main ruleset.
+
+So any DNR extension must be loaded from a path the browser can write to:
+
+```
+adb shell "run-as com.danosito.afterbird cp -r /data/local/tmp/ext/ubolite \
+  /data/data/com.danosito.afterbird/ubolite"
+# then --load-extension=/data/data/com.danosito.afterbird/ubolite
+```
+
+This affects sideloading only — store-installed extensions live under the
+profile directory, which is writable. Worth keeping in mind for Load Unpacked:
+if the picker copies into a read-only location, every MV3 blocker will fail this
+way.
+
 ## Functional behaviour — 4/4
 
 Loading is not the same as working, so `checks/extension-function.mjs` drives
