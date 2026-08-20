@@ -28,6 +28,18 @@ goes. Presence must be read from `chrome://extensions-internals`, not from
 `/json/list` — the first version of the matrix reported a false failure for
 Stylus MV3 on exactly this.
 
+## Functional behaviour — 4/4
+
+Loading is not the same as working, so `checks/extension-function.mjs` drives
+each extension until it produces an observable effect:
+
+| Extension | Evidence |
+|---|---|
+| uBlock Origin | 7 ad requests neutralized, 2 reached the network (13 with no extension) |
+| Dark Reader | 9 injected style nodes, page background darkened to `rgb(34, 36, 38)` |
+| Violentmonkey | management UI rendered (44 nodes, script-install entries present) |
+| Stylus | management UI rendered (41 nodes, style list and sort controls present) |
+
 ## extensions_unittests — 1649/1653
 
 Run through the official runner (`out/.../bin/run_extensions_unittests`) against
