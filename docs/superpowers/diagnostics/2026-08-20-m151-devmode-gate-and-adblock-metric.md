@@ -65,6 +65,37 @@ Afterbird. `backgroundPages()`, `serviceWorkers()`, and `Target.getTargets` all
 come back empty. The spec now returns `{skipped: true}` on that target rather
 than a false failure.
 
+## Verified on a physical device too
+
+vivo V2405A (Android 16, Mali-G925), same build:
+
+- `ci/android_emulator_test.sh`: startup smoke, 5 internal pages, 120s
+  modern-site flow, zero `FATAL EXCEPTION` — patch 0003 holds on a real phone
+  form factor. Avg PSS 279 MB, delta 70 MB.
+- `checks/adblock-device.mjs`: `{"blocked":101,"allowed":143,"pct":41}` —
+  matches the emulator run (101 / 142 / 42%).
+
+Two device-only obstacles had to be cleared first:
+
+1. **The command-line file is not read on a retail phone.**
+   `CommandLineInitUtil.shouldUseDebugCommandLine` accepts
+   `/data/local/tmp/chrome-command-line` only when the build is eng/userdebug
+   (`AndroidInfo.isDebugAndroid()`) or the package is the system's selected
+   debug app. The emulator is userdebug, so it read the file; the phone
+   silently ignored it and the browser started with no `--load-extension`.
+   Fixed on two fronts: `.build/args/test.gn` now sets `is_java_debug = true`
+   (debuggable APK), and the device must be told which app to debug:
+
+   ```
+   adb shell am set-debug-app --persistent com.danosito.afterbird
+   ```
+
+2. **Another Chromium browser owned the CDP socket.** A stock Kiwi
+   (Chrome/137) held `@chrome_devtools_remote`; ours listened on
+   `@chrome_devtools_remote_<pid>`. Forwarding blindly drove the wrong browser
+   (252 tabs of someone else's session). The check now prefers the pid-scoped
+   socket and aborts if `/json/version` reports a different `Android-Package`.
+
 ## Harness changes
 
 - `tests/harness/checks/adblock-device.mjs` (new): launches the browser through

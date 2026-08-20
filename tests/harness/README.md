@@ -38,6 +38,29 @@ Relaunch the AVD cleanly:
 CDP (Playwright path) still needs the test/dev build to expose
 `chrome_devtools_remote` (debuggable build); release builds keep it shut.
 
+### Running against a physical device
+
+Two things differ from the emulator:
+
+1. Chromium only reads `/data/local/tmp/chrome-command-line` on an eng/userdebug
+   build or when the package is the system's selected debug app. Build with the
+   `test` args variant (`is_java_debug = true`) and run once:
+
+       adb shell am set-debug-app --persistent com.danosito.afterbird
+
+   Without it the browser starts with none of the harness's flags — no
+   `--load-extension`, no `--disable-fre` — and every extension check reports
+   "uBO did not load".
+
+2. The unnamed `chrome_devtools_remote` socket is first-come-first-served. If
+   another Chromium browser is running (a stock Kiwi, say) it owns that name and
+   ours listens on `chrome_devtools_remote_<pid>`. `checks/adblock-device.mjs`
+   picks the pid-scoped socket and refuses to run if `/json/version` reports a
+   different `Android-Package`.
+
+The software-GPU requirement applies to emulators only; `preflightGpu()` detects
+a physical device and skips the assertion.
+
 ## Reference strategy — split by manifest version
 
 Modern desktop Chrome (149+) **refuses to load MV2 extensions** (`Cannot install
