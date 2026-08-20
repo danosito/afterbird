@@ -22,7 +22,7 @@ import { preflightGpu, writeCommandLine, launchAndAwaitExtension } from '../lib/
 import * as adblock from '../specs/adblock.mjs';
 
 const pexec = promisify(execFile);
-const EXT = process.env.AB_UBO_PATH || '/data/local/tmp/ubo';
+const EXT = process.env.AB_UBO_PATH || '/data/local/tmp/ubo173';
 const PORT = Number(process.env.AB_CDP_PORT || 9222);
 // uBO compiles its filter lists on first run; blocking climbs for a while after
 // the background page reports alive.
