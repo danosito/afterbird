@@ -20,10 +20,19 @@ Android 15+ is supported (emulator and physical devices).
 
 Afterbird runs the **upstream desktop-android extension stack** from Chromium
 151, so extension support is Chromium's own rather than a reimplementation.
-Four patches make it usable on a phone (see `patches/m151/`): Manifest V2 is
+Five patches make it usable on a phone (see `patches/m151/`): Manifest V2 is
 re-enabled, the `browserAction`/`pageAction` schemas are bundled, unpacked
-extensions load without the developer-mode toggle, and the extensions menu no
-longer crashes on a phone form factor.
+extensions load without the developer-mode toggle, the extensions menu no longer
+crashes on a phone form factor, and the Chrome Web Store gets a desktop user
+agent so it offers its install button.
+
+### Installing from the Chrome Web Store
+
+Open a store page, tap **Install**, confirm the permission prompt — the
+extension is downloaded, unpacked and installed, and it survives a restart. This
+is Chromium's own install flow; the only thing Afterbird changes is the user
+agent sent to the store, which otherwise hides the button and shows "Available
+on desktop" instead.
 
 ### Extensions verified on device
 
@@ -63,7 +72,8 @@ heavily.
   MV3 blocker from a read-only path (`/data/local/tmp`, say) fails with a
   misleading `Internal error while parsing rules`.
 - The `release` build variant is newer than the `test` one and less exercised.
-- Chrome Web Store install flow has not been re-verified since the M151 bump.
+- The store still shows Google's own "Switch to Chrome" promo banners. They do
+  not block installation.
 - Kiwi-era conveniences dropped with the 132 layer (custom install dialog,
   DevTools bridge, per-extension menu icons) have not been re-ported.
 

@@ -2,6 +2,26 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.9.1 - 2026-08-20
+
+### Fixed
+
+- **Extensions can be installed from the Chrome Web Store again**
+  (`patches/m151/0005`). The store gates its install button on the user agent:
+  with the mobile UA it showed only "Available on desktop" and never called
+  `webstorePrivate.beginInstallWithManifest3`, so nothing could be installed.
+  Afterbird now requests the desktop user agent on store URLs.
+
+  Nothing else had to be written — the permission prompt, CRX download,
+  unpacking and installation are all stock upstream code on desktop-android.
+  Verified end to end from a clean profile via external link, address bar and
+  in-store navigation: Dark Reader installs, reports `location: INTERNAL`,
+  survives a restart and darkens pages.
+
+  Both decision points needed the exception: `DesktopSiteUtils` for
+  browser-initiated navigations and the C++ observer for renderer-initiated
+  ones, otherwise the UA flips back to mobile mid-flow.
+
 ## v1.9.0 - 2026-08-20
 
 ### Changed
