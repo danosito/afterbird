@@ -5,7 +5,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CHROMIUM_VERSION_FILE="${REPO_ROOT}/CHROMIUM_VERSION"
-REFERENCE_ARGS_FILE="${REPO_ROOT}/.build/production_build_reference/args.gn"
+ARGS_VARIANT="${AFTERBIRD_ARGS_VARIANT:-test}"
+REFERENCE_ARGS_FILE=""  # derived from ARGS_VARIANT in main()
+PATCHES_DIR=""          # derived from CHROMIUM_MAJOR in main()
+
+# Paths (tracked in this repo) rsynced verbatim onto the Chromium checkout.
+# Everything else Afterbird carries is applied as patches/m<major>/*.patch.
+OVERLAY_PATHS=(
+  "chrome/android/java/res_chromium_base"
+)
 
 WORKDIR="${AFTERBIRD_CHROMIUM_WORKDIR:-${HOME}/afterbird-chromium}"
 OUT_DIR="${AFTERBIRD_OUT_DIR:-out/afterbird_production}"
@@ -20,6 +28,9 @@ GCLIENT_BACKOFF_SECONDS="${AFTERBIRD_GCLIENT_BACKOFF_SECONDS:-20}"
 GCLIENT_NO_HISTORY="${AFTERBIRD_GCLIENT_NO_HISTORY:-1}"
 GCLIENT_EXTRA_ARGS="${AFTERBIRD_GCLIENT_EXTRA_ARGS:-}"
 FORCE_WORKSPACE_CONFIG="${AFTERBIRD_FORCE_WORKSPACE_CONFIG:-0}"
+# 0 disables git's stall detector; googlesource pack preparation can stall >60s.
+GIT_LOW_SPEED_LIMIT="${AFTERBIRD_GIT_LOW_SPEED_LIMIT:-0}"
+GIT_LOW_SPEED_TIME="${AFTERBIRD_GIT_LOW_SPEED_TIME:-300}"
 TIMEOUT_WARNING_EMITTED=0
 
 usage() {
@@ -35,10 +46,12 @@ Options:
   --help               Show this help message.
 
 Behavior:
-  Default smoke mode runs: checkout pinned tag + gclient sync + overlay + gn gen + target graph check.
+  Default smoke mode runs: checkout pinned tag + gclient sync + overlay + patches + gn gen + target graph check.
   Full build mode runs all smoke steps, then builds the selected target.
 
 Environment overrides:
+  AFTERBIRD_ARGS_VARIANT           GN args variant: 'test' (debuggable, CDP for harness) or 'release' (default: test)
+  AFTERBIRD_NINJA_JOBS             Parallel ninja jobs for --full-build (default: min(cores, RAM_GiB/2))
   AFTERBIRD_CHROMIUM_SRC_GIT_URL   Chromium git remote (default: chromium.googlesource.com)
   AFTERBIRD_FETCH_RETRIES          Retries for tag fetch (default: 3)
   AFTERBIRD_FETCH_BACKOFF_SECONDS  Backoff base for fetch retries (default: 10)
@@ -220,7 +233,8 @@ fetch_required_tag() {
   run_with_retries "${FETCH_RETRIES}" "${FETCH_BACKOFF_SECONDS}" "Chromium tag fetch (${tag}) from ${CHROMIUM_SRC_GIT_URL}" \
     run_with_timeout "${FETCH_TIMEOUT_SECONDS}" \
     env GIT_TERMINAL_PROMPT=0 \
-    git -c protocol.version=2 -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=60 \
+    git -c protocol.version=2 \
+      -c "http.lowSpeedLimit=${GIT_LOW_SPEED_LIMIT}" -c "http.lowSpeedTime=${GIT_LOW_SPEED_TIME}" \
       -C "${WORKDIR}/src" fetch --no-tags --depth=1 origin "${refspec}"
 }
 
@@ -282,28 +296,42 @@ apply_overlay() {
   local manifest
   manifest="$(mktemp)"
 
-  git -C "${REPO_ROOT}" ls-files -z -- . \
-    ':(exclude).github/**' \
-    ':(exclude)ci/**' \
-    ':(exclude)toolbox/**' \
-    ':(exclude)AGENTS.md' \
-    ':(exclude)ARCHITECTURE.md' \
-    ':(exclude)CHANGELOG.md' \
-    ':(exclude)README.md' \
-    ':(exclude)CHROMIUM_VERSION' \
-    ':(exclude)KIWI_VERSION' \
-    ':(exclude)VERSION' \
-    ':(exclude)fetch_from_upstream.sh' \
-    ':(exclude)kiwi_logo_circle.svg' > "${manifest}"
+  git -C "${REPO_ROOT}" ls-files -z -- "${OVERLAY_PATHS[@]}" > "${manifest}"
 
   if [[ ! -s "${manifest}" ]]; then
     rm -f "${manifest}"
     die "Overlay manifest is empty"
   fi
 
-  log "Applying Afterbird overlay onto Chromium tree"
+  log "Applying Afterbird overlay onto Chromium tree (include-list: ${OVERLAY_PATHS[*]})"
   rsync -a --from0 --files-from="${manifest}" "${REPO_ROOT}/" "${WORKDIR}/src/"
   rm -f "${manifest}"
+}
+
+apply_patches() {
+  local patches=()
+  while IFS= read -r -d '' p; do
+    patches+=("${p}")
+  done < <(find "${PATCHES_DIR}" -maxdepth 1 -name '*.patch' -print0 | sort -z)
+  [[ ${#patches[@]} -gt 0 ]] || die "No patches found in ${PATCHES_DIR}"
+
+  pushd "${WORKDIR}/src" >/dev/null
+  local p name
+  for p in "${patches[@]}"; do
+    name="$(basename "${p}")"
+    if git apply --check "${p}" 2>/dev/null; then
+      log "Applying patch ${name}"
+      git apply --whitespace=nowarn "${p}"
+    elif git apply --reverse --check "${p}" 2>/dev/null; then
+      log "Patch ${name} already applied; skipping"
+    elif git apply --3way --check "${p}" 2>/dev/null; then
+      warn "Patch ${name} needed 3-way apply (context drift) — regenerate it against the pinned tag"
+      git apply --3way --whitespace=nowarn "${p}"
+    else
+      die "Patch does not apply cleanly, reversed, or 3-way: ${p} — rebase it against the pinned tag"
+    fi
+  done
+  popd >/dev/null
 }
 
 run_gn_checks() {
@@ -323,10 +351,38 @@ run_gn_checks() {
   popd >/dev/null
 }
 
+ninja_jobs() {
+  if [[ -n "${AFTERBIRD_NINJA_JOBS:-}" ]]; then
+    printf '%s\n' "${AFTERBIRD_NINJA_JOBS}"
+    return 0
+  fi
+
+  # Memory-aware default. Plain autoninja picks j from core count alone;
+  # on a many-core box without swap that OOMs the host (observed: 80 cores /
+  # 94 GiB / swapless => global OOM, machine wedged). Budget ~2 GiB per job,
+  # capped by core count.
+  local cores mem_kb mem_jobs jobs
+  cores="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 8)"
+  if [[ -r /proc/meminfo ]]; then
+    mem_kb="$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
+    mem_jobs=$((mem_kb / 1024 / 1024 / 2))
+  else
+    mem_jobs="${cores}"
+  fi
+  jobs="${cores}"
+  if [[ "${mem_jobs}" -lt "${jobs}" ]]; then
+    jobs="${mem_jobs}"
+  fi
+  [[ "${jobs}" -ge 1 ]] || jobs=1
+  printf '%s\n' "${jobs}"
+}
+
 run_full_build() {
+  local jobs
+  jobs="$(ninja_jobs)"
   pushd "${WORKDIR}/src" >/dev/null
-  log "Running full build target ${TARGET}"
-  autoninja -C "${OUT_DIR}" "${TARGET}"
+  log "Running full build target ${TARGET} (-j ${jobs})"
+  autoninja -C "${OUT_DIR}" -j "${jobs}" "${TARGET}"
   popd >/dev/null
 }
 
@@ -384,6 +440,18 @@ main() {
     die "AFTERBIRD_FORCE_WORKSPACE_CONFIG must be '0' or '1'"
   fi
 
+  case "${ARGS_VARIANT}" in
+    test|release) ;;
+    *) die "AFTERBIRD_ARGS_VARIANT must be 'test' or 'release' (got '${ARGS_VARIANT}')" ;;
+  esac
+  REFERENCE_ARGS_FILE="${REPO_ROOT}/.build/args/${ARGS_VARIANT}.gn"
+  [[ -f "${REFERENCE_ARGS_FILE}" ]] || die "Missing args variant file: ${REFERENCE_ARGS_FILE}"
+
+  if ! command -v gclient >/dev/null 2>&1 && [[ -d "${HOME}/depot_tools" ]]; then
+    export PATH="${HOME}/depot_tools:${PATH}"
+    log "Added ${HOME}/depot_tools to PATH"
+  fi
+
   require_cmd awk
   require_cmd git
   require_cmd gclient
@@ -401,16 +469,22 @@ main() {
   patch="$(read_version_part CHROMIUM_PATCH)"
   tag="${major}.${minor}.${build}.${patch}"
 
+  PATCHES_DIR="${REPO_ROOT}/patches/m${major}"
+  [[ -d "${PATCHES_DIR}" ]] || die "Missing patches dir for pinned major: ${PATCHES_DIR}"
+
   log "Pinned Chromium tag: ${tag}"
   log "Workspace: ${WORKDIR}"
   log "Chromium source URL: ${CHROMIUM_SRC_GIT_URL}"
   log "Output dir: ${OUT_DIR}"
+  log "Args variant: ${ARGS_VARIANT} (${REFERENCE_ARGS_FILE})"
+  log "Patches dir: ${PATCHES_DIR}"
 
   ensure_workspace
   checkout_tag "${tag}"
   sync_dependencies
   clean_source_tree
   apply_overlay
+  apply_patches
   run_gn_checks
 
   if [[ "${FULL_BUILD}" -eq 1 ]]; then

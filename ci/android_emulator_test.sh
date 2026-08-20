@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 APK_PATH=""
-APP_PACKAGE="${AFTERBIRD_APP_PACKAGE:-com.kiwibrowser.browser}"
+APP_PACKAGE="${AFTERBIRD_APP_PACKAGE:-com.danosito.afterbird}"
 LAUNCH_ACTIVITY="${AFTERBIRD_LAUNCH_ACTIVITY:-}"
 MODERN_SITES_FILE="${REPO_ROOT}/tests/emulator/modern_sites.txt"
 INTERNAL_PAGES_FILE="${REPO_ROOT}/tests/emulator/internal_pages_smoke.txt"
@@ -14,6 +14,8 @@ RUN_DURATION_SECONDS=120
 MEMINFO_INTERVAL_SECONDS=10
 STRICT_INTERNAL_PAGE_LAUNCH=1
 ADB_SERIAL="${ANDROID_SERIAL:-}"
+CMDLINE_FILE="/data/local/tmp/chrome-command-line"
+LAUNCH_COMPONENT=""
 ARTIFACT_DIR="${AFTERBIRD_EMULATOR_ARTIFACT_DIR:-${REPO_ROOT}/tests/artifacts/emulator-$(date +%Y%m%d_%H%M%S)}"
 
 LOGCAT_FILE=""
@@ -37,7 +39,7 @@ Required:
   --apk <path>                     APK path to install on a running emulator/device.
 
 Options:
-  --package <name>                 Android package name (default: com.kiwibrowser.browser).
+  --package <name>                 Android package name (default: com.danosito.afterbird).
   --activity <activity>            Launch activity class (for example org.chromium...ChromeTabbedActivity).
   --serial <serial>                adb serial (if multiple devices are connected).
   --site-list <path>               URL list for modern-site flow (default: tests/emulator/modern_sites.txt).
@@ -209,6 +211,14 @@ install_apk() {
   adb_cmd install -r -d "${APK_PATH}" >/dev/null
 }
 
+write_command_line() {
+  # Without --disable-fre the browser parks in FirstRunActivity and every
+  # navigation intent is dropped, so all page checks read as failures.
+  log "Writing ${CMDLINE_FILE} (--disable-fre)"
+  adb_cmd shell "echo '_ --disable-fre --no-default-browser-check' > ${CMDLINE_FILE}" >/dev/null 2>&1 || true
+  adb_cmd shell "chmod 0644 ${CMDLINE_FILE}" >/dev/null 2>&1 || true
+}
+
 resolve_component() {
   if [[ -n "${LAUNCH_ACTIVITY}" ]]; then
     printf '%s/%s\n' "${APP_PACKAGE}" "${LAUNCH_ACTIVITY}"
@@ -311,7 +321,9 @@ launch_url_and_record() {
   local url="$1"
   local results_file="$2"
   local output
-  output="$(adb_cmd shell am start -W -a android.intent.action.VIEW -d "${url}" "${APP_PACKAGE}" 2>&1 | tr -d '\r' || true)"
+  # Explicit component: upstream M151 registers no intent filter for the
+  # chrome:// scheme, so an implicit VIEW intent fails to resolve.
+  output="$(adb_cmd shell am start -W -n "${LAUNCH_COMPONENT}" -a android.intent.action.VIEW -d "${url}" 2>&1 | tr -d '\r' || true)"
 
   local status="fail"
   if printf '%s\n' "${output}" | grep -qi 'status: ok'; then
@@ -544,9 +556,11 @@ main() {
   prepare_outputs
   wait_for_device_boot
   install_apk
+  write_command_line
 
   local component
   component="$(resolve_component)"
+  LAUNCH_COMPONENT="${component}"
 
   start_logcat_capture
   start_meminfo_sampling

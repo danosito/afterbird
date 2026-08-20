@@ -1,0 +1,31 @@
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+index 977f05360f..1c2e0c74ea 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+@@ -4406,7 +4406,25 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
+         } else if (id == R.id.extensions_menu_menu_id) {
+             ExtensionsToolbarCoordinator coordinator =
+                     getToolbarManager().getExtensionsToolbarCoordinator();
+-            coordinator.showExtensionsMenu();
++            if (coordinator != null) {
++                coordinator.showExtensionsMenu();
++            } else {
++                // Afterbird: the toolbar extensions coordinator only exists for the
++                // tablet/desktop toolbar (ExtensionsToolbarCoordinator.maybeCreate casts
++                // to ToolbarTablet). On a phone form factor it is null, so tapping
++                // "Open extensions menu" would NPE. Fall back to the extensions
++                // management page, which is the sensible phone behavior.
++                LoadUrlParams extParams =
++                        new LoadUrlParams(
++                                UrlConstants.CHROME_EXTENSIONS_URL, PageTransition.AUTO_TOPLEVEL);
++                if (currentTab == null) {
++                    getTabCreator(getCurrentTabModel().isIncognito())
++                            .createNewTab(
++                                    extParams, TabLaunchType.FROM_CHROME_UI, /* parent= */ null);
++                } else {
++                    currentTab.loadUrl(extParams);
++                }
++            }
+             RecordUserAction.record("MobileMenuExtensionsMenu");
+         } else if (id == R.id.manage_extensions_menu_id) {
+             LoadUrlParams params =

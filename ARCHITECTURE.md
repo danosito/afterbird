@@ -2,32 +2,37 @@
 
 ## Purpose
 
-Afterbird currently acts as a Chromium/Kiwi source-tracking and patch-integration repository. The current branch baseline is Chromium `132.0.6834.83` (from `CHROMIUM_VERSION`), but it is not yet a complete standalone Chromium source tree.
+Afterbird is a **thin delta over stock Chromium** plus project automation. The pinned baseline is Chromium `151.0.7922.38` (from `CHROMIUM_VERSION`), built with the upstream desktop-android extension stack (`is_desktop_android=true`). The repository does not track Chromium source; compilation happens in an external checkout at the pinned tag.
 
 ## Source-Tree Architecture
 
-Repository structure today is split into three layers.
+Repository structure is split into three layers.
 
-### 1) Tracked Source Layer
+### 1) Tracked Delta Layer
 
-Primary code directories:
+- `chrome/android/java/res_chromium_base/**`: branding (launcher icons,
+  app name strings) — rsynced verbatim over the external checkout.
+- `patches/m151/*.patch`: source patches applied by the pipeline with
+  `git apply`:
+  - `0001-mv2-reenable.patch` — `MV2DeprecationImpactChecker::IsExtensionAffected`
+    returns `false`; re-enables MV2 extensions (uBlock Origin).
+  - `0002-browseraction-schema-desktop-android.patch` — bundles
+    `browser_action.json`/`page_action.json` schemas outside
+    `enable_extensions`; without it MV2 backgrounds FATAL at
+    `GetAPISchema("browserAction")`.
+  - `0003-extensions-menu-null-coordinator-fallback.patch` — phone form
+    factor: null coordinator falls back to `chrome://extensions` instead
+    of NPE.
+- `third_party/extensions/afterbird-api-probe/**`: MV2/MV3 API probe
+  extensions for compatibility testing.
 
-- `base/`
-- `chrome/`
-- `components/`
-- `content/`
-- `extensions/`
-- `net/`
-- `remoting/`
-- `services/`
-- `third_party/`
-- `ui/`
-
-These are maintained as a selected subset of Chromium/Kiwi files relevant to the project.
+The 132-era Kiwi tracked-source subset (~9.8k files across `base/`,
+`chrome/`, `third_party/blink/`, `net/`, …) was pruned in the M151 bump;
+it survives in git history and on the `chromium`/`kiwi` branches.
 
 ### 2) Project Control Layer
 
-- `CHROMIUM_VERSION`: Chromium baseline metadata for update/import workflows (currently `132.0.6834.83`).
+- `CHROMIUM_VERSION`: pinned Chromium tag consumed by the pipeline (currently `151.0.7922.38`). Bumping = edit this file + rebase `patches/m<major>/`.
 - `KIWI_VERSION`: Kiwi baseline metadata.
 - `VERSION`: legacy app version metadata.
 - `README.md`, `CHANGELOG.md`, `AGENTS.md`: repository governance and contributor guidance.
@@ -39,10 +44,11 @@ These are maintained as a selected subset of Chromium/Kiwi files relevant to the
   - `chromium_smoke_pipeline.yml` (PR/push smoke checks on `afterbird`)
   - `chromium_full_build.yml` (manual full Android target build)
   - `android_emulator_e2e.yml` (manual + scheduled emulator smoke/e2e telemetry run)
-- `.build/production_build_reference/args.gn`: reference build args consumed by the new external pipeline.
-- `ci/chromium_android_pipeline.sh`: local/CI pipeline script for exact-tag checkout, sync, overlay, GN generation, smoke graph check, and optional full build.
+- `.build/args/test.gn` / `.build/args/release.gn`: GN args variants selected via `AFTERBIRD_ARGS_VARIANT` (default `test`: debuggable, exposes the CDP socket for the Playwright harness; `release`: `is_official_build=true`, experimental).
+- `ci/chromium_android_pipeline.sh`: local/CI pipeline script for exact-tag checkout, sync, branding overlay (include-list), patch application (`git apply` with check/reverse/3-way gates), GN generation, smoke graph check, and optional full build.
 - `ci/android_emulator_test.sh`: emulator/device automation script for APK install, smoke startup, internal page launchability checks, modern-site traversal, logcat crash scan, and memory trend reporting.
-- `ci/fetch_ublock_chromium.sh` + `ci/extensions/ublock_chromium_132.lock.json`: extension prep lock/manifest and deterministic fetch flow for pinned uBlock package (`1.62.0`).
+- `ci/fetch_ublock_chromium.sh` + `ci/extensions/ublock_chromium_132.lock.json`: deterministic fetch of the pinned uBlock package (`1.62.0`, Chromium-version-agnostic despite the lock filename); output `third_party/extensions/ublock/` is gitignored.
+- `tests/harness/`: Playwright/adb parity harness (desktop + android targets; uBO adblock spec).
 - `tests/emulator/`: smoke URL manifests plus manual-check matrix for extension/devtools validation scope.
 - `toolbox/`: maintenance scripts.
 
@@ -64,14 +70,14 @@ Conceptual flow:
 
 ## Build Architecture Status
 
-Current state is hybrid and externalized by design:
+Current state is externalized by design:
 
-- The repository does not contain a full Chromium checkout on `afterbird`/`kiwi`.
-- The build path is now formalized around an external Chromium workspace (`ci/chromium_android_pipeline.sh`) rather than attempting in-repo standalone builds.
+- The build path is formalized around an external Chromium workspace (`ci/chromium_android_pipeline.sh`); the effective overlay is ~17 branding files + 3 patches.
+- Validated baseline (2026-07): M151 test build on device reaches uBO ~85–95% network blocking (`docs/superpowers/reports/2026-07-16-m151-stock-plus-mv2patch.md` and follow-up diagnostics).
 - Legacy workflows still include private Kiwi infrastructure and secrets and should be treated as legacy/non-baseline.
-- Chromium-forward merges can remove or overwrite Kiwi-specific integrations unless they are explicitly re-ported.
+- Kiwi-era behaviors (custom install dialog, chrome://extensions bridges, DevTools bridge) were superseded by the upstream desktop-android stack; anything worth re-porting is explicit backlog, recoverable from git history.
 
-Result: this repository should be treated as source + governance + overlay/pipeline control, with actual compilation happening in an external Chromium checkout at the pinned tag.
+Result: this repository should be treated as delta + governance + pipeline control, with actual compilation happening in an external Chromium checkout at the pinned tag.
 
 ## Emulator Test Architecture
 
@@ -105,7 +111,7 @@ Validation boundaries are explicit:
 
 ### Phase 3: Reproducible Build Recovery
 
-- Maintain/update target engine baseline (currently Chromium 132 lineage) with explicit integration cadence.
+- Maintain/update target engine baseline (currently Chromium 151 lineage) with explicit integration cadence.
 - Document exact bootstrap process using full Chromium checkout + overlay from this repo.
 - Restore missing `.build/*/args.gn` profiles and deterministic build targets.
 - Track and re-port Kiwi-specific integrations dropped by Chromium syncs as a first-class backlog.

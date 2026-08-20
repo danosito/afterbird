@@ -2,6 +2,80 @@
 
 All notable changes to this repository are documented in this file.
 
+## v1.9.0 - 2026-08-20
+
+### Changed
+
+- **Chromium baseline bumped 132.0.6834.83 → 151.0.7922.38.** The build now
+  uses the upstream desktop-android extension stack
+  (`is_desktop_android=true`) instead of the custom 132-era
+  `desktop_android` layer. Verified on device 2026-08-20: uBlock Origin
+  loads, registers blocking `webRequest` listeners, and blocks 101 requests
+  (42% of attempted) on the parity page, versus effectively nothing on the
+  old layer. Earlier turtlecute-percentage figures in the July reports are
+  not comparable — see
+  `docs/superpowers/diagnostics/2026-08-20-m151-devmode-gate-and-adblock-metric.md`.
+- **Repository restructured to a delta model.** Pruned the ~9.8k-file
+  132/Kiwi tracked-source subset (`base/`, `chrome/`, `components/`,
+  `content/`, `extensions/`, `net/`, `remoting/`, `services/`,
+  `third_party/` sans `extensions/`, `ui/`, Chromium root meta files).
+  The repo now carries only: branding
+  (`chrome/android/java/res_chromium_base/**`), `patches/m151/*.patch`,
+  API probe extensions, args variants, automation, docs. History and the
+  `chromium`/`kiwi` branches preserve the old subset.
+- **Pipeline (`ci/chromium_android_pipeline.sh`):** overlay switched from
+  exclude-list (everything tracked) to include-list (branding only); new
+  `apply_patches` step (`git apply` with --check / --reverse / --3way
+  gates, dir derived from `CHROMIUM_MAJOR`); GN args variant selection
+  via `AFTERBIRD_ARGS_VARIANT=test|release`; `~/depot_tools` auto-added
+  to PATH when `gclient` is absent.
+- **GN args:** `.build/production_build_reference/args.gn` (132/Kiwi-era
+  flags) replaced by `.build/args/test.gn` (validated M151 set,
+  debuggable, CDP socket for the harness — default) and
+  `.build/args/release.gn` (`is_official_build=true`,
+  `chrome_pgo_phase=0`, experimental/unvalidated).
+- `patches/m151/0001-mv2-reenable.patch` regenerated as a valid
+  git-apply-able unified diff (was prose hunk header).
+- **Unpacked extensions no longer need the developer-mode toggle**
+  (`patches/m151/0004`). M151 admits `--load-extension` / Load Unpacked
+  extensions and then disables them with
+  `DISABLE_UNSUPPORTED_DEVELOPER_EXTENSION`, so they register no listeners
+  and filter nothing. Store-installed extensions were unaffected.
+- **Emulator suite fixed for M151** (`ci/android_emulator_test.sh`): correct
+  package default, `--disable-fre` (the browser otherwise parks in
+  `FirstRunActivity`), and explicit-component navigation (M151 registers no
+  `chrome://` intent filter).
+- **Adblock spec rewritten** to read uBO's own counter instead of the
+  turtlecute probe's verdict, which scores a fully-filtering uBO at 1-2%
+  because uBO answers its HEAD probes with `redirect-rule=nooptext`. New
+  `tests/harness/checks/adblock-device.mjs` drives the device over adb + CDP.
+  Measured on the patched build: 101 requests blocked, 42% of attempted.
+- **Verified on a physical device** (vivo V2405A, Android 16): full emulator
+  suite clean, uBlock Origin blocked 101 requests (41% of attempted),
+  matching the emulator. The `test` args variant now builds a
+  Java-debuggable APK (`is_java_debug = true`) — a retail phone only reads
+  `/data/local/tmp/chrome-command-line` for a debuggable app that is also
+  the system's selected debug app (`adb shell am set-debug-app`).
+- Build hosts get a memory-aware ninja job cap
+  (`-j min(cores, RAM_GiB/2)`); the unbounded default OOM'd the 80-core
+  build server.
+
+### Removed
+
+- Kiwi/132-era custom behaviors superseded by upstream M151
+  desktop-android: custom install dialog + navigation throttle,
+  `chrome://extensions` bridges, DevTools bridge, permission-grant fix
+  (v1.8), API stubs (v1.4–v1.7). Re-porting anything still missing on the
+  phone form factor is explicit follow-up work.
+
+### Known limitations
+
+- Desktop Chromium can no longer serve as the adblock parity reference: it
+  refuses to load MV2 extensions outright, which is the enforcement
+  `patches/m151/0001` removes on Afterbird. That target reports `skipped`.
+- `release` args variant not yet validated end-to-end.
+- Store-install (CWS) UX on the phone form factor not re-verified on M151.
+
 ## v1.8.0 - 2026-04-18
 
 ### Fixed

@@ -1,0 +1,24 @@
+# Afterbird M151 release build. = test.gn + is_official_build, validated on
+# emulator 2026-08-20 (installs, full emulator suite passes, 354 MB APK).
+#
+# Not debuggable, so /data/local/tmp/chrome-command-line is ignored and the
+# harness cannot inject --load-extension. Note that the devtools socket is
+# still opened: upstream Chrome for Android always starts DevToolsServer, and
+# access is gated by content::CanUserConnectToDevTools, which admits only
+# root, shell, or the app's own uid — same as stock Chrome.
+#
+# chrome_pgo_phase=0 avoids the PGO-profile fetch/lookup failure mode.
+target_os = "android"
+target_cpu = "arm64"
+is_desktop_android = true
+is_debug = false
+is_official_build = true
+chrome_pgo_phase = 0
+symbol_level = 0
+blink_symbol_level = 0
+dcheck_always_on = false
+chrome_public_manifest_package = "com.danosito.afterbird"
+treat_warnings_as_errors = false
+# Afterbird branding trips upstream lint (IconDuplicates: app_icon ==
+# layered_app_icon by design); lint gates nothing we ship.
+disable_android_lint = true

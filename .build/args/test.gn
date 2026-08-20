@@ -1,0 +1,24 @@
+# Afterbird M151 test build — stock upstream desktop-android + debuggable.
+# Validated on device: uBO blocks 132/132 on adblock.turtlecute.org.
+# is_java_debug makes the APK debuggable, which is what lets Chromium read
+# /data/local/tmp/chrome-command-line on a retail device (see
+# CommandLineInitUtil.shouldUseDebugCommandLine) — without it the harness
+# cannot pass --load-extension.
+target_os = "android"
+target_cpu = "arm64"
+is_desktop_android = true
+is_debug = false
+is_official_build = false
+# Java-debuggable APK. On a userdebug emulator (ro.debuggable=1) Chromium reads
+# /data/local/tmp/chrome-command-line regardless, but on a retail phone only a
+# debuggable app does — without this the harness's --load-extension never
+# reaches the browser.
+is_java_debug = true
+symbol_level = 0
+blink_symbol_level = 0
+dcheck_always_on = false
+chrome_public_manifest_package = "com.danosito.afterbird"
+treat_warnings_as_errors = false
+# Afterbird branding trips upstream lint (IconDuplicates: app_icon ==
+# layered_app_icon by design); lint gates nothing we ship.
+disable_android_lint = true
