@@ -35,6 +35,8 @@ const EXTENSIONS = [
   { id: 'sponsorblock', name: 'SponsorBlock', mv: 3, path: '/data/local/tmp/ext/sponsorblock' },
   { id: 'stylus-mv3', name: 'Stylus (MV3)', mv: 3, path: '/data/local/tmp/ext/stylus-mv3' },
   { id: 'violentmonkey-mv3', name: 'Violentmonkey (MV3)', mv: 3, path: '/data/local/tmp/ext/violentmonkey-mv3' },
+  { id: 'bitwarden', name: 'Bitwarden', mv: 3, path: '/data/local/tmp/ext/bitwarden' },
+  { id: 'ubolite', name: 'uBO Lite', mv: 3, path: '/data/local/tmp/ext/ubolite', needsWritableDir: true },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -72,10 +74,22 @@ async function attach() {
   throw new Error('CDP did not come up');
 }
 
+// Chromium writes a DNR extension's indexed rulesets into `_metadata` next to
+// the unpacked extension, and it cannot write to /data/local/tmp. Copy such
+// extensions into the app's own data directory first, or every MV3 blocker
+// fails with a misleading "Internal error while parsing rules".
+async function stageWritable(ext) {
+  if (!ext.needsWritableDir) return ext.path;
+  const dest = `/data/data/${PKG}/${ext.id}`;
+  await shell(`run-as ${PKG} sh -c 'rm -rf ${dest}; cp -r ${ext.path} ${dest}'`);
+  return dest;
+}
+
 async function runOne(ext) {
   await shell(`am force-stop ${PKG}`);
   await shell(`pm clear ${PKG}`).catch(() => {});
-  await shell(`printf '%s' '_ --disable-fre --no-default-browser-check --load-extension=${ext.path}' > ${CMDLINE}`);
+  const loadPath = await stageWritable(ext);
+  await shell(`printf '%s' '_ --disable-fre --no-default-browser-check --load-extension=${loadPath}' > ${CMDLINE}`);
   await adb(['logcat', '-c']).catch(() => {});
   await shell(`am start -a android.intent.action.VIEW -d about:blank ${PKG}`);
   await sleep(SETTLE_MS);

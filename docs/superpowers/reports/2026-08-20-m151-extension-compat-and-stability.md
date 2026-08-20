@@ -3,7 +3,7 @@
 Date: 2026-08-20. Build: Chromium 151.0.7922.38 + `patches/m151/0001-0004`,
 args variant `test`. Device: emulator API 35, `-gpu swiftshader_indirect`.
 
-## Extension compatibility — 7/7
+## Extension compatibility — 9/9
 
 Each extension loaded alone in a clean profile
 (`tests/harness/checks/extension-matrix.mjs`). "Listeners" is the number of
@@ -20,6 +20,8 @@ back in July.
 | SponsorBlock | MV3 | yes | 10 | 0 |
 | Stylus | MV3 | yes | 17 | 0 |
 | Violentmonkey | MV3 | yes | 32 | 0 |
+| Bitwarden | MV3 | yes | 34 | 0 |
+| uBO Lite | MV3 | yes | 4 | 0 |
 
 No `Unknown API` or extension-related FATAL lines for any of them.
 
