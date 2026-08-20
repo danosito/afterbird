@@ -1,0 +1,76 @@
+Afterbird: request the desktop user agent on the Chrome Web Store.
+
+The store gates its install button on the user agent: with Chrome for Android's
+mobile UA the detail page offers only "Available on desktop" and never calls
+webstorePrivate.beginInstallWithManifest3, so extensions cannot be installed
+from the store at all. With a desktop UA the same page shows "Add to Chrome",
+and the rest of the flow already works on desktop-android: the native install
+prompt listing permissions, the CRX download, unpacking and installation
+(verified on device — uBlock Origin installs, reports location INTERNAL and
+survives a restart).
+
+Two call sites decide the override. DesktopSiteUtils.shouldOverrideDesktopSite
+answers for browser-initiated navigations (typing the URL, following a link
+from another app); the C++ observer answers for renderer-initiated ones
+(navigating inside the store). Both need the exception, or the UA flips back to
+mobile mid-flow.
+
+This forces the override rather than seeding a content-setting exception: the
+store's mobile layout offers no install path at all, so there is nothing for a
+user to prefer, and seeding a setting would silently overwrite one they set.
+
+diff --git a/chrome/browser/content_settings/request_desktop_site_web_contents_observer_android.cc b/chrome/browser/content_settings/request_desktop_site_web_contents_observer_android.cc
+index bb030c4e47..8e937857a1 100644
+--- a/chrome/browser/content_settings/request_desktop_site_web_contents_observer_android.cc
++++ b/chrome/browser/content_settings/request_desktop_site_web_contents_observer_android.cc
+@@ -71,6 +71,14 @@ void RequestDesktopSiteWebContentsObserverAndroid::DidStartNavigation(
+   ContentSetting setting = host_content_settings_map_->GetContentSetting(
+       url, url, ContentSettingsType::REQUEST_DESKTOP_SITE, &setting_info);
+   bool desktop_mode = setting == CONTENT_SETTING_ALLOW;
++  // Afterbird: the Chrome Web Store only offers its install button to desktop
++  // user agents. Keep the override for navigations inside the store too, or the
++  // UA flips back to mobile mid-install.
++  if (url.host() == "chromewebstore.google.com" ||
++      (url.host() == "chrome.google.com" &&
++       url.path().starts_with("/webstore"))) {
++    desktop_mode = true;
++  }
+   // For --request-desktop-sites, always override the user agent.
+   bool always_request_desktop_site =
+       base::CommandLine::ForCurrentProcess()->HasSwitch(
+diff --git a/chrome/browser/ui/android/desktop_site/java/src/org/chromium/chrome/browser/desktop_site/DesktopSiteUtils.java b/chrome/browser/ui/android/desktop_site/java/src/org/chromium/chrome/browser/desktop_site/DesktopSiteUtils.java
+index 4452fea97e..625c4d2fc1 100644
+--- a/chrome/browser/ui/android/desktop_site/java/src/org/chromium/chrome/browser/desktop_site/DesktopSiteUtils.java
++++ b/chrome/browser/ui/android/desktop_site/java/src/org/chromium/chrome/browser/desktop_site/DesktopSiteUtils.java
+@@ -219,6 +219,12 @@ public class DesktopSiteUtils {
+             return true;
+         }
+ 
++        // Afterbird: the Chrome Web Store hides its install button for mobile
++        // user agents, which is the only way to install an extension from it.
++        if (isChromeWebStore(url)) {
++            return true;
++        }
++
+         // If domain/global setting is enabled and window setting should not
+         // apply, override the user agent.
+         if (readRequestDesktopSiteContentSettings(profile, url)
+@@ -234,6 +240,18 @@ public class DesktopSiteUtils {
+         return false;
+     }
+ 
++    /** Afterbird: whether {@code url} is a Chrome Web Store page. */
++    public static boolean isChromeWebStore(@Nullable GURL url) {
++        if (url == null || url.isEmpty()) {
++            return false;
++        }
++        String host = url.getHost();
++        if ("chromewebstore.google.com".equals(host)) {
++            return true;
++        }
++        return "chrome.google.com".equals(host) && url.getPath().startsWith("/webstore");
++    }
++
+     /**
+      * Check if Request Desktop Site Content Setting is enabled.
+      *
