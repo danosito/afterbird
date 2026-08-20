@@ -74,6 +74,35 @@ So the batch failures are emulator resource pressure, not defects. On a machine
 with more headroom the suite should be clean; treat a non-zero count here as
 "re-run those tests alone before believing it".
 
+## chrome_public_unit_test_apk — 1365/1612, and why the rest do not count
+
+231 failures, but **227 of them come from one line**:
+
+```
+Skia Gold comparison raised exception: --git-revision not passed and unable to determine from git
+```
+
+Render tests upload their screenshots to Skia Gold for comparison against
+golden images, and Gold needs a git revision to key them by. The build tree is a
+detached checkout of tag `151.0.7922.38`, so there is no revision to report and
+every render test fails before any pixel is compared. This is infrastructure,
+not the browser.
+
+The four genuine failures are all upstream areas unrelated to extensions or to
+anything the Afterbird patches touch:
+
+| Test | Failure |
+|---|---|
+| `OptimizationGuidePushNotificationManagerUnitTest` (×2) | `expected:<[LITE_PAGE, LITE_VIDEO]> but was:<[PERFORMANCE_HINTS, LITE_PAGE, LITE_VIDEO]>` — feature-set mismatch |
+| `ContactsPickerDialogTest#testNoSelection` | no contacts on the emulator |
+| `AppModalPresenterTest#testDialogDimensionsWithNonZeroSystemBarsInsets` | emulator system-bar insets differ from the expectation |
+
+Note that the runner also needs the test APKs installed: `ChromePublicUnitTest.apk`
+is 511 MB and installing it over the ssh reverse tunnel exceeds devil's adb
+timeouts, which denylists the device and kills the run before the first test.
+Install it (and `ChromiumNetTestSupport.apk`) directly from the machine hosting
+the emulator; the runner then skips installation on a checksum match.
+
 ## Monkey stress
 
 `adb shell monkey -p com.danosito.afterbird --throttle 120 -v 3000` with uBO
