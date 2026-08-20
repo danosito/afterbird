@@ -16,41 +16,56 @@ Grab the latest APK from
 [Releases](https://github.com/danosito/afterbird/releases) and install it.
 Android 15+ is supported (emulator and physical devices).
 
-## What works in v1.3
+## What works in v1.9
 
-- **Extension install confirmation dialog** for every network-triggered
-  install (Chrome Web Store detail URLs, `.crx` links, redirect chains).
-  Install only commits after Accept. Cancel wipes the cached CRX.
-- Install triggered at the download layer
-  (`DownloadManagerDelegate::InterceptDownloadIfApplicable`) for raw
-  `.crx` links; the navigation throttle handles Chrome Web Store
-  detail URLs.
-- `chrome://extensions` is fully functional: Enable toggle disables the
-  real extension, Remove drops the card, Details opens the per-extension
-  panel, icons render from inline bytes, dev-mode toggle works.
-- Load Unpacked picker for `.zip` / `.crx` / `.user.js` / directory.
-- Installed extensions persist across restart.
-- `chrome.runtime.sendMessage` + port-based messaging between extension
-  frames so dashboards / popups render populated.
-- DNR-based ad blocking via uBlock Origin.
-- **Main app menu opens extensions in a proper child tab.** Back-swipe
-  from the new tab returns to the page the user came from instead of
-  killing the app. Per-extension entries now carry the extension's own
-  icon.
-- **MV2 + MV3 API probe extensions** under
-  `third_party/extensions/afterbird-api-probe/` for compatibility
-  testing. Load via chrome://extensions → Load Unpacked.
+Afterbird runs the **upstream desktop-android extension stack** from Chromium
+151, so extension support is Chromium's own rather than a reimplementation.
+Four patches make it usable on a phone (see `patches/m151/`): Manifest V2 is
+re-enabled, the `browserAction`/`pageAction` schemas are bundled, unpacked
+extensions load without the developer-mode toggle, and the extensions menu no
+longer crashes on a phone form factor.
 
-No command-line `--load-extension` hack needed.
+### Extensions verified on device
+
+Every extension below loads, enables itself and registers its event listeners
+with no `Unknown API` errors (emulator, API 35, clean profile each time):
+
+| Extension | Manifest |
+|---|---|
+| uBlock Origin | MV2 |
+| Dark Reader | MV2 |
+| Stylus | MV2 |
+| Violentmonkey | MV2 |
+| SponsorBlock | MV3 |
+| Stylus | MV3 |
+| Violentmonkey | MV3 |
+| Bitwarden | MV3 |
+| uBO Lite | MV3 |
+
+Four of them were also checked for observable behaviour, not just loading:
+uBlock Origin keeps ad requests off the network, Dark Reader injects its styles
+and darkens the page, Violentmonkey and Stylus render their management UIs.
+
+### Ad blocking
+
+uBlock Origin scores **132/132 (100%)** on `adblock.turtlecute.org` with zero
+ad or tracker requests reaching the network.
+
+If you see a much lower score, check the enabled filter lists before suspecting
+the browser: uBO auto-selects regional lists from the device language, and a
+device set to English never enables regional lists that many test pages probe
+heavily.
 
 ## Known limitations
 
-- Only a handful of extensions have been exercised end-to-end.
-- Re-installing the same extension still produces duplicate rows (no
-  dedup by public key yet).
-- DevTools UX is not wired up the Kiwi way yet.
-- Extensions without a `browser_action.default_popup` don't surface as
-  per-extension menu entries.
+- **DNR extensions must load from a writable directory.** Chromium writes
+  indexed rulesets into `_metadata/` next to the unpacked extension. Loading an
+  MV3 blocker from a read-only path (`/data/local/tmp`, say) fails with a
+  misleading `Internal error while parsing rules`.
+- The `release` build variant is newer than the `test` one and less exercised.
+- Chrome Web Store install flow has not been re-verified since the M151 bump.
+- Kiwi-era conveniences dropped with the 132 layer (custom install dialog,
+  DevTools bridge, per-extension menu icons) have not been re-ported.
 
 ## Repository layout and build
 
@@ -63,7 +78,7 @@ checkout pinned to the tag in `CHROMIUM_VERSION` (currently
   rsynced over the checkout by the pipeline.
 - `patches/m151/*.patch` — source patches applied with `git apply`:
   MV2 re-enable, browserAction/pageAction schema bundling, extensions-menu
-  phone-form-factor NPE fix.
+  phone-form-factor NPE fix, unpacked-without-developer-mode.
 - `.build/args/{test,release}.gn` — GN args variants. `test` (default) is
   debuggable and exposes the CDP socket for the Playwright harness;
   `release` is `is_official_build=true` (experimental).
@@ -72,7 +87,9 @@ checkout pinned to the tag in `CHROMIUM_VERSION` (currently
 
 Build pipeline: `ci/chromium_android_pipeline.sh` (smoke by default,
 `--full-build` for `chrome_public_apk`). Emulator automation:
-`ci/android_emulator_test.sh`. Parity harness: `tests/harness/`.
+`ci/android_emulator_test.sh`. Extension and ad-blocking checks live in
+`tests/harness/checks/`; test results and the reasoning behind them are in
+`docs/superpowers/reports/`.
 
 Branch roles:
 - `afterbird` — main integration branch for this fork.
