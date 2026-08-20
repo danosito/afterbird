@@ -50,6 +50,12 @@ All notable changes to this repository are documented in this file.
   because uBO answers its HEAD probes with `redirect-rule=nooptext`. New
   `tests/harness/checks/adblock-device.mjs` drives the device over adb + CDP.
   Measured on the patched build: 101 requests blocked, 42% of attempted.
+- **Verified on a physical device** (vivo V2405A, Android 16): full emulator
+  suite clean, uBlock Origin blocked 101 requests (41% of attempted),
+  matching the emulator. The `test` args variant now builds a
+  Java-debuggable APK (`is_java_debug = true`) — a retail phone only reads
+  `/data/local/tmp/chrome-command-line` for a debuggable app that is also
+  the system's selected debug app (`adb shell am set-debug-app`).
 - Build hosts get a memory-aware ninja job cap
   (`-j min(cores, RAM_GiB/2)`); the unbounded default OOM'd the 80-core
   build server.
