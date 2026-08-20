@@ -35,8 +35,11 @@ Relaunch the AVD cleanly:
     adb emu kill
     emulator -avd <name> -gpu swiftshader_indirect -no-snapshot -no-boot-anim
 
-CDP (Playwright path) still needs the test/dev build to expose
-`chrome_devtools_remote` (debuggable build); release builds keep it shut.
+CDP works against both build variants: upstream Chrome for Android always
+starts DevToolsServer, and `content::CanUserConnectToDevTools` admits root,
+shell, or the app's own uid. What the `test` variant adds is a *debuggable*
+APK, which is what lets Chromium read `/data/local/tmp/chrome-command-line` —
+without it the harness cannot pass `--load-extension` at all.
 
 ### Running against a physical device
 

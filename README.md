@@ -79,9 +79,10 @@ checkout pinned to the tag in `CHROMIUM_VERSION` (currently
 - `patches/m151/*.patch` — source patches applied with `git apply`:
   MV2 re-enable, browserAction/pageAction schema bundling, extensions-menu
   phone-form-factor NPE fix, unpacked-without-developer-mode.
-- `.build/args/{test,release}.gn` — GN args variants. `test` (default) is
-  debuggable and exposes the CDP socket for the Playwright harness;
-  `release` is `is_official_build=true` (experimental).
+- `.build/args/{test,release}.gn` — GN args variants. `test` (default) builds a
+  Java-debuggable APK, which is what lets the harness pass flags through
+  `/data/local/tmp/chrome-command-line`; `release` is `is_official_build=true`
+  and not debuggable.
 - `third_party/extensions/**` — MV2/MV3 API probe extensions; uBlock
   Origin zip is fetched by `ci/fetch_ublock_chromium.sh` (not tracked).
 

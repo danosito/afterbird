@@ -1,7 +1,12 @@
-# Afterbird M151 release build — EXPERIMENTAL, not yet validated end-to-end.
-# = test.gn + is_official_build. Official builds are non-debuggable: no
-# chrome_devtools_remote socket (by design), so the Playwright/CDP harness
-# path won't attach; adb-driver specs still work.
+# Afterbird M151 release build. = test.gn + is_official_build, validated on
+# emulator 2026-08-20 (installs, full emulator suite passes, 354 MB APK).
+#
+# Not debuggable, so /data/local/tmp/chrome-command-line is ignored and the
+# harness cannot inject --load-extension. Note that the devtools socket is
+# still opened: upstream Chrome for Android always starts DevToolsServer, and
+# access is gated by content::CanUserConnectToDevTools, which admits only
+# root, shell, or the app's own uid — same as stock Chrome.
+#
 # chrome_pgo_phase=0 avoids the PGO-profile fetch/lookup failure mode.
 target_os = "android"
 target_cpu = "arm64"
