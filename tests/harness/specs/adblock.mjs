@@ -1,43 +1,62 @@
-// Parity spec: does a content blocker actually keep ad/tracker requests off the
-// network?
+// Parity spec: does the content blocker keep ad/tracker requests off the
+// network, and does the page-level ad-block test agree?
 //
-// Method: load an ad-carrying page and count how many requests to known ad and
-// tracker hosts reach the network. A request is "neutralized" when it is either
-// cancelled (ERR_BLOCKED_BY_CLIENT) or redirected to an inert resource — uBO's
-// `redirect-rule=nooptext` sends the request to `data:text/plain;base64,Cg==`
-// instead of cancelling it, which is just as effective but looks like a 200 to
-// the page.
+// Two numbers, because either alone misleads:
 //
-// Why not adblock.turtlecute.org's own verdict: it probes with HEAD xhr, uBO
-// answers most of those with redirect-rule, and the page scores the resulting
-// 200s as "not blocked" — it reported 1-2% for a uBO that was demonstrably
-// filtering. Measured against a live site instead, the same setup takes ad
-// requests from 13 to 1.
-export const id = 'adblock-live-site';
+//   reachedNetwork — ad/tracker requests that got a real response. This is the
+//     number that matters; a request that reaches its server is a tracker hit
+//     regardless of what any test page reports.
+//   pagePct — adblock.turtlecute.org's own verdict. Useful as a cross-check,
+//     but it scores `redirect-rule=nooptext` responses (HTTP 200 from an inert
+//     data: URL) as "not blocked", so it can read far lower than reality.
+//
+// The spec also reports the blocker's enabled filter lists. A low score is far
+// more often a list-selection problem than a browser problem: uBO auto-selects
+// regional lists from navigator.language, so an en-US device never enables
+// RUS-0 and scores 1% on a page that probes mostly regional hosts — while the
+// same build on a ru-RU device scores 100%.
+export const id = 'adblock-live';
 
-const TEST_URL = process.env.AB_ADS_URL || 'https://www.dictionary.com/browse/test';
-// Baseline (no extension) for TEST_URL; requests above this fraction fail.
-const MAX_FRACTION = Number(process.env.AB_ADS_MAX_FRACTION || 0.25);
-const BASELINE = Number(process.env.AB_ADS_BASELINE || 13);
+const TEST_URL = process.env.AB_ADS_URL || 'https://adblock.turtlecute.org/';
 
-const AD_HOST = /doubleclick|googlesyndication|googletagservices|googletagmanager|google-analytics|adservice|adsystem|amazon-adsystem|criteo|taboola|outbrain|pubmatic|rubiconproject|scorecardresearch|adnxs|moatads|quantserve|casalemedia|openx|33across/i;
+const AD_HOST = /doubleclick|googlesyndication|googletagservices|googletagmanager|google-analytics|adservice|adsystem|amazon-adsystem|criteo|taboola|outbrain|pubmatic|rubiconproject|scorecardresearch|adnxs|moatads|quantserve|appmetrica|tiktok|yahoo|analytics|fakepage/i;
+
+async function filterLists(context) {
+  // Read the blocker's list selection straight from its background context.
+  try {
+    const targets = await (await fetch(`http://localhost:${process.env.AB_CDP_PORT || 9222}/json/list`)).json();
+    const bg = targets.find((t) => /chrome-extension:\/\/[a-p]{32}\/background/.test(t.url || ''));
+    if (!bg) return null;
+    const page = await context.newPage();
+    try {
+      await page.goto(bg.url, { timeout: 20000 });
+      return await page.evaluate(() => {
+        // Navigating to the background page gives a fresh context without the
+        // extension's globals, so µBlock may not be reachable from here.
+        const ub = globalThis.µBlock;
+        const count = ub?.selectedFilterLists?.length;
+        return { count: count ?? 'unavailable', lang: navigator.language };
+      });
+    } finally {
+      await page.close().catch(() => {});
+    }
+  } catch {
+    return null;
+  }
+}
 
 export async function run(page) {
-  const cdp = await page.context().newCDPSession(page);
+  const context = page.context();
+  const cdp = await context.newCDPSession(page);
   await cdp.send('Network.enable');
 
-  let attempted = 0;
   let reachedNetwork = 0;
   let neutralized = 0;
 
-  cdp.on('Network.requestWillBeSent', (e) => {
-    if (AD_HOST.test(e.request.url)) attempted++;
-  });
   cdp.on('Network.responseReceived', (e) => {
-    if (!AD_HOST.test(e.response.url)) return;
-    // A redirect to an inert data: URL means the blocker swallowed it.
-    if (/^data:/.test(e.response.url)) neutralized++;
-    else reachedNetwork++;
+    const url = e.response.url;
+    if (/^data:/.test(url)) { neutralized++; return; }
+    if (AD_HOST.test(url)) reachedNetwork++;
   });
   cdp.on('Network.loadingFailed', (e) => {
     if (e.blockedReason || /ERR_BLOCKED_BY_CLIENT/.test(e.errorText || '')) neutralized++;
@@ -46,14 +65,20 @@ export async function run(page) {
   await page.goto(TEST_URL, { waitUntil: 'networkidle', timeout: 90000 }).catch(() => {});
   await page.waitForTimeout(12000);
 
-  const fraction = BASELINE ? reachedNetwork / BASELINE : 1;
+  const text = await page.evaluate(() => document.body.innerText).catch(() => '');
+  const pageBlocked = Number((text.match(/(\d+)\s+blocked/i) || [])[1] ?? NaN);
+  const pageNotBlocked = Number((text.match(/(\d+)\s+not blocked/i) || [])[1] ?? NaN);
+  const total = pageBlocked + pageNotBlocked;
+
+  const lists = await filterLists(context);
+
   return {
-    url: TEST_URL,
-    attempted,
     reachedNetwork,
     neutralized,
-    baseline: BASELINE,
-    fractionOfBaseline: Number(fraction.toFixed(2)),
-    pass: reachedNetwork <= BASELINE * MAX_FRACTION,
+    pageBlocked,
+    pageNotBlocked,
+    pagePct: total ? Math.round((pageBlocked / total) * 100) : null,
+    filterLists: lists,
+    pass: reachedNetwork === 0,
   };
 }
